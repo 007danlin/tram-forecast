@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from datetime import date
 
 
-ROUTES = (1, 5, 7, 11, 12, 17, 25, 26, 28, 50)
+# The unpacked organizer sample still contains ten routes. A later Q&A addendum
+# excludes route 5 from the trained model scope. Keep these concepts separate:
+# transport/export compatibility must not silently redefine model applicability.
+SAMPLE_ROUTES = (1, 5, 7, 11, 12, 17, 25, 26, 28, 50)
+MODELED_ROUTES = (1, 7, 11, 12, 17, 25, 26, 28, 50)
+ROUTES = SAMPLE_ROUTES  # Backward-compatible name for existing transport grids.
 TARGET_COLUMN = "boardings"
 KEY_COLUMNS = ("route", "date", "hour")
 RAW_TIMESTAMP_COLUMN = "tran_date_time"

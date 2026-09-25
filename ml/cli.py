@@ -10,10 +10,25 @@ import pandas as pd
 
 from ml.artifact import create_artifact, load_artifact, predict_artifact, submission_preflight, write_submission
 from ml.data import build_target_from_raw, load_organizer_labels
-from ml.evaluation import experiment_log_frame, run_full_evaluation, run_weather_selection, run_frozen_holdout
+from ml.evaluation import (
+    experiment_log_frame,
+    run_frozen_holdout,
+    run_full_evaluation,
+    run_training_mask_comparison,
+    run_weather_selection,
+)
 from ml.factors import sha256_file, ALIGNMENTS, WEATHER_SOURCE_URL, load_weather_factors, normalize_open_meteo_snapshot
 from ml.weather import fetch_weather
-from ml.settings import FINAL_TRAIN_END, FINAL_TRAIN_START, FORECAST_END, FORECAST_START, KEY_COLUMNS, TARGET_COLUMN
+from ml.qa import history_drop_candidates, load_training_mask
+from ml.settings import (
+    FINAL_TRAIN_END,
+    FINAL_TRAIN_START,
+    FORECAST_END,
+    FORECAST_START,
+    KEY_COLUMNS,
+    MODELED_ROUTES,
+    TARGET_COLUMN,
+)
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -94,6 +109,15 @@ def command_backtest(args: argparse.Namespace) -> int:
 
 def command_train(args: argparse.Namespace) -> int:
     report = json.loads(Path(args.evaluation_report).read_text(encoding="utf-8"))
+    if args.training_mask:
+        mask = load_training_mask(args.training_mask)
+        report_mask = report.get("training_mask") or {}
+        if report.get("adoption_decision") != "adopted":
+            raise ValueError(
+                "Masked training requires a reviewed comparison report with adoption_decision='adopted'"
+            )
+        if report_mask.get("mask_id") != mask["mask_id"] or report_mask.get("mask_sha256") != mask["sha256"]:
+            raise ValueError("Training mask differs from the reviewed comparison report")
     destination = create_artifact(
         args.dataset_dir,
         args.artifact_dir,
@@ -102,6 +126,7 @@ def command_train(args: argparse.Namespace) -> int:
         factor_path=args.weather_factors,
         experiment_config=report.get("selected_config"),
         snapshot_manifest=report.get("snapshot"),
+        training_mask_path=args.training_mask,
     )
     print(json.dumps({"artifact_dir": str(destination), "model": report["selected_model"]}, ensure_ascii=False))
     return 0
@@ -118,8 +143,8 @@ def command_forecast(args: argparse.Namespace) -> int:
 
 def command_submission(args: argparse.Namespace) -> int:
     prediction = predict_artifact(args.artifact_dir, FORECAST_START, FORECAST_END)
-    output = write_submission(prediction, args.template, args.output)
-    preflight = submission_preflight(output, args.template)
+    output = write_submission(prediction, args.template, args.output, scope=args.scope)
+    preflight = submission_preflight(output, args.template, scope=args.scope)
     _, metadata = load_artifact(args.artifact_dir)
     preflight["artifact"] = {
         "schema_version": metadata["schema_version"],
@@ -131,11 +156,77 @@ def command_submission(args: argparse.Namespace) -> int:
     _write_json(preflight_path, preflight)
     print(
         json.dumps(
-            {"output": str(output), "rows": len(prediction), "preflight": str(preflight_path), "passed": preflight["passed"]},
+            {
+                "output": str(output),
+                "rows": preflight["checks"]["expected_row_count"],
+                "scope": args.scope,
+                "preflight": str(preflight_path),
+                "passed": preflight["passed"],
+            },
             ensure_ascii=False,
         )
     )
     return 0 if preflight["passed"] else 3
+
+
+def command_compare_training_mask(args: argparse.Namespace) -> int:
+    destination, log_destination = Path(args.output), Path(args.experiment_log)
+    if destination.exists() or log_destination.exists():
+        raise ValueError("Mask comparison report/log already exists; use new paths")
+    mask = load_training_mask(args.training_mask)
+    report = run_training_mask_comparison(args.dataset_dir, mask)
+    _write_json(destination, report)
+    log_destination.parent.mkdir(parents=True, exist_ok=True)
+    experiment_log_frame(report).to_csv(
+        log_destination,
+        index=False,
+        encoding="utf-8",
+        lineterminator="\n",
+    )
+    print(
+        json.dumps(
+            {
+                "report": str(destination),
+                "experiment_log": str(log_destination),
+                "mask_id": mask["mask_id"],
+                "adoption_decision": report["adoption_decision"],
+            },
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
+def command_audit_history(args: argparse.Namespace) -> int:
+    target = load_organizer_labels(
+        args.dataset_dir,
+        FINAL_TRAIN_START,
+        FINAL_TRAIN_END,
+        routes=MODELED_ROUTES,
+    )
+    candidates = history_drop_candidates(
+        target,
+        lookback_weeks=args.lookback_weeks,
+        ratio_threshold=args.ratio_threshold,
+        minimum_baseline=args.minimum_baseline,
+    )
+    payload = {
+        "model_scope_routes": list(MODELED_ROUTES),
+        "method": (
+            "daily target divided by the median of the previous comparable weekdays; "
+            "candidate detection only, no causal label and no automatic recovery"
+        ),
+        "parameters": {
+            "lookback_weeks": args.lookback_weeks,
+            "ratio_threshold": args.ratio_threshold,
+            "minimum_baseline": args.minimum_baseline,
+        },
+        "candidate_count": len(candidates),
+        "candidates": candidates.to_dict(orient="records"),
+    }
+    _write_json(Path(args.output), payload)
+    print(json.dumps({"output": args.output, "candidate_count": len(candidates)}, ensure_ascii=False))
+    return 0
 
 
 def command_prepare_weather(args: argparse.Namespace) -> int:
@@ -224,6 +315,7 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--evaluation-report", required=True)
     train.add_argument("--artifact-dir", required=True)
     train.add_argument("--weather-factors")
+    train.add_argument("--training-mask")
     train.set_defaults(func=command_train)
 
     forecast = subparsers.add_parser("forecast", help="Write internal non-rounded hourly forecast")
@@ -238,7 +330,29 @@ def build_parser() -> argparse.ArgumentParser:
     submission.add_argument("--template", required=True)
     submission.add_argument("--output", required=True)
     submission.add_argument("--preflight-output")
+    submission.add_argument("--scope", choices=("sample", "modeled_routes"), default="sample")
     submission.set_defaults(func=command_submission)
+
+    compare_mask = subparsers.add_parser(
+        "compare-training-mask",
+        help="Compare the frozen calendar model before/after a verified hour mask",
+    )
+    compare_mask.add_argument("--dataset-dir", required=True)
+    compare_mask.add_argument("--training-mask", required=True)
+    compare_mask.add_argument("--output", required=True)
+    compare_mask.add_argument("--experiment-log", required=True)
+    compare_mask.set_defaults(func=command_compare_training_mask)
+
+    history = subparsers.add_parser(
+        "audit-history",
+        help="Report large daily drops without imputing or assigning a cause",
+    )
+    history.add_argument("--dataset-dir", required=True)
+    history.add_argument("--output", required=True)
+    history.add_argument("--lookback-weeks", type=int, default=4)
+    history.add_argument("--ratio-threshold", type=float, default=0.10)
+    history.add_argument("--minimum-baseline", type=float, default=100.0)
+    history.set_defaults(func=command_audit_history)
 
     weather = subparsers.add_parser("prepare-weather", help="Validate and normalize an Open-Meteo JSON snapshot")
     weather.add_argument("--snapshot", required=True)

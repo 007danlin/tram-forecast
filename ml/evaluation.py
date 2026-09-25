@@ -17,9 +17,11 @@ from ml.experiment_config import normalize_config
 from ml.factors import weather_coverage
 from ml.metrics import regression_metrics, round_submission_predictions
 from ml.model import HGBT_FIXED_PARAMETERS, HourlyGradientBoostingModel, build_hgbt_model
+from ml.qa import apply_training_mask, training_mask_summary
 from ml.settings import (
     FINAL_VALIDATION,
     KEY_COLUMNS,
+    MODELED_ROUTES,
     MODEL_SCHEMA_VERSION,
     RANDOM_SEED,
     SELECTION_FOLDS,
@@ -167,12 +169,23 @@ def evaluate_model(
     model_name: str,
     factors: pd.DataFrame | None = None,
     experiment_config: dict | None = None,
+    training_mask: dict[str, object] | None = None,
 ) -> tuple[dict[str, object], pd.DataFrame]:
     if model_name not in MODEL_FACTORIES:
         raise KeyError(f"Unknown model: {model_name}")
-    target = load_organizer_labels(dataset_dir, fold.train_start, fold.val_end)
+    target = load_organizer_labels(
+        dataset_dir,
+        fold.train_start,
+        fold.val_end,
+        routes=MODELED_ROUTES,
+    )
     history = target[target["date"].between(pd.Timestamp(fold.train_start), pd.Timestamp(fold.train_end))].copy()
     actual = target[target["date"].between(pd.Timestamp(fold.val_start), pd.Timestamp(fold.val_end))].copy()
+    mask_summary = None
+    if training_mask is not None:
+        mask_summary = training_mask_summary(history, training_mask)
+        history = apply_training_mask(history, training_mask)
+        history = history[history["training_included"]].copy()
     model = build_hgbt_model(model_name, experiment_config) if experiment_config is not None else MODEL_FACTORIES[model_name]()
     started = time.perf_counter()
     if isinstance(model, HourlyGradientBoostingModel):
@@ -211,6 +224,15 @@ def evaluate_model(
         "model_schema_version": MODEL_SCHEMA_VERSION,
         "random_seed": RANDOM_SEED,
         "parameters": {**MODEL_PARAMETERS[model_name], **({"experiment_config": experiment_config} if experiment_config else {})},
+        "training_mask": (
+            {
+                "mask_id": training_mask["mask_id"],
+                "sha256": training_mask["sha256"],
+                "summary": mask_summary,
+            }
+            if training_mask is not None
+            else None
+        ),
         "fold": asdict(fold),
         "elapsed_seconds": elapsed,
         "metrics": slice_metrics(merged),
@@ -370,6 +392,7 @@ def run_full_evaluation(
             "random_seed": RANDOM_SEED,
             "primary_61_day_validation": asdict(FINAL_VALIDATION),
             "future_target_used_within_horizon": False,
+            "model_scope_routes": list(MODELED_ROUTES),
         },
         "selection_summary": selection_summary,
         "selected_model": selected_model,
@@ -378,7 +401,7 @@ def run_full_evaluation(
             "nominal_coverage": 0.90,
             "absolute_error_q90": interval_absolute_error_q90,
             "reused_final_validation_coverage": interval_coverage,
-            "coverage_scope": "supported routes only; cold-start route 5 reported separately",
+            "coverage_scope": "nine-route model scope; route 5 is outside model evaluation",
         },
         "experiments": experiments,
         "external_factors": {
@@ -407,6 +430,96 @@ def run_full_evaluation(
         **{f"reused_validation:{key}": value for key, value in validation_predictions.items()},
     }
     return report, all_predictions
+
+
+def run_training_mask_comparison(
+    dataset_dir: str | Path,
+    training_mask: dict[str, object],
+) -> dict[str, object]:
+    """Compare one frozen model before/after cleaning on identical validation rows."""
+    experiments: list[dict[str, object]] = []
+    predictions: dict[str, list[pd.DataFrame]] = {"unmasked": [], "masked": []}
+    folds = (*SELECTION_FOLDS, FINAL_VALIDATION)
+    for fold in folds:
+        raw_record, raw_prediction = evaluate_model(
+            dataset_dir,
+            fold,
+            "calendar_holiday_hgbt",
+        )
+        raw_record["experiment_id"] = f"{fold.name}__target_unmasked"
+        raw_record["hypothesis"] = "Keep the organizer target unchanged as the control."
+        raw_record["change"] = "target_unmasked"
+        raw_record["decision"] = "control"
+        experiments.append(raw_record)
+        predictions["unmasked"].append(raw_prediction)
+
+        clean_record, clean_prediction = evaluate_model(
+            dataset_dir,
+            fold,
+            "calendar_holiday_hgbt",
+            training_mask=training_mask,
+        )
+        if not raw_prediction[[*KEY_COLUMNS, TARGET_COLUMN]].equals(
+            clean_prediction[[*KEY_COLUMNS, TARGET_COLUMN]]
+        ):
+            raise ValueError("Training-mask comparison changed the evaluation keys or target")
+        clean_record["experiment_id"] = f"{fold.name}__target_masked"
+        clean_record["hypothesis"] = "A verified technological-validation mask improves training without changing evaluation rows."
+        clean_record["change"] = "target_masked"
+        clean_record["decision"] = "requires_owner_review"
+        experiments.append(clean_record)
+        predictions["masked"].append(clean_prediction)
+
+    complete = load_organizer_labels(
+        dataset_dir,
+        SELECTION_FOLDS[0].train_start,
+        FINAL_VALIDATION.val_end,
+        routes=MODELED_ROUTES,
+    )
+    selection_count = len(SELECTION_FOLDS)
+    selection_summary = {
+        name: _combined_metrics(parts[:selection_count])
+        for name, parts in predictions.items()
+    }
+    masked_selection = pd.concat(predictions["masked"][:selection_count], ignore_index=True)
+    supported_selection = masked_selection[masked_selection["status"] == "ok"]
+    residuals = np.abs(
+        supported_selection[TARGET_COLUMN].to_numpy(dtype=float)
+        - supported_selection["prediction"].to_numpy(dtype=float)
+    )
+    interval_absolute_error_q90 = float(np.quantile(residuals, 0.90))
+    masked_validation = predictions["masked"][-1]
+    supported_validation = masked_validation[masked_validation["status"] == "ok"]
+    lower = np.maximum(
+        supported_validation["prediction"].to_numpy(dtype=float) - interval_absolute_error_q90,
+        0.0,
+    )
+    upper = supported_validation["prediction"].to_numpy(dtype=float) + interval_absolute_error_q90
+    validation_y = supported_validation[TARGET_COLUMN].to_numpy(dtype=float)
+    interval_coverage = float(np.mean((validation_y >= lower) & (validation_y <= upper)))
+    return {
+        "protocol": {
+            "comparison": "same model and identical evaluation rows; only training rows change",
+            "model": "calendar_holiday_hgbt",
+            "selection_folds": [asdict(fold) for fold in SELECTION_FOLDS],
+            "reused_final_validation": asdict(FINAL_VALIDATION),
+            "model_scope_routes": list(MODELED_ROUTES),
+            "evaluation_target_cleaned": False,
+            "rounding_policy": "floor(x + 0.5); identical to submission export",
+        },
+        "training_mask": training_mask_summary(complete, training_mask),
+        "selection_summary": selection_summary,
+        "interval": {
+            "method": "symmetric absolute-residual quantile calibrated on masked selection folds",
+            "nominal_coverage": 0.90,
+            "absolute_error_q90": interval_absolute_error_q90,
+            "reused_final_validation_coverage": interval_coverage,
+            "coverage_scope": "nine-route masked-training comparison; evaluation target remains uncleaned",
+        },
+        "adoption_decision": "requires Igor and Daniel review; no automatic adoption",
+        "selected_model": "calendar_holiday_hgbt",
+        "experiments": experiments,
+    }
 
 
 def weather_guardrail(candidate: list[pd.DataFrame], control: list[pd.DataFrame]) -> dict:
