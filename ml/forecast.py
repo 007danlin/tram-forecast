@@ -2,6 +2,9 @@
 from datetime import datetime, timedelta, timezone
 
 
+CONTRACT_VERSION = "synthetic-v1"
+
+
 def predict_mock() -> dict:
     """No inputs or I/O. Return a fresh mock series, never a real prediction."""
     start = datetime(2026, 1, 1, 9, tzinfo=timezone(timedelta(hours=3)))

@@ -54,20 +54,7 @@ jobs:
       - name: Check frontend and API through its proxy
         run: |
           curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 2 http://127.0.0.1:5173/ -o /tmp/frontend.html
-          grep -q 'id="root"' /tmp/frontend.html
-          python3 - <<'PY'
-          import json
-          from urllib.request import urlopen
-          from ml.forecast import predict_mock
-
-          def get(path):
-              with urlopen('http://127.0.0.1:5173' + path, timeout=10) as response:
-                  return json.load(response)
-
-          assert get('/api/v1/health') == {'status': 'ok'}
-          assert get('/api/v1/forecast') == predict_mock()
-          print('Frontend, proxy, backend and ML are connected.')
-          PY
+          python3 -m scripts.check_integration --base-url http://127.0.0.1:5173
       - name: Container logs on failure
         if: failure()
         run: docker compose logs --no-color

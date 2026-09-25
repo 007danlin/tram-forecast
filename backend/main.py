@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import AwareDatetime, BaseModel, Field
 
-from ml import forecast
+from ml import adapter
 
 app = FastAPI(title="TramFlow integration scaffold", version="0.1.0")
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def health() -> Health:
 @app.get("/api/v1/forecast", response_model=Forecast)
 def get_forecast() -> Forecast:
     try:
-        return Forecast.model_validate(forecast.predict_mock())
+        return Forecast.model_validate(adapter.predict_for_api_v1())
     except Exception as exc:
         logger.exception("ML mock failed")
         raise HTTPException(status_code=503, detail="Forecast temporarily unavailable") from exc

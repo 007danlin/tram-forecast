@@ -27,5 +27,6 @@ artifacts/
 models/
 *.tsbuildinfo
 
-# Локальные ресурсы интерактивной карты (получаются из PDF скриптами scripts/map)
-frontend/public/map-local/
+# Runtime map is shipped with the frontend; PDF/OCR scratch files remain local.
+frontend/public/map-local/*
+!frontend/public/map-local/network.json

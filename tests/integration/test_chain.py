@@ -92,6 +92,24 @@ class IntegrationTests(unittest.TestCase):
             with self.assertLogs("backend.main", level="ERROR"):
                 self.assert_unavailable()
 
+    def test_incompatible_ml_contract_is_rejected_before_inference(self):
+        for version in ("synthetic-v2", "", None):
+            with self.subTest(version=version):
+                with patch.object(forecast, "CONTRACT_VERSION", version):
+                    with patch("ml.forecast.predict_mock") as mock:
+                        with self.assertLogs("backend.main", level="ERROR"):
+                            self.assert_unavailable()
+                        mock.assert_not_called()
+        self.assertEqual(self.get("/api/v1/forecast"), forecast.predict_mock())
+
+    def test_missing_ml_contract_is_rejected_before_inference(self):
+        with patch.object(forecast, "CONTRACT_VERSION"):
+            del forecast.CONTRACT_VERSION
+            with patch("ml.forecast.predict_mock") as mock:
+                with self.assertLogs("backend.main", level="ERROR"):
+                    self.assert_unavailable()
+                mock.assert_not_called()
+
     def test_openapi_available(self):
         schema = self.get("/openapi.json")
         self.assertIn("/api/v1/forecast", schema["paths"])
