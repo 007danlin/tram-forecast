@@ -7,11 +7,11 @@ from zoneinfo import ZoneInfo
 
 from pydantic import (
     AwareDatetime,
+    BeforeValidator,
     BaseModel,
     ConfigDict,
     Field,
     StrictStr,
-    field_validator,
     model_validator,
 )
 
@@ -26,6 +26,48 @@ Resolution = Literal["hour", "day", "month"]
 SpatialLevel = Literal["route", "stop", "segment"]
 Mode = Literal["synthetic", "model", "baseline", "qualitative"]
 MOSCOW = ZoneInfo("Europe/Moscow")
+
+
+def parse_iso_datetime(value: object) -> datetime:
+    """Do not let Pydantic interpret numeric strings as epoch timestamps."""
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            pass
+    raise ValueError("Use an ISO 8601 timestamp with timezone, not an epoch number")
+
+
+IsoDatetime = Annotated[AwareDatetime, BeforeValidator(parse_iso_datetime)]
+
+
+def validate_boundary(value: datetime, resolution: Resolution) -> None:
+    boundary = value.astimezone(MOSCOW)
+    if boundary.minute or boundary.second or boundary.microsecond:
+        raise ValueError("Boundaries must align to whole hours in Europe/Moscow")
+    if resolution in ("day", "month") and boundary.hour:
+        raise ValueError("Day/month boundaries must align to Moscow midnight")
+    if resolution == "month" and boundary.day != 1:
+        raise ValueError("Month boundaries must align to the first day")
+
+
+def validate_cell(start: datetime, end: datetime, resolution: Resolution) -> None:
+    validate_boundary(start, resolution)
+    validate_boundary(end, resolution)
+    local_start = start.astimezone(MOSCOW)
+    if resolution == "month":
+        if local_start.month == 12:
+            expected_end = local_start.replace(year=local_start.year + 1, month=1)
+        else:
+            expected_end = local_start.replace(month=local_start.month + 1)
+    else:
+        expected_end = local_start + (
+            timedelta(hours=1) if resolution == "hour" else timedelta(days=1)
+        )
+    if end != expected_end:
+        raise ValueError("Each row must span exactly one resolution interval")
 
 
 class ContractModel(BaseModel):
@@ -52,17 +94,8 @@ class Scenario(ContractModel):
 
 
 class Period(ContractModel):
-    start: AwareDatetime
-    end: AwareDatetime
-
-    @field_validator("start", "end", mode="before")
-    @classmethod
-    def reject_epoch(cls, value):
-        if not isinstance(value, (str, datetime)):
-            raise ValueError(
-                "Use an ISO 8601 timestamp with timezone, not an epoch number"
-            )
-        return value
+    start: IsoDatetime
+    end: IsoDatetime
 
     @model_validator(mode="after")
     def validate_period(self) -> Self:
@@ -87,14 +120,7 @@ class ForecastQuery(Period):
         # Horizon limits are capabilities-dependent; query may select a subinterval.
         start, end = self.start.astimezone(MOSCOW), self.end.astimezone(MOSCOW)
         for boundary in (start, end):
-            if boundary.minute or boundary.second or boundary.microsecond:
-                raise ValueError(
-                    "Boundaries must align to whole hours in Europe/Moscow"
-                )
-            if self.resolution in ("day", "month") and boundary.hour:
-                raise ValueError("Day/month boundaries must align to Moscow midnight")
-            if self.resolution == "month" and boundary.day != 1:
-                raise ValueError("Month boundaries must align to the first day")
+            validate_boundary(boundary, self.resolution)
         if self.horizon == "day" and end - start > timedelta(days=1):
             raise ValueError("Day query cannot exceed 24 hours")
         if self.horizon == "month" and end - start > timedelta(days=30):
@@ -202,9 +228,9 @@ class ForecastResponse(ContractModel):
     # Proposed explicit versions for reproducibility, pending CR-04.
     facts_version: Identifier
     calculation_version: Identifier
-    generated_at: AwareDatetime
-    as_of: AwareDatetime
-    data_cutoff: AwareDatetime
+    generated_at: IsoDatetime
+    as_of: IsoDatetime
+    data_cutoff: IsoDatetime
     timezone: Literal["Europe/Moscow"] = "Europe/Moscow"
     mode: Mode
     metric_id: Identifier
@@ -234,7 +260,19 @@ class ForecastResponse(ContractModel):
             self.coverage is not None or self.summary.total is not None
         ):
             raise ValueError("Empty results have null coverage and total")
+        if self.mode == "qualitative":
+            if self.summary.total is not None or self.summary.peak_value is not None:
+                raise ValueError(
+                    "Qualitative responses cannot claim numeric forecast summaries"
+                )
+            if self.coverage not in (None, 0):
+                raise ValueError(
+                    "Qualitative responses have no numeric forecast coverage"
+                )
         for row in self.rows:
+            if self.mode == "qualitative" and row.method != "qualitative":
+                raise ValueError("Qualitative responses require qualitative rows")
+            validate_cell(row.start, row.end, self.filters.resolution)
             if row.start < self.filters.start or row.end > self.filters.end:
                 raise ValueError("Row falls outside query interval")
             if row.route_id not in self.filters.route_ids:

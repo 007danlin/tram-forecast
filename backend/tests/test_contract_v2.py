@@ -1,6 +1,7 @@
 """Boundary cases for the draft wire contract; no model quality claims."""
 
 from copy import deepcopy
+from datetime import datetime
 import json
 from pathlib import Path
 import unittest
@@ -17,6 +18,7 @@ from backend.contracts.v2 import (
     ForecastResponse,
     ForecastRow,
     Network,
+    Period,
     Quality,
     Ready,
     Scenario,
@@ -45,6 +47,106 @@ class ContractTests(unittest.TestCase):
             ("quality", Quality),
         ):
             model.model_validate(self.examples[key])
+
+    def test_numeric_timestamp_strings_are_rejected(self):
+        for value in ("1767247200", "1767247200.0", "1767247200000"):
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                ForecastQuery.model_validate({**self.query, "start": value})
+        for field in ("generated_at", "as_of", "data_cutoff"):
+            response = deepcopy(self.examples["responses"]["success"])
+            response[field] = str(
+                int(datetime.fromisoformat(response[field]).timestamp())
+            )
+            with self.subTest(field=field), self.assertRaises(ValidationError):
+                ForecastResponse.model_validate(response)
+
+    def test_iso_dates_and_aware_python_datetimes_remain_supported(self):
+        for start in ("2026-01-01T09:00:00+03:00", "2026-01-01T06:00:00Z"):
+            period = Period(start=start, end="2026-01-01T10:00:00+03:00")
+            self.assertEqual(Period(start=period.start, end=period.end), period)
+
+    def test_all_period_fields_reject_epoch_strings_in_json(self):
+        for field in ("start", "end"):
+            payload = {"start": self.query["start"], "end": self.query["end"]}
+            payload[field] = str(
+                int(datetime.fromisoformat(payload[field]).timestamp())
+            )
+            with self.subTest(field=field), self.assertRaises(ValidationError):
+                Period.model_validate_json(json.dumps(payload))
+
+    def test_qualitative_response_rejects_numeric_rows_and_summary(self):
+        response = deepcopy(self.examples["responses"]["success"])
+        response["mode"] = "qualitative"
+        with self.assertRaises(ValidationError):
+            ForecastResponse.model_validate(response)
+        for field, value in (("total", 10), ("peak_value", 10)):
+            response = deepcopy(self.examples["responses"]["qualitative"])
+            response["summary"][field] = value
+            if field == "total":
+                response["summary"]["total_scope"] = "available_only"
+            else:
+                response["summary"]["peak_interval"] = {
+                    "start": response["rows"][0]["start"],
+                    "end": response["rows"][0]["end"],
+                }
+            with self.subTest(field=field), self.assertRaises(ValidationError):
+                ForecastResponse.model_validate(response)
+
+    def test_qualitative_response_can_keep_historical_comparisons(self):
+        response = deepcopy(self.examples["responses"]["qualitative"])
+        response["rows"][0].update(actual_value=10, reference_value=15)
+        ForecastResponse.model_validate(response)
+
+    def test_hourly_rows_require_alignment_and_exactly_one_hour(self):
+        for change in (
+            {"start": "2026-01-01T09:15:00+03:00"},
+            {"end": "2026-01-01T09:30:00+03:00"},
+            {"end": "2026-01-01T11:00:00+03:00"},
+        ):
+            response = deepcopy(self.examples["responses"]["success"])
+            response["rows"][0].update(change)
+            with self.subTest(change=change), self.assertRaises(ValidationError):
+                ForecastResponse.model_validate(response)
+        response = deepcopy(self.examples["responses"]["success"])
+        response["rows"][0].update(
+            start="2026-01-01T06:00:00Z", end="2026-01-01T07:00:00Z"
+        )
+        ForecastResponse.model_validate(response)
+
+    def test_daily_rows_follow_moscow_midnight(self):
+        response = deepcopy(self.examples["responses"]["success"])
+        response["filters"].update(
+            horizon="month",
+            resolution="day",
+            start="2026-01-01T00:00:00+03:00",
+            end="2026-01-04T00:00:00+03:00",
+        )
+        response["rows"] = response["rows"][:1]
+        response["rows"][0].update(
+            start="2025-12-31T21:00:00Z", end="2026-01-01T21:00:00Z"
+        )
+        response["summary"].update(peak_interval=None, peak_value=None)
+        ForecastResponse.model_validate(response)
+        for end in ("2026-01-02T00:00:00Z", "2026-01-02T21:00:00Z"):
+            response["rows"][0]["end"] = end
+            with self.subTest(end=end), self.assertRaises(ValidationError):
+                ForecastResponse.model_validate(response)
+
+    def test_calendar_month_rows_allow_leap_february_and_year_rollover(self):
+        response = deepcopy(self.examples["responses"]["qualitative"])
+        ForecastResponse.model_validate(response)  # Includes December -> January.
+        response["filters"].update(
+            start="2024-02-01T00:00:00+03:00", end="2024-04-01T00:00:00+03:00"
+        )
+        response["rows"] = response["rows"][:1]
+        response["rows"][0].update(
+            start="2024-02-01T00:00:00+03:00", end="2024-03-01T00:00:00+03:00"
+        )
+        ForecastResponse.model_validate(response)
+        for end in ("2024-02-29T00:00:00+03:00", "2024-04-01T00:00:00+03:00"):
+            response["rows"][0]["end"] = end
+            with self.subTest(end=end), self.assertRaises(ValidationError):
+                ForecastResponse.model_validate(response)
 
     def test_rejects_missing_timezone_epoch_and_unaligned_times(self):
         for start in (
