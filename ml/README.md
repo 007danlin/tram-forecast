@@ -20,14 +20,16 @@ cold-start baseline и явный статус. Неизвестные марш�
 Из корня репозитория:
 
 ```sh
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r backend/requirements.txt -r ml/requirements.txt
 export DATASET_DIR="/absolute/path/to/unpacked/dataset"
 ```
 
+Для воспроизводимого окружения используется Python 3.12, как в CI.
 `DATASET_DIR` должен содержать `train.csv`, `test.csv`, `labels/` и реальный
-`test_submission.csv`. Архив повторно распаковывать не требуется.
+`test_submission.csv`. При `train` нужен также исходный `README.md` датасета:
+его checksum включается в manifest. Архив повторно распаковывать не требуется.
 
 ## Воспроизведение
 
@@ -39,6 +41,9 @@ python -m ml verify-target --dataset-dir "$DATASET_DIR" --chunksize 500000
 
 Подготовка локального погодного snapshot для отдельного
 `competition_retro`-эксперимента (сырой JSON остаётся неизменным вне Git):
+
+`prepare-weather` сам не скачивает JSON: `--snapshot` должен уже существовать,
+а `--source-url` только записывает источник в manifest.
 
 ```sh
 python -m ml prepare-weather \
@@ -56,7 +61,7 @@ python -m ml backtest \
   --dataset-dir "$DATASET_DIR" \
   --weather-factors artifacts/external/open-meteo/moscow-2025-era5.normalized.csv \
   --output artifacts/evaluation-addendum.json \
-  --experiment-log ml/reports/experiment-log.csv
+  --experiment-log artifacts/experiments/legacy/experiment-log.csv
 ```
 
 Порядок P0-гипотез фиксирован: сначала официальный календарь F01, затем на той
@@ -64,6 +69,11 @@ python -m ml backtest \
 `competition_retro`; эксплуатационная погода требует архивных forecast runs,
 доступных на соответствующий `as_of`. Будущий пассажиропоток внутри горизонта
 не используется ни в одном режиме.
+Без `--weather-factors` backtest работает с календарными кандидатами, а F02
+отмечается как blocked. Журнал по умолчанию сохраняется в
+`artifacts/experiment-log.csv`; для каждого опыта задавайте новый
+`--experiment-log`. Существующие отчёты и журналы не перезаписываются,
+отслеживаемая история в `ml/reports/` не меняется автоматически.
 
 Обучение выбранной модели на январе–октябре:
 
@@ -100,6 +110,15 @@ python -m ml month --artifact-dir artifacts/calendar-holiday-hgbt \
 python -m ml year-scenario --output artifacts/year-scenario.json
 ```
 
+В `forecast` и `month` обе календарные границы включены. В HTTP handoff используется
+`[start,end)` и предел 31 день на запрос; месяц в CLI — дневные суммы и пики,
+а не новый шаг `month` HTTP. Backend читает готовый почасовой CSV через отдельный
+[handoff](../backend/handoff/README.md), не вызывает модель из HTTP. Его ZIP-имена
+фиксированы: каталог новой модели нельзя просто заархивировать под новым именем.
+Четырёхколоночный округлённый submission не подходит вместо внутреннего CSV
+с reference/interval/status. Переданный ранее пакет и метрики модели ниже
+нужно сопоставлять по версии: обновление исходников не обновляет прогноз на сервере.
+
 ## Проверки
 
 ```sh
@@ -118,5 +137,97 @@ python -m unittest discover -s tests/integration -v
 holdout не использовался для повторного выбора. Погодный кандидат получил
 0,83327 на selection и отклонён относительно календарного кандидата.
 
-Реальные данные, погодные snapshot, модель, прогнозы и submission находятся в
-`artifacts/`/локальном датасете и исключены из Git.
+Результаты автора повторены локально 25.09.2026; новые группы, повторный holdout
+и качество после DS-округления — в [отчёте](reports/weather-groups-2026-09-25.md).
+Для модели, прогнозов и submission предусмотрен `artifacts/`, для данных —
+локальный датасет; они исключены из Git. Полный реальный sample прошёл preflight;
+независимая сверка train-маски и исходных оплат остаётся открытой.
+[Письменный ответ](../docs/integration/qa-2026-09-25/submission-clarification.md)
+требует сохранять sample целиком, включая № 5 и все таймстемпы.
+
+## Реализация приоритетов 25.09.2026
+
+`fetch-weather` получает ERA5 и публикует новый snapshot только после проверки
+единиц, конечных значений и точной часовой сетки. В каталоге сохраняются raw,
+request receipt с фактическим временем UTC, normalized, manifest и coverage.
+Сеть: connect=10s, read=120s, 32 MiB, максимум три попытки на network/429/5xx;
+Retry-After более 30 секунд прекращает получение. Ошибочные ответы сохраняются
+в отдельном `.failed-*`, не становятся действующим snapshot. Старый mtime
+больше не объявляется временем получения; `prepare-weather --receipt` принимает
+подтверждённый receipt. Без receipt `fetched_at=null`.
+
+```sh
+python -m ml fetch-weather --start 2025-01-01 --end 2025-12-31 \
+  --output-dir artifacts/external/open-meteo/moscow-2025-v1
+python -m ml fetch-weather --start 2025-01-01 --end 2025-12-31 \
+  --output-dir artifacts/external/open-meteo/moscow-2025-v1 --offline
+python -m ml backtest --dataset-dir "$DATASET_DIR" \
+  --weather-factors artifacts/external/open-meteo/moscow-2025-v1/normalized.csv \
+  --stage selection --experiment-config ml/experiments/weather-groups.json \
+  --output artifacts/experiments/weather-groups/evaluation.json \
+  --experiment-log artifacts/experiments/weather-groups/experiment-log.csv
+```
+
+Selection выполняет W00–W05 и не оценивает сентябрь–октябрь. W06 запускается
+не более одного раза, только если минимум две одиночные группы прошли guardrail;
+если это все четыре группы, переиспользуется уже проверенный W05. Report хранит
+выбранный config, точный порядок признаков, выравнивание, snapshot и selection q90.
+`train --evaluation-report` использует именно их. Fit/predict требуют только
+включённые погодные поля. Старый `competition_weather_hgbt` сохраняет порядок
+всех признаков. Погодные факторы и manifest сохраняются внутри model.joblib,
+контрольная сумма которого входит в прежний manifest из трёх файлов; состав
+handoff ZIP не расширен. Backend по-прежнему не исполняет joblib.
+
+Суммарный score должен превышать W00, эффект положителен на обоих folds,
+MAE каждого поддержанного маршрута ухудшается не более чем на 5%. Bootstrap
+по семидневным блокам — оценка неопределённости, не доказательство причинности.
+Второе окно содержит 62 дня; report сохраняет отдельный срез дней 1–61.
+Отчёт и CSV-журнал отказываются перезаписывать существующие файлы.
+Публичный `ml/reports/experiment-log.csv` пробным запуском не изменяется.
+
+После фиксации выбора допускается **повторная** контрольная оценка holdout:
+
+```sh
+python -m ml backtest --dataset-dir "$DATASET_DIR" --stage holdout \
+  --selection-report artifacts/experiments/weather-groups/evaluation.json \
+  --output artifacts/experiments/weather-groups/holdout.json \
+  --experiment-log artifacts/experiments/weather-groups/holdout-log.csv
+```
+
+Для выбранной погодной модели дополнительно передать тот же `--weather-factors`.
+Этот holdout уже использовался ранее и не считается новым независимым тестом.
+Отчёт включает качество до и после DS-округления; после holdout выбор не подбирать.
+Старый режим `--stage full` сохраняет прежний общий эксперимент для воспроизведения.
+
+Выравнивание осадков проверяется отдельным snapshot и отдельным отчётом:
+
+```sh
+python -m ml fetch-weather --start 2025-01-01 --end 2025-12-31 \
+  --alignment next_hour_accumulation_v2 \
+  --output-dir artifacts/external/open-meteo/moscow-2025-buffer-v2
+```
+
+В raw запрашивается также 01.01.2026, нормализованная сетка остаётся 8 760 часов.
+Только precipitation/snowfall для интервала `[t,t+1h)` сдвигаются из метки `t+1h`.
+В копии experiment-config задайте `alignment=next_hour_accumulation_v2`; конфиг
+с иной семантикой, чем manifest, отклоняется. Для сравнения того же buffered raw
+со старым правилом выполните `prepare-weather --start 2025-01-01 --end 2025-12-31
+--receipt .../request.json --snapshot .../raw.json --output .../normalized.csv
+--manifest .../manifest.json` в отдельный каталог с default legacy alignment.
+
+[Условия Open-Meteo](https://open-meteo.com/en/terms) проверены 25.09.2026:
+бесплатный API для некоммерческого использования, данные с атрибуцией CC BY 4.0.
+Это реанализ одной точки Москвы, режим `competition_retro`, не прогнозный выпуск.
+
+Совместимая упаковка готового артефакта и полного forecast:
+
+```sh
+python -m scripts.package_ml_handoff --artifact-dir artifacts/calendar-holiday-hgbt \
+  --forecast artifacts/forecast-for-backend.csv \
+  --output artifacts/releases/calendar-holiday-hgbt-handoff.zip
+```
+
+Четыре model-файла копируются без изменения байтов в legacy transport paths.
+Manifest, CSV и полная сетка 14 640 ключей проверяются до публикации. ZIP и
+`.zip.sha256` не перезаписываются; симлинки и лишние файлы отклоняются.
+Результаты текущего повторения и ограничения: `docs/verification-priority-implementation.md`.

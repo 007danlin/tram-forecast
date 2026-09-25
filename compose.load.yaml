@@ -1,0 +1,11 @@
+# Local load acceptance profile. Generator is outside the backend cgroup.
+services:
+  backend:
+    cpus: "2.0"
+    mem_limit: 4g
+    memswap_limit: 4g
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+  frontend:
+    environment:
+      # Vite's host check otherwise rejects the explicit Docker DNS alias.
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: frontend

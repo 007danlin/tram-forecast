@@ -38,7 +38,20 @@
       "experiment_id": "selection_2025_*__competition_weather_hgbt",
       "effect": {"reference": "calendar_holiday_hgbt", "wape_score_delta": -0.006813813346236, "mae_delta": 5.14118859112474},
       "decision": "excluded_no_incremental_selection_gain",
-      "blocker": "Operational mode remains unimplemented because no matching as-of forecast-run archive was used."
+      "blocker": "Operational mode remains unimplemented because no matching as-of forecast-run archive was used.",
+      "verification_2026_09_25": {
+        "status": "downloaded_and_offline_verified",
+        "hours": 8760,
+        "coverage": 1.0,
+        "raw_sha256": "693e20fe6ae1ebb4ddc552374ac30ef932d76911be84c31918e1cee31046eaf6",
+        "normalized_sha256": "a6b029e7309d78f831bb789d07c7379cc066d9c694add4837aefdfbbeaf05b24",
+        "fetched_at": "2026-09-25T19:56:40.627923+00:00",
+        "normalizer_version": "open-meteo-normalizer-2",
+        "terms_reviewed_on": "2026-09-25",
+        "groups_report": "ml/reports/weather-groups-2026-09-25.md",
+        "decision": "W00 retained; no weather group passed all acceptance guardrails",
+        "human_acceptance": "pending Igor"
+      }
     },
     {
       "factor_id": "F03", "name": "Daylight", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",

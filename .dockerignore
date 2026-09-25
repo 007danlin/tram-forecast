@@ -1,6 +1,11 @@
 .git
 .env
 .env.*
+**/*.netrc
+**/tramflow-users.caddy
+**/jury-access.txt
+output
+tmp
 .venv
 **/__pycache__
 **/node_modules
@@ -8,3 +13,11 @@
 data
 artifacts
 models
+**/*.joblib
+**/*.pkl
+**/*.pickle
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.parquet
+**/*.arrow

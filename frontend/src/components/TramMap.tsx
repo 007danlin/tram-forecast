@@ -135,10 +135,10 @@ export function TramMap() {
 
   return <section className="tram-map" aria-labelledby="tram-map-title">
     <h2 id="tram-map-title">Схема трамваев Москвы</h2>
-    <p className="tram-map__note">Схема из предоставленного PDF; актуальность движения не проверяется. Линии перерисованы приложением; сейчас показаны только линии маршрутов (без остановок и подписей).</p>
+    <p className="tram-map__note">На схеме показаны трамвайные линии, остановки и подписи. Актуальность движения не проверяется; схема пока не связана с прогнозом.</p>
     <div className="tram-map__stage">
       {problem === 'loading' && <div className="tram-map__state" role="status"><p>Загружаем схему…</p></div>}
-      {problem === 'missing' && <div className="tram-map__state" role="status"><p>Ресурсы карты не подготовлены. Положите PDF в <code>data/tram-map/</code> и выполните <code>python scripts/map/extract_lanes.py</code>, затем перезагрузите страницу.</p></div>}
+      {problem === 'missing' && <div className="tram-map__state" role="status"><p>Карта временно недоступна. Обновите страницу. Если ошибка повторится, сообщите администратору: в поставке приложения отсутствует готовая карта.</p></div>}
       {problem && problem !== 'loading' && problem !== 'missing' && <div className="tram-map__state" role="alert"><p>{problem}</p></div>}
       {map && <>
         <div ref={viewportRef} className="tram-map__viewport" tabIndex={0} role="application"

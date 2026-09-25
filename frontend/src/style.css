@@ -1,1 +1,45 @@
 * { box-sizing: border-box; } body { margin: 0; background: #f4f6fa; color: #18243a; font-family: system-ui, sans-serif; } main { max-width: 780px; margin: 48px auto; padding: 24px; } h1 { font-size: clamp(26px, 5vw, 38px); } h2 { font-size: 19px; } .eyebrow { font-size: 12px; letter-spacing: .12em; } .notice { padding: 16px; background: #fff0c2; border-left: 4px solid #c48000; font-weight: 650; } section { background: white; padding: 20px; border-radius: 12px; } svg { width: 100%; } svg text { font-size: 13px; fill: #526077; } table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 2.4vw, 14px); } th, td { padding: 10px 4px; text-align: left; border-bottom: 1px solid #e5e9ef; } caption { text-align: left; margin-bottom: 12px; color: #526077; } button { margin-top: 20px; padding: 12px 18px; border: 0; border-radius: 8px; background: #2456ca; color: white; cursor: pointer; } button:disabled { opacity: .5; } [role=alert] { color: #ac2121; }
+
+/* Forecast shell. Existing map layers and controls keep their own styles. */
+.forecast-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 24px; background:white; border-bottom:1px solid #dce2ec; }
+.forecast-header > div { display:grid; gap:4px; }
+.forecast-header strong { letter-spacing:.12em; color:#2456ca; }
+.forecast-header span, .forecast-header nav { font-size:13px; }
+.forecast-header nav { display:flex; align-items:center; gap:16px; }
+.forecast-header a { color:#2456ca; }
+.forecast-badge { background:#fff0c2; border-radius:8px; padding:8px 12px; }
+.forecast-app .forecast-filters { display:flex; align-items:end; justify-content:center; flex-wrap:wrap; gap:12px; max-width:960px; margin:16px auto; padding:16px; border:1px solid #dce2ec; }
+.forecast-filters label { display:grid; gap:6px; font-size:13px; flex:1; min-width:150px; }
+.forecast-app .forecast-filters select, .forecast-app .forecast-filters input { min-height:44px; border:1px solid #c9d1de; border-radius:10px; padding:8px 12px; color:#18243a; background:white; font:inherit; }
+.forecast-app :is(.forecast-header,.forecast-filters,.forecast-card,.forecast-time) button, .forecast-open { margin:0; min-height:44px; border:1px solid #c9d1de; border-radius:10px; padding:8px 14px; font:inherit; color:#18243a; background:white; }
+.forecast-app :is(.forecast-header,.forecast-filters,.forecast-card,.forecast-time) :is(button,input,select,a,summary):focus-visible, .forecast-open:focus-visible { outline:3px solid #ffb800; outline-offset:2px; }
+.forecast-filter-note { flex-basis:100%; margin:0; color:#526077; font-size:12px; }
+.forecast-workspace { max-width:1440px; margin:auto; padding:0 16px 32px; }
+.forecast-workspace .tram-map { max-width:none; margin:0; padding:0; }
+.forecast-workspace .tram-map__stage { height:46vh; min-height:360px; }
+.forecast-bottom { display:grid; grid-template-columns:minmax(380px, 560px) minmax(320px, 560px); gap:24px; margin-top:24px; align-items:start; }
+.forecast-app .forecast-card, .forecast-app .forecast-time { border:1px solid #dce2ec; box-shadow:0 3px 14px #18243a0c; padding:20px; min-width:0; }
+.forecast-card-heading { display:flex; align-items:start; justify-content:space-between; gap:16px; }
+.forecast-card h1 { margin:0; font-size:22px; line-height:1.25; }
+.forecast-card p { font-size:14px; }
+.forecast-card .forecast-total { margin:4px 0 16px; font-size:28px; font-weight:700; }
+.forecast-card .forecast-total-label { color:#526077; margin-bottom:0; }
+.forecast-warning { background:#fff0c2; padding:12px; border-radius:8px; }
+.forecast-tabs, .forecast-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.forecast-app .forecast-tabs [aria-pressed=true], .forecast-app .forecast-actions button:first-child { background:#2456ca; color:white; border-color:#2456ca; }
+.forecast-chart { width:100%; margin-top:12px; }
+.forecast-table { max-height:360px; overflow:auto; margin:12px 0; }
+.forecast-table table { font-size:12px; }
+.forecast-table details span { display:block; overflow-wrap:anywhere; }
+.forecast-table [aria-selected=true] { background:#fff0c2; }
+.forecast-details { padding:12px 0; font-size:13px; overflow-wrap:anywhere; }
+.forecast-details code { word-break:break-all; }
+.forecast-details li { margin:8px 0; }
+.forecast-actions { margin-top:16px; }
+.forecast-app .forecast-fine { font-size:12px; color:#526077; line-height:1.5; }
+.forecast-time { margin-top:24px; }
+.forecast-time h2 { margin-top:0; }
+.forecast-time > div { display:flex; align-items:center; gap:16px; }
+.forecast-time input { min-width:0; flex:1; accent-color:#2456ca; }
+.forecast-open { justify-self:start; }
+@media(max-width:760px) { .forecast-header { flex-wrap:wrap; padding:16px; } .forecast-header nav { width:100%; } .forecast-app .forecast-filters { margin:12px 16px; } .forecast-bottom { grid-template-columns:minmax(0,1fr); gap:12px; } .forecast-time { margin-top:0; } .forecast-workspace { padding:0 12px 24px; } .forecast-workspace .tram-map__stage { height:50vh; } .forecast-app .forecast-card { padding:16px; } }

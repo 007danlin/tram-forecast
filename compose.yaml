@@ -18,6 +18,11 @@ services:
       BACKEND_URL: http://backend:8000
     ports:
       - "127.0.0.1:5173:5173"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:5173/', r => { r.resume(); process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     depends_on:
       backend:
         condition: service_healthy

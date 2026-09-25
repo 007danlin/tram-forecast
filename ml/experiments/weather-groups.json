@@ -1,0 +1,13 @@
+{
+  "schema_version": "weather-experiments-v1",
+  "alignment": "legacy_timestamp_v1",
+  "experiments": [
+    {"id": "W00", "weather_groups": []},
+    {"id": "W01", "weather_groups": ["temperature"]},
+    {"id": "W02", "weather_groups": ["precipitation"]},
+    {"id": "W03", "weather_groups": ["snow"]},
+    {"id": "W04", "weather_groups": ["wind"]},
+    {"id": "W05", "weather_groups": ["temperature", "precipitation", "snow", "wind"]}
+  ],
+  "combination_policy": "one_combination_of_guardrail_passing_single_groups"
+}
