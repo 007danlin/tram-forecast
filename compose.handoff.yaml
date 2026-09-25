@@ -1,0 +1,12 @@
+# Optional read-only ML batch mount. Combine with compose.yaml or compose.server.yaml.
+services:
+  backend:
+    environment:
+      TRAMFLOW_HANDOFF_DIR: /data/handoff
+    volumes:
+      - type: bind
+        source: ${TRAMFLOW_HANDOFF_HOST_DIR:?Set the absolute path of an imported handoff release}
+        target: /data/handoff
+        read_only: true
+        bind:
+          create_host_path: false

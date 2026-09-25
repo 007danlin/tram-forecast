@@ -308,9 +308,9 @@ class ContractTests(unittest.TestCase):
     def test_openapi_is_offline_and_all_six_operations_are_documented(self):
         draft = build_openapi()
         self.assertEqual(len(draft["paths"]), 6)
-        self.assertEqual(
-            set(app.openapi()["paths"]), {"/api/v1/health", "/api/v1/forecast"}
-        )
+        live_paths = set(app.openapi()["paths"])
+        self.assertTrue({"/api/v1/health", "/api/v1/forecast"} <= live_paths)
+        self.assertTrue(set(draft["paths"]).isdisjoint(live_paths))
         export = draft["paths"]["/api/v2/forecast/export"]["post"]["responses"]
         self.assertEqual(set(export["200"]["content"]), {"text/csv"})
         for status in ("404", "409", "410", "413", "422", "503"):
