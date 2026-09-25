@@ -6,6 +6,11 @@
 в [README](README.md), [frontend](frontend/README.md), [backend](backend/README.md)
 и [серверной инструкции](deploy/README.md).
 
+25.09.2026 на `https://tramflow.ru` развёрнут реальный handoff из кода `88144ef`
+и release `calendar-holiday-priority-v1`. Публичные API, UI и CSV сверены с пакетом;
+повторное обновление сохраняет mount/run. [Протокол VPS](docs/verification-deployment-2026-09-25.md)
+уточняет результат более ранних исторических проверок ниже.
+
 ## Текущие контуры и владельцы
 
 | Контур | Работающее поведение | Владелец |
