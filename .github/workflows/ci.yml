@@ -32,6 +32,7 @@ jobs:
       - run: python -m backend.contracts.openapi --check
       - run: python -m unittest discover -s tests/integration -v
       - run: python -m unittest discover -s tests/ml -v
+      - run: python -m unittest discover -s tests/tooling -v
 
   frontend:
     name: Frontend typecheck and build

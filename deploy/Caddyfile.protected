@@ -1,0 +1,20 @@
+# Optional configuration. Activation on the VPS requires a separate request.
+# The imported file contains one username and bcrypt hash, never plaintext.
+{$TRAMFLOW_SITE:tramflow.ru} {
+	root * {$TRAMFLOW_ROOT:/srv/tramflow}
+	encode zstd gzip
+	route {
+		basic_auth {
+			import {$TRAMFLOW_AUTH_FILE:/etc/caddy/tramflow-users.caddy}
+		}
+		handle /api/* {
+			reverse_proxy {$TRAMFLOW_BACKEND:127.0.0.1:8000} {
+				header_up -Authorization
+			}
+		}
+		handle {
+			try_files {path} /index.html
+			file_server
+		}
+	}
+}

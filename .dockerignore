@@ -1,6 +1,10 @@
 .git
 .env
 .env.*
+**/*.netrc
+**/tramflow-users.caddy
+**/jury-access.txt
+output
 .venv
 **/__pycache__
 **/node_modules

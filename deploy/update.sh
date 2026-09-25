@@ -23,6 +23,20 @@ fi
   echo 'Это обновление существующего сайта; первый запуск описан в deploy/README.md.' >&2
   exit 1
 }
+site_url=${SITE_URL:-https://tramflow.ru}
+curl_auth=()
+if [[ -n ${TRAMFLOW_NETRC_FILE:-} ]]; then
+  [[ "$site_url" == https://* ]] || {
+    echo 'Учётные данные разрешены только с HTTPS SITE_URL.' >&2; exit 1;
+  }
+  [[ -f "$TRAMFLOW_NETRC_FILE" && -r "$TRAMFLOW_NETRC_FILE" ]] || {
+    echo 'Закрытый netrc-файл недоступен.' >&2; exit 1;
+  }
+  curl_auth=(--netrc-file "$TRAMFLOW_NETRC_FILE")
+fi
+# Fail before changing services if the protected site needs credentials.
+curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+  "${curl_auth[@]}" "$site_url/" >/dev/null
 # Prevent two deployments from switching files simultaneously.
 exec 9>/var/lock/tramflow-deploy.lock
 flock -n 9 || { echo 'Другой деплой уже выполняется.' >&2; exit 1; }
@@ -61,10 +75,9 @@ if ! mv "$stage" /srv/tramflow; then
   exit 1
 fi
 # Keep the old directory and backend image for manual rollback.
-site_url=${SITE_URL:-https://tramflow.ru}
-curl --fail --silent --show-error "$site_url/" -o "$backup/served-index.html"
+curl --fail --silent --show-error "${curl_auth[@]}" "$site_url/" -o "$backup/served-index.html"
 cmp /srv/tramflow/index.html "$backup/served-index.html"
-curl --fail --silent --show-error "$site_url/map-local/network.json" -o "$backup/served-network.json"
+curl --fail --silent --show-error "${curl_auth[@]}" "$site_url/map-local/network.json" -o "$backup/served-network.json"
 cmp "$map" "$backup/served-network.json"
-curl --fail --silent --show-error "$site_url/api/v1/health"
+curl --fail --silent --show-error "${curl_auth[@]}" "$site_url/api/v1/health"
 printf '\nОбновлено до %s. Резервная копия: %s\n' "$revision" "$backup"
