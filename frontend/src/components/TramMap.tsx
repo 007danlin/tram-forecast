@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { byRouteNumber, inkFor, laneLabels, loadNetwork, type Network } from '../map/loadMap';
+import { byRouteNumber, inkFor, laneLabels, loadNetwork, type IconGroup, type Network } from '../map/loadMap';
 import './tram-map.css';
 
 type View = { cx: number; cy: number; zoom: number };
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 14;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+const shapeEls = (g: IconGroup) => g.shapes.map((s, i) => <path key={i} d={s.d} fill={s.f} fillOpacity={s.o} fillRule={s.eo ? 'evenodd' : undefined} />);
 
 export function TramMap() {
   const [map, setMap] = useState<Network | null>(null);
@@ -144,6 +146,7 @@ export function TramMap() {
           onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onKeyDown={onKeyDown}>
           <svg viewBox={viewBox} preserveAspectRatio="xMidYMid meet" aria-hidden="true" style={{ background: "#4a4f80" }}>
             <rect x="0" y="0" width={pageW} height={pageH} fill="#eef0ee" />
+            <g style={{ pointerEvents: 'none' }}>{(map.landmarks ?? []).map(g => <g key={g.id}>{shapeEls(g)}</g>)}</g>
             <g fill="none" strokeLinecap="round" strokeLinejoin="round">
               {map.lanes.map(l => <polyline key={l.id + 'c'} points={l.points.join(' ')} stroke="#fff" strokeWidth={5.2} />)}
               {map.lanes.map(l => <polyline key={l.id} points={l.points.join(' ')} stroke={l.color} strokeWidth={3}
@@ -158,6 +161,7 @@ export function TramMap() {
               </g>)}
               {(map.stops ?? []).map(st => <circle key={st.id} cx={st.x} cy={st.y} r={0.85} fill="#fff" opacity={selected && selected !== st.lane ? 0.25 : 1} />)}
             </g>
+            <g style={{ pointerEvents: 'none' }}>{(map.metro ?? []).map(g => <g key={g.id}>{shapeEls(g)}</g>)}</g>
             <g fontFamily="system-ui, sans-serif" fontWeight="700" textAnchor="middle" style={{ pointerEvents: 'none' }}>
               {labels.map(lb => {
                 const w = lb.text.length * 2.3 + 2.4;
