@@ -97,23 +97,33 @@ HTTP API v1 по-прежнему использует только эту те�
 - единица — успешные посадки, не заполненность вагона;
 - прогноз модели — неокруглённый `float >= 0`;
 - submission-адаптер выдаёт `route;date;hour;prediction`, округляя только при
-  экспорте и сохраняя порядок реального шаблона организаторов;
+  экспорте и сохраняя порядок реального шаблона организаторов; preflight
+  проверяет 14 640 точных ключей, типы/диапазоны и записывает checksum;
 - внутренний batch дополнительно возвращает `reference_value`, `lower_90`,
   `upper_90`, `priority_score` и `status`;
 - модель и manifest загружаются только после проверки checksum и версии схемы.
 
 Batch-команды, зависимости, temporal folds и ограничения описаны в
 [ml/README.md](ml/README.md). Текущий выбранный метод — calendar
-HistGradientBoosting; WAPE-score однократного holdout сентября–октября 2025:
-0.8287 против 0.8232 у ближайшего baseline. Это локальная оценка, не результат
-платформы. Артефакт, реальные прогнозы и submission находятся в `artifacts/`,
+HistGradientBoosting с официальным производственным календарём F01. На ранних
+selection folds он получил 0.84009 против 0.80204 без F01. WAPE-score
+однократного непрерывного 61-дневного holdout сентября–октября 2025 — 0.82170
+против 0.82319 у previous-weekday baseline; holdout не использовался для
+повторного выбора. Это локальная оценка, не результат платформы. Артефакт,
+реальные прогнозы и submission находятся в `artifacts/`,
 игнорируются Git и не входят в Docker/backend image.
 
 Поддержаны: почасовой день, почасовой batch на 61 день, дневная агрегация и пики
 для месяца. Годовой режим возвращает только qualitative scenarios с `value=null`.
 Маршрут 5 не имеет успешной истории и получает явный
-`cold_start_zero_baseline`; неизвестные маршруты — unsupported. Погода, события,
-перекрытия и трафик не включены без исторических snapshot с `available_at`.
+`cold_start_zero_baseline`; неизвестные маршруты — unsupported. Для внешней
+информации отчёты различают `operational` (`available_at <= as_of`) и
+`competition_retro` (поздние разрешённые внешние факторы, но никогда не будущий
+target). ERA5 F02 с полным часовым покрытием 2025 проверен только во втором
+режиме и ухудшил selection score до 0.83327, поэтому в выбранный артефакт не
+включён. F03–F16 остаются candidate/blocked с причинами в
+[ml/external-sources.json](ml/external-sources.json). HTTP API v1 и v2 draft не
+менялись.
 
 ## Data и интеграционные проверки — Игорь
 
@@ -130,7 +140,7 @@ HistGradientBoosting; WAPE-score однократного holdout сентябр
 
 `.github/workflows/ci.yml` запускается на каждый push в любую ветку, на открытие/обновление PR и вручную (`workflow_dispatch`). На Ubuntu 24.04 независимо выполняются:
 
-- backend/ML: Python 3.12, установка `backend/requirements.txt` и `ml/requirements.txt`, `pip check`, 9 интеграционных и 10 ML unit-тестов, включая отказ до inference при несовместимой/отсутствующей версии;
+- backend/ML: Python 3.12, установка `backend/requirements.txt` и `ml/requirements.txt`, `pip check`, 9 интеграционных и 17 ML unit-тестов, включая отказ до inference при несовместимой/отсутствующей версии, календарные переносы, нормализацию погоды, реестр F01–F16, 61-дневные срезы и submission preflight;
 - frontend: Node.js 22.16.0, `npm ci --prefix frontend`, `npm run build --prefix frontend`;
 - Compose: проверка конфигурации, сборка и запуск контейнеров, HTTP-проверка страницы и API через прокси на порту 5173. Результат контейнерного API сравнивается с ML-модулем из текущего checkout.
 
@@ -190,6 +200,7 @@ HTTPS включён после делегирования домена; пол�
 | 2026-09-21 | Запрос Даниэля | Отдельный серверный Compose, экспорт frontend, Caddy HTTP/HTTPS и инструкции; HTTP проверен пользователем | deploy, backend, frontend |
 | 2026-09-25 | Выполнение личного ТЗ Даниэля | Адаптер совместимости synthetic v1, два дополнительных интеграционных теста и общая smoke-команда; HTTP v1 сохранён. Архитектура v2 подготовлена к согласованию | ML-интерфейс, backend, tests, CI, docs |
 | 2026-09-25 | Выполнение ML-ТЗ Георгия | Аудит real data, temporal baselines и модель, однократный holdout, versioned batch-артефакт, интервалы, month/year fallback и submission-адаптер; HTTP v1 не изменён | ML batch, tests, CI, docs |
+| 2026-09-25 | Дополнение Георгия по конкурсному датасету | Непрерывный 61-дневный протокол, F01/F02 на одинаковых folds, два режима внешней информации, реестр F01–F16 и строгий submission preflight; HTTP v1/v2 не изменены | ML batch, tests, docs |
 
 ## Единая доставка карты и серверное обновление — 2026-09-25
 

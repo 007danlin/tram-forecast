@@ -8,9 +8,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from ml.artifact import create_artifact, predict_artifact, write_submission
+from ml.artifact import create_artifact, load_artifact, predict_artifact, submission_preflight, write_submission
 from ml.data import build_target_from_raw, load_organizer_labels
 from ml.evaluation import experiment_log_frame, run_full_evaluation
+from ml.factors import WEATHER_SOURCE_URL, load_weather_factors, normalize_open_meteo_snapshot
 from ml.settings import FINAL_TRAIN_END, FINAL_TRAIN_START, FORECAST_END, FORECAST_START, KEY_COLUMNS, TARGET_COLUMN
 
 
@@ -46,7 +47,8 @@ def command_verify_target(args: argparse.Namespace) -> int:
 
 
 def command_backtest(args: argparse.Namespace) -> int:
-    report, _ = run_full_evaluation(args.dataset_dir)
+    factors = load_weather_factors(args.weather_factors) if args.weather_factors else None
+    report, _ = run_full_evaluation(args.dataset_dir, factors=factors)
     destination = Path(args.output)
     _write_json(destination, report)
     log_destination = Path(args.experiment_log)
@@ -72,6 +74,7 @@ def command_train(args: argparse.Namespace) -> int:
         args.artifact_dir,
         model_name=report["selected_model"],
         interval_absolute_error_q90=report["interval"]["absolute_error_q90"],
+        factor_path=args.weather_factors,
     )
     print(json.dumps({"artifact_dir": str(destination), "model": report["selected_model"]}, ensure_ascii=False))
     return 0
@@ -89,7 +92,45 @@ def command_forecast(args: argparse.Namespace) -> int:
 def command_submission(args: argparse.Namespace) -> int:
     prediction = predict_artifact(args.artifact_dir, FORECAST_START, FORECAST_END)
     output = write_submission(prediction, args.template, args.output)
-    print(json.dumps({"output": str(output), "rows": len(prediction)}, ensure_ascii=False))
+    preflight = submission_preflight(output, args.template)
+    _, metadata = load_artifact(args.artifact_dir)
+    preflight["artifact"] = {
+        "schema_version": metadata["schema_version"],
+        "model_name": metadata["model_name"],
+        "information_mode": metadata.get("information_mode", "operational"),
+        "random_seed": metadata.get("random_seed"),
+    }
+    preflight_path = Path(args.preflight_output) if args.preflight_output else output.with_suffix(".preflight.json")
+    _write_json(preflight_path, preflight)
+    print(
+        json.dumps(
+            {"output": str(output), "rows": len(prediction), "preflight": str(preflight_path), "passed": preflight["passed"]},
+            ensure_ascii=False,
+        )
+    )
+    return 0 if preflight["passed"] else 3
+
+
+def command_prepare_weather(args: argparse.Namespace) -> int:
+    output, manifest = normalize_open_meteo_snapshot(
+        args.snapshot,
+        args.output,
+        args.manifest,
+        source_url=args.source_url,
+    )
+    factors = load_weather_factors(output)
+    print(
+        json.dumps(
+            {
+                "output": str(output),
+                "manifest": str(manifest),
+                "rows": len(factors),
+                "start": str(factors["timestamp"].min()),
+                "end": str(factors["timestamp"].max()),
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -138,12 +179,14 @@ def build_parser() -> argparse.ArgumentParser:
     backtest.add_argument("--dataset-dir", required=True)
     backtest.add_argument("--output", required=True)
     backtest.add_argument("--experiment-log", default="ml/reports/experiment-log.csv")
+    backtest.add_argument("--weather-factors")
     backtest.set_defaults(func=command_backtest)
 
     train = subparsers.add_parser("train", help="Fit the selected model on January-October")
     train.add_argument("--dataset-dir", required=True)
     train.add_argument("--evaluation-report", required=True)
     train.add_argument("--artifact-dir", required=True)
+    train.add_argument("--weather-factors")
     train.set_defaults(func=command_train)
 
     forecast = subparsers.add_parser("forecast", help="Write internal non-rounded hourly forecast")
@@ -157,7 +200,15 @@ def build_parser() -> argparse.ArgumentParser:
     submission.add_argument("--artifact-dir", required=True)
     submission.add_argument("--template", required=True)
     submission.add_argument("--output", required=True)
+    submission.add_argument("--preflight-output")
     submission.set_defaults(func=command_submission)
+
+    weather = subparsers.add_parser("prepare-weather", help="Validate and normalize an Open-Meteo JSON snapshot")
+    weather.add_argument("--snapshot", required=True)
+    weather.add_argument("--output", required=True)
+    weather.add_argument("--manifest", required=True)
+    weather.add_argument("--source-url", default=WEATHER_SOURCE_URL)
+    weather.set_defaults(func=command_prepare_weather)
 
     month = subparsers.add_parser("month", help="Aggregate an hourly artifact forecast to daily values and peaks")
     month.add_argument("--artifact-dir", required=True)

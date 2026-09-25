@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ml.artifact import write_submission
+from ml.artifact import submission_preflight, write_submission
 from ml.data import full_hourly_grid
 
 
@@ -33,6 +33,44 @@ class SubmissionTests(unittest.TestCase):
             self.assertTrue(
                 result[["route", "date", "hour"]].equals(template[["route", "date", "hour"]])
             )
+            preflight = submission_preflight(output_path, template_path)
+            self.assertTrue(preflight["passed"])
+            self.assertEqual(len(preflight["sha256"]), 64)
+            self.assertEqual(preflight["checks"]["duplicate_keys"], 0)
+            self.assertEqual(preflight["checks"]["date_min"], "2025-11-01")
+            self.assertEqual(preflight["checks"]["date_max"], "2025-12-31")
+
+    def test_preflight_rejects_changed_key_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            template = full_hourly_grid("2025-11-01", "2025-12-31")
+            template["date"] = template["date"].dt.strftime("%Y-%m-%d")
+            template["prediction"] = 0
+            template_path = directory / "template.csv"
+            output_path = directory / "submission.csv"
+            template.to_csv(template_path, sep=";", index=False)
+            changed = template.iloc[::-1].reset_index(drop=True)
+            changed.to_csv(output_path, sep=";", index=False)
+
+            preflight = submission_preflight(output_path, template_path)
+            self.assertFalse(preflight["passed"])
+            self.assertFalse(preflight["checks"]["template_keys_and_order_exact"])
+
+    def test_preflight_reports_missing_key_column_instead_of_crashing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            template = full_hourly_grid("2025-11-01", "2025-12-31")
+            template["date"] = template["date"].dt.strftime("%Y-%m-%d")
+            template["prediction"] = 0
+            template_path = directory / "template.csv"
+            output_path = directory / "submission.csv"
+            template.to_csv(template_path, sep=";", index=False)
+            template.drop(columns="route").to_csv(output_path, sep=";", index=False)
+
+            preflight = submission_preflight(output_path, template_path)
+            self.assertFalse(preflight["passed"])
+            self.assertFalse(preflight["checks"]["columns_exact"])
+            self.assertFalse(preflight["checks"]["routes_valid"])
 
 
 if __name__ == "__main__":
