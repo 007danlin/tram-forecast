@@ -13,6 +13,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from ml.data import full_hourly_grid
+from ml.experiment_config import normalize_config
 from ml.factors import (
     HOLIDAY_MODEL_COLUMNS,
     WEATHER_MODEL_COLUMNS,
@@ -34,7 +35,7 @@ HGBT_FIXED_PARAMETERS = {
 }
 
 
-def build_hgbt_model(model_name: str) -> "HourlyGradientBoostingModel":
+def build_hgbt_model(model_name: str, experiment_config: dict | None = None) -> "HourlyGradientBoostingModel":
     variants = {
         "calendar_hgbt": dict(include_lags=False),
         "lagged_hgbt": dict(include_lags=True),
@@ -52,7 +53,13 @@ def build_hgbt_model(model_name: str) -> "HourlyGradientBoostingModel":
     }
     if model_name not in variants:
         raise ValueError(f"Unknown gradient-boosting model variant: {model_name}")
-    return HourlyGradientBoostingModel(**variants[model_name])
+    options = variants[model_name].copy()
+    if experiment_config is not None:
+        config = normalize_config(experiment_config)
+        if model_name != config["model_name"]:
+            raise ValueError("Model name and experiment config disagree")
+        options.update(weather_columns=tuple(config["weather_columns"]), experiment_config=config)
+    return HourlyGradientBoostingModel(**options)
 
 
 def _calendar_features(frame: pd.DataFrame, *, include_official_calendar: bool = False) -> pd.DataFrame:
@@ -68,17 +75,19 @@ def _calendar_features(frame: pd.DataFrame, *, include_official_calendar: bool =
     return result
 
 
-def _attach_weather(frame: pd.DataFrame, factors: pd.DataFrame | None) -> pd.DataFrame:
+def _attach_weather(frame: pd.DataFrame, factors: pd.DataFrame | None, weather_columns=WEATHER_MODEL_COLUMNS) -> pd.DataFrame:
     if factors is None:
         raise ValueError("Weather factors are required for this model variant")
-    columns = ["timestamp", *WEATHER_MODEL_COLUMNS]
+    columns = ["timestamp", *weather_columns]
     missing = set(columns) - set(factors.columns)
     if missing:
         raise ValueError(f"Weather factors miss required columns: {sorted(missing)}")
     result = frame.merge(factors[columns], on="timestamp", how="left", validate="many_to_one")
-    if result[list(WEATHER_MODEL_COLUMNS)].isna().any().any():
-        first_missing = result.loc[result[list(WEATHER_MODEL_COLUMNS)].isna().any(axis=1), "timestamp"].min()
+    if result[list(weather_columns)].isna().any().any():
+        first_missing = result.loc[result[list(weather_columns)].isna().any(axis=1), "timestamp"].min()
         raise ValueError(f"Weather factors do not cover model rows from {first_missing}")
+    if len(result) != len(frame) or not np.isfinite(result[list(weather_columns)].to_numpy(dtype=float)).all():
+        raise ValueError("Weather join changed rows or contains non-finite values")
     return result
 
 
@@ -89,13 +98,14 @@ def make_training_features(
     include_official_calendar: bool = False,
     include_weather: bool = False,
     factors: pd.DataFrame | None = None,
+    weather_columns: tuple[str, ...] = WEATHER_MODEL_COLUMNS,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     data = _calendar_features(
         history.sort_values(["route", "timestamp"], ignore_index=True),
         include_official_calendar=include_official_calendar,
     )
     if include_weather:
-        data = _attach_weather(data, factors)
+        data = _attach_weather(data, factors, weather_columns)
     if include_lags:
         grouped = data.groupby("route", sort=False)[TARGET_COLUMN]
         for days, column in zip(LAG_DAYS, LAG_COLUMNS):
@@ -109,7 +119,7 @@ def make_training_features(
     if include_official_calendar:
         columns.extend(HOLIDAY_MODEL_COLUMNS)
     if include_weather:
-        columns.extend(WEATHER_MODEL_COLUMNS)
+        columns.extend(weather_columns)
     if include_lags:
         columns.extend(LAG_NUMERIC_COLUMNS)
     return data[columns], data[TARGET_COLUMN].to_numpy(dtype=float)
@@ -140,8 +150,16 @@ class HourlyGradientBoostingModel:
     include_official_calendar: bool = False
     include_weather: bool = False
     information_mode: str = "operational"
+    weather_columns: tuple[str, ...] | None = None
+    experiment_config: dict | None = None
     max_iter: int = 220
     max_leaf_nodes: int = 31
+
+    @property
+    def selected_weather_columns(self):
+        # getattr keeps older joblib instances (without the new field) readable.
+        columns = getattr(self, "weather_columns", None)
+        return WEATHER_MODEL_COLUMNS if columns is None else columns
 
     @property
     def name(self) -> str:
@@ -162,12 +180,13 @@ class HourlyGradientBoostingModel:
             include_official_calendar=self.include_official_calendar,
             include_weather=self.include_weather,
             factors=factors,
+            weather_columns=self.selected_weather_columns,
         )
         numeric = CALENDAR_NUMERIC_COLUMNS
         if self.include_official_calendar:
             numeric += HOLIDAY_MODEL_COLUMNS
         if self.include_weather:
-            numeric += WEATHER_MODEL_COLUMNS
+            numeric += self.selected_weather_columns
         if self.include_lags:
             numeric += LAG_NUMERIC_COLUMNS
         self.pipeline_ = _pipeline(numeric, max_iter=self.max_iter, max_leaf_nodes=self.max_leaf_nodes)
@@ -185,7 +204,7 @@ class HourlyGradientBoostingModel:
     ) -> pd.DataFrame:
         result = _calendar_features(frame, include_official_calendar=self.include_official_calendar)
         if self.include_weather:
-            result = _attach_weather(result, factors)
+            result = _attach_weather(result, factors, self.selected_weather_columns)
         if self.include_lags:
             for days, column in zip(LAG_DAYS, LAG_COLUMNS):
                 result[column] = [values.get((int(r), ts - pd.Timedelta(days=days)), np.nan) for r, ts in zip(result.route, result.timestamp)]
@@ -199,7 +218,7 @@ class HourlyGradientBoostingModel:
         if self.include_official_calendar:
             columns.extend(HOLIDAY_MODEL_COLUMNS)
         if self.include_weather:
-            columns.extend(WEATHER_MODEL_COLUMNS)
+            columns.extend(self.selected_weather_columns)
         if self.include_lags:
             columns.extend(LAG_NUMERIC_COLUMNS)
         return result[columns]

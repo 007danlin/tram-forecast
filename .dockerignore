@@ -5,6 +5,7 @@
 **/tramflow-users.caddy
 **/jury-access.txt
 output
+tmp
 .venv
 **/__pycache__
 **/node_modules
@@ -12,3 +13,11 @@ output
 data
 artifacts
 models
+**/*.joblib
+**/*.pkl
+**/*.pickle
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.parquet
+**/*.arrow

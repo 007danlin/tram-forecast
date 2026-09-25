@@ -9,6 +9,7 @@
 Текущий синтетический пример `ml/forecast.py` по-прежнему проверяет HTTP-связку и
 не подменяет реальную модель. Потоковая сборка target, temporal backtest, batch
 inference и submission-адаптер реализованы в `ml/`; команды описаны в
-[ml/README.md](../ml/README.md). Протокол подключения артефакта к backend пока не
-согласован.
+[ml/README.md](../ml/README.md). Для готового CSV реализован отдельный
+[handoff-контракт](../backend/handoff/README.md); общий v2, привязка справочников
+к карте и полная приёмка UI/API/CSV остаются на согласовании.
 Контракты и изменения фиксируются в [INTEGRATION.md](../INTEGRATION.md).

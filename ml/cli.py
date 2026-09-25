@@ -11,7 +11,8 @@ import pandas as pd
 from ml.artifact import create_artifact, load_artifact, predict_artifact, submission_preflight, write_submission
 from ml.data import build_target_from_raw, load_organizer_labels
 from ml.evaluation import experiment_log_frame, run_full_evaluation
-from ml.factors import WEATHER_SOURCE_URL, load_weather_factors, normalize_open_meteo_snapshot
+from ml.factors import ALIGNMENTS, WEATHER_SOURCE_URL, load_weather_factors, normalize_open_meteo_snapshot
+from ml.weather import fetch_weather
 from ml.settings import FINAL_TRAIN_END, FINAL_TRAIN_START, FORECAST_END, FORECAST_START, KEY_COLUMNS, TARGET_COLUMN
 
 
@@ -117,6 +118,7 @@ def command_prepare_weather(args: argparse.Namespace) -> int:
         args.output,
         args.manifest,
         source_url=args.source_url,
+        start=args.start, end=args.end, receipt_path=args.receipt, alignment=args.alignment,
     )
     factors = load_weather_factors(output)
     print(
@@ -131,6 +133,11 @@ def command_prepare_weather(args: argparse.Namespace) -> int:
             ensure_ascii=False,
         )
     )
+    return 0
+
+
+def command_fetch_weather(args: argparse.Namespace) -> int:
+    print(json.dumps(fetch_weather(args.start, args.end, args.output_dir, offline=args.offline, alignment=args.alignment)))
     return 0
 
 
@@ -208,7 +215,19 @@ def build_parser() -> argparse.ArgumentParser:
     weather.add_argument("--output", required=True)
     weather.add_argument("--manifest", required=True)
     weather.add_argument("--source-url", default=WEATHER_SOURCE_URL)
+    weather.add_argument("--start")
+    weather.add_argument("--end")
+    weather.add_argument("--receipt")
+    weather.add_argument("--alignment", choices=ALIGNMENTS, default=ALIGNMENTS[0])
     weather.set_defaults(func=command_prepare_weather)
+
+    fetch = subparsers.add_parser("fetch-weather", help="Acquire and validate an immutable ERA5 snapshot, or verify it offline")
+    fetch.add_argument("--start", required=True)
+    fetch.add_argument("--end", required=True)
+    fetch.add_argument("--output-dir", required=True)
+    fetch.add_argument("--offline", action="store_true")
+    fetch.add_argument("--alignment", choices=ALIGNMENTS, default=ALIGNMENTS[0])
+    fetch.set_defaults(func=command_fetch_weather)
 
     month = subparsers.add_parser("month", help="Aggregate an hourly artifact forecast to daily values and peaks")
     month.add_argument("--artifact-dir", required=True)

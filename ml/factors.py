@@ -22,6 +22,11 @@ WEATHER_REQUIRED_COLUMNS = (
     "wind_gusts_10m",
 )
 WEATHER_OPTIONAL_COLUMNS = ("snow_depth",)
+WEATHER_UNITS = {"time": "iso8601", "temperature_2m": "°C", "apparent_temperature": "°C",
+                 "precipitation": "mm", "snowfall": "cm", "snow_depth": "m",
+                 "wind_speed_10m": "km/h", "wind_gusts_10m": "km/h"}
+NORMALIZER_VERSION = "open-meteo-normalizer-2"
+ALIGNMENTS = ("legacy_timestamp_v1", "next_hour_accumulation_v2")
 WEATHER_MODEL_COLUMNS = (
     *WEATHER_REQUIRED_COLUMNS,
     "near_freezing",
@@ -107,10 +112,22 @@ def normalize_open_meteo_snapshot(
     manifest_path: str | Path,
     *,
     source_url: str,
+    start: str | None = None,
+    end: str | None = None,
+    receipt_path: str | Path | None = None,
+    alignment: str = "legacy_timestamp_v1",
 ) -> tuple[Path, Path]:
     """Validate one raw Open-Meteo JSON response and write a stable local table."""
     source = Path(snapshot_path)
+    if source.stat().st_size > 32 * 1024 * 1024:
+        raise ValueError("Weather response exceeds 32 MiB")
     payload = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("error"):
+        raise ValueError("Weather provider returned an error or invalid object")
+    if alignment not in ALIGNMENTS or (start is None) != (end is None):
+        raise ValueError("Invalid alignment or incomplete expected period")
+    if alignment != ALIGNMENTS[0] and start is None:
+        raise ValueError("Shifted accumulation requires explicit target start/end and a buffer day")
     if payload.get("timezone") != "Europe/Moscow" or payload.get("utc_offset_seconds") != 10_800:
         raise ValueError("Weather snapshot must use Europe/Moscow with UTC+03:00")
     hourly = payload.get("hourly")
@@ -120,6 +137,9 @@ def normalize_open_meteo_snapshot(
     missing_columns = set(("time", *WEATHER_REQUIRED_COLUMNS)) - set(hourly)
     if missing_columns:
         raise ValueError(f"Weather snapshot misses required fields: {sorted(missing_columns)}")
+    units = payload.get("hourly_units", {})
+    if any(units.get(name) != WEATHER_UNITS[name] for name in ("time", *WEATHER_REQUIRED_COLUMNS)):
+        raise ValueError("Unexpected or missing weather units")
     normalized = pd.DataFrame({name: hourly[name] for name in ("time", *WEATHER_REQUIRED_COLUMNS)})
     normalized = normalized.rename(columns={"time": "timestamp"})
     normalized["timestamp"] = pd.to_datetime(normalized["timestamp"], format="%Y-%m-%dT%H:%M", errors="raise")
@@ -128,10 +148,22 @@ def normalize_open_meteo_snapshot(
     if normalized[list(WEATHER_REQUIRED_COLUMNS)].isna().any().any():
         missing = normalized[list(WEATHER_REQUIRED_COLUMNS)].isna().sum().to_dict()
         raise ValueError(f"Required weather fields contain nulls: {missing}")
-    differences = normalized["timestamp"].sort_values().diff().dropna()
+    validate_weather_values(normalized, WEATHER_REQUIRED_COLUMNS)
+    if normalized.empty:
+        raise ValueError("Empty weather series")
+    normalized = normalized.sort_values("timestamp", ignore_index=True)
+    differences = normalized["timestamp"].diff().dropna()
     if not differences.eq(pd.Timedelta(hours=1)).all():
         raise ValueError("Weather snapshot is not a continuous hourly series")
 
+    if start is not None:
+        first, last = pd.Timestamp(start), pd.Timestamp(end)
+        if first > last or first != first.normalize() or last != last.normalize():
+            raise ValueError("Expected weather bounds must be ordered calendar dates")
+        buffer_days = int(alignment == ALIGNMENTS[1])
+        expected_raw = pd.date_range(first, last + pd.Timedelta(days=buffer_days, hours=23), freq="h")
+        if not normalized["timestamp"].equals(pd.Series(expected_raw)):
+            raise ValueError("Weather timestamps do not exactly match the requested grid")
     excluded_optional: dict[str, str] = {}
     for column in WEATHER_OPTIONAL_COLUMNS:
         values = hourly.get(column)
@@ -140,7 +172,24 @@ def normalize_open_meteo_snapshot(
         elif len(values) != len(normalized) or any(value is None for value in values):
             excluded_optional[column] = "partial coverage; not imputed"
         else:
-            normalized[column] = values
+            if units.get(column) != WEATHER_UNITS[column]:
+                raise ValueError(f"Unexpected weather unit: {column}")
+            optional = pd.DataFrame({"timestamp": pd.to_datetime(hourly["time"]), column: values}).sort_values("timestamp", ignore_index=True)
+            validate_weather_values(optional, (column,))
+            normalized[column] = optional[column]
+    if alignment == ALIGNMENTS[1]:
+        for column in ("precipitation", "snowfall"):
+            normalized[column] = normalized[column].shift(-1)
+        normalized = normalized[normalized["timestamp"] < pd.Timestamp(end) + pd.Timedelta(days=1)].copy()
+        validate_weather_values(normalized, WEATHER_REQUIRED_COLUMNS)
+    receipt = json.loads(Path(receipt_path).read_text()) if receipt_path else None
+    fetched_at = None
+    if receipt is not None:
+        if receipt.get("raw_sha256") != sha256_file(source) or receipt.get("http_status") != 200:
+            raise ValueError("Weather receipt does not match successful raw response")
+        fetched_at = receipt["completed_at"]
+        if datetime.fromisoformat(fetched_at).utcoffset() != timezone.utc.utcoffset(None):
+            raise ValueError("Receipt completion must be UTC")
 
     destination = Path(output_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -148,6 +197,15 @@ def normalize_open_meteo_snapshot(
 
     manifest = {
         "source_id": "open_meteo_era5_moscow_2025",
+        "model": "era5",
+        "normalizer_version": NORMALIZER_VERSION,
+        "alignment": alignment,
+        "request_parameters": receipt.get("parameters") if receipt else None,
+        "fetched_at": fetched_at,
+        "issued_at": None,
+        "available_at": None,
+        "license_url": "https://open-meteo.com/en/terms",
+        "attribution": "Weather data by Open-Meteo, CC BY 4.0; ERA5 reanalysis",
         "source_url": source_url,
         "information_mode": "competition_retro",
         "description": "ERA5 reanalysis for one Moscow grid point; not a stop-level sensor measurement",
@@ -166,7 +224,9 @@ def normalize_open_meteo_snapshot(
         "raw_snapshot": {
             "filename": source.name,
             "sha256": sha256_file(source),
-            "fetched_at": datetime.fromtimestamp(source.stat().st_mtime, tz=timezone.utc).isoformat(),
+            "fetched_at": fetched_at,
+            "file_mtime": datetime.fromtimestamp(source.stat().st_mtime, tz=timezone.utc).isoformat(),
+            "fetched_at_status": "receipt" if receipt else "unknown; mtime is not acquisition time",
         },
         "normalized": {"filename": destination.name, "sha256": sha256_file(destination)},
     }
@@ -176,30 +236,51 @@ def normalize_open_meteo_snapshot(
     return destination, manifest_destination
 
 
-def load_weather_factors(path: str | Path) -> pd.DataFrame:
+def validate_weather_values(frame: pd.DataFrame, columns) -> None:
+    for column in columns:
+        values = frame[column]
+        if not pd.api.types.is_numeric_dtype(values) or pd.api.types.is_bool_dtype(values) or not np.isfinite(values.to_numpy(dtype=float)).all():
+            raise ValueError(f"Weather field must contain finite numbers: {column}")
+        if column not in ("temperature_2m", "apparent_temperature") and values.lt(0).any():
+            raise ValueError(f"Weather field must be nonnegative: {column}")
+
+
+def load_weather_factors(path: str | Path, columns: tuple[str, ...] = WEATHER_MODEL_COLUMNS) -> pd.DataFrame:
     frame = pd.read_csv(path, sep=";")
-    missing = set(("timestamp", *WEATHER_REQUIRED_COLUMNS)) - set(frame.columns)
+    if set(columns) - set(WEATHER_MODEL_COLUMNS):
+        raise ValueError("Unknown model weather columns")
+    required = set(columns) & set(WEATHER_REQUIRED_COLUMNS)
+    if set(columns) & {"near_freezing", "freeze_transition"}: required.add("temperature_2m")
+    if set(columns) & {"is_wet", "precipitation_6h"}: required.add("precipitation")
+    if "is_snowing" in columns: required.add("snowfall")
+    missing = {"timestamp", *required} - set(frame.columns)
     if missing:
         raise ValueError(f"Normalized weather data misses columns: {sorted(missing)}")
     frame["timestamp"] = pd.to_datetime(frame["timestamp"], errors="raise")
+    if frame.empty or frame["timestamp"].dt.tz is not None or not frame["timestamp"].eq(frame["timestamp"].dt.floor("h")).all():
+        raise ValueError("Weather timestamps must be nonempty naive MSK hourly labels")
+    validate_weather_values(frame, required)
     frame = frame.sort_values("timestamp", ignore_index=True)
     if frame["timestamp"].duplicated().any():
         raise ValueError("Normalized weather data contains duplicate timestamps")
-    if frame[list(WEATHER_REQUIRED_COLUMNS)].isna().any().any():
+    if frame[list(required)].isna().any().any():
         raise ValueError("Normalized weather data contains missing required values")
     if not frame["timestamp"].diff().dropna().eq(pd.Timedelta(hours=1)).all():
         raise ValueError("Normalized weather data is not hourly-continuous")
 
-    frame["near_freezing"] = frame["temperature_2m"].abs().le(1.5).astype("int8")
-    previous_temperature = frame["temperature_2m"].shift(1)
-    frame["freeze_transition"] = (
-        ((previous_temperature < 0) & (frame["temperature_2m"] >= 0))
-        | ((previous_temperature >= 0) & (frame["temperature_2m"] < 0))
-    ).astype("int8")
-    frame["precipitation_6h"] = frame["precipitation"].rolling(6, min_periods=1).sum()
-    frame["is_wet"] = frame["precipitation"].gt(0).astype("int8")
-    frame["is_snowing"] = frame["snowfall"].gt(0).astype("int8")
-    return frame[["timestamp", *WEATHER_MODEL_COLUMNS]]
+    if "near_freezing" in columns:
+        frame["near_freezing"] = frame["temperature_2m"].abs().le(1.5).astype("int8")
+    if "freeze_transition" in columns:
+        previous_temperature = frame["temperature_2m"].shift(1)
+        frame["freeze_transition"] = (((previous_temperature < 0) & (frame["temperature_2m"] >= 0))
+            | ((previous_temperature >= 0) & (frame["temperature_2m"] < 0))).astype("int8")
+    if "precipitation_6h" in columns:
+        frame["precipitation_6h"] = frame["precipitation"].rolling(6, min_periods=1).sum()
+    if "is_wet" in columns:
+        frame["is_wet"] = frame["precipitation"].gt(0).astype("int8")
+    if "is_snowing" in columns:
+        frame["is_snowing"] = frame["snowfall"].gt(0).astype("int8")
+    return frame[["timestamp", *columns]]
 
 
 def weather_coverage(frame: pd.DataFrame, start: str | pd.Timestamp, end: str | pd.Timestamp) -> dict[str, object]:

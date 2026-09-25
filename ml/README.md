@@ -20,14 +20,16 @@ cold-start baseline и явный статус. Неизвестные марш�
 Из корня репозитория:
 
 ```sh
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r backend/requirements.txt -r ml/requirements.txt
 export DATASET_DIR="/absolute/path/to/unpacked/dataset"
 ```
 
+Для воспроизводимого окружения используется Python 3.12, как в CI.
 `DATASET_DIR` должен содержать `train.csv`, `test.csv`, `labels/` и реальный
-`test_submission.csv`. Архив повторно распаковывать не требуется.
+`test_submission.csv`. При `train` нужен также исходный `README.md` датасета:
+его checksum включается в manifest. Архив повторно распаковывать не требуется.
 
 ## Воспроизведение
 
@@ -39,6 +41,9 @@ python -m ml verify-target --dataset-dir "$DATASET_DIR" --chunksize 500000
 
 Подготовка локального погодного snapshot для отдельного
 `competition_retro`-эксперимента (сырой JSON остаётся неизменным вне Git):
+
+`prepare-weather` сам не скачивает JSON: `--snapshot` должен уже существовать,
+а `--source-url` только записывает источник в manifest.
 
 ```sh
 python -m ml prepare-weather \
@@ -64,6 +69,10 @@ python -m ml backtest \
 `competition_retro`; эксплуатационная погода требует архивных forecast runs,
 доступных на соответствующий `as_of`. Будущий пассажиропоток внутри горизонта
 не используется ни в одном режиме.
+Без `--weather-factors` backtest работает с календарными кандидатами, а F02
+отмечается как blocked. Для пробного локального прогона задавайте
+`--experiment-log artifacts/experiment-log.csv`: значение по умолчанию
+перезаписывает отслеживаемый `ml/reports/experiment-log.csv`.
 
 Обучение выбранной модели на январе–октябре:
 
@@ -99,6 +108,15 @@ python -m ml month --artifact-dir artifacts/calendar-holiday-hgbt \
   --start 2025-11-01 --end 2025-11-30 --output artifacts/month.csv
 python -m ml year-scenario --output artifacts/year-scenario.json
 ```
+
+В `forecast` и `month` обе календарные границы включены. В HTTP handoff используется
+`[start,end)` и предел 31 день на запрос; месяц в CLI — дневные суммы и пики,
+а не новый шаг `month` HTTP. Backend читает готовый почасовой CSV через отдельный
+[handoff](../backend/handoff/README.md), не вызывает модель из HTTP. Его ZIP-имена
+фиксированы: каталог новой модели нельзя просто заархивировать под новым именем.
+Четырёхколоночный округлённый submission не подходит вместо внутреннего CSV
+с reference/interval/status. Переданный ранее пакет и метрики модели ниже
+нужно сопоставлять по версии: обновление исходников не обновляет прогноз на сервере.
 
 ## Проверки
 

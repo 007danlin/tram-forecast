@@ -13,6 +13,7 @@ import pandas as pd
 
 from ml.baselines import BlockMeanBaseline, ComparableWeeksMedianBaseline, PreviousWeekdayBaseline
 from ml.data import load_organizer_labels
+from ml.experiment_config import normalize_config
 from ml.factors import weather_coverage
 from ml.metrics import regression_metrics
 from ml.model import HGBT_FIXED_PARAMETERS, HourlyGradientBoostingModel, build_hgbt_model
@@ -161,13 +162,14 @@ def evaluate_model(
     fold: TemporalFold,
     model_name: str,
     factors: pd.DataFrame | None = None,
+    experiment_config: dict | None = None,
 ) -> tuple[dict[str, object], pd.DataFrame]:
     if model_name not in MODEL_FACTORIES:
         raise KeyError(f"Unknown model: {model_name}")
     target = load_organizer_labels(dataset_dir, fold.train_start, fold.val_end)
     history = target[target["date"].between(pd.Timestamp(fold.train_start), pd.Timestamp(fold.train_end))].copy()
     actual = target[target["date"].between(pd.Timestamp(fold.val_start), pd.Timestamp(fold.val_end))].copy()
-    model = MODEL_FACTORIES[model_name]()
+    model = build_hgbt_model(model_name, experiment_config) if experiment_config is not None else MODEL_FACTORIES[model_name]()
     started = time.perf_counter()
     if isinstance(model, HourlyGradientBoostingModel):
         model.fit(history, factors=factors)
@@ -189,7 +191,10 @@ def evaluate_model(
     elapsed = time.perf_counter() - started
     merged = _merge_actual_prediction(actual, predicted)
     return {
-        "experiment_id": f"{fold.name}__{model_name}",
+        "experiment_id": f"{fold.name}__{experiment_config['id'] if experiment_config else model_name}",
+        "config": experiment_config,
+        "validation_days": (fold.val_end - fold.val_start).days + 1,
+        "days_1_61_metrics": slice_metrics(merged[merged["horizon_day"] <= 61]),
         "hypothesis": MODEL_HYPOTHESES[model_name],
         "change": model_name,
         "information_mode": information_mode,
@@ -201,7 +206,7 @@ def evaluate_model(
         ),
         "model_schema_version": MODEL_SCHEMA_VERSION,
         "random_seed": RANDOM_SEED,
-        "parameters": MODEL_PARAMETERS[model_name],
+        "parameters": {**MODEL_PARAMETERS[model_name], **({"experiment_config": experiment_config} if experiment_config else {})},
         "fold": asdict(fold),
         "elapsed_seconds": elapsed,
         "metrics": slice_metrics(merged),
@@ -373,3 +378,103 @@ def run_full_evaluation(
     }
     all_predictions = {**selection_predictions, **{f"holdout:{k}": v for k, v in holdout_predictions.items()}}
     return report, all_predictions
+
+
+def weather_guardrail(candidate: list[pd.DataFrame], control: list[pd.DataFrame]) -> dict:
+    """Paired comparisons with a route guardrail and 7-day block bootstrap."""
+    deltas = []
+    blocks = []
+    for actual, baseline in zip(candidate, control, strict=True):
+        if not actual[[*KEY_COLUMNS, TARGET_COLUMN]].equals(baseline[[*KEY_COLUMNS, TARGET_COLUMN]]):
+            raise ValueError('Weather comparison requires exactly identical keys and target mask')
+        a = regression_metrics(actual[TARGET_COLUMN],actual['prediction'])
+        b = regression_metrics(baseline[TARGET_COLUMN],baseline['prediction'])
+        deltas.append(a['wape_score'] - b['wape_score'])
+        paired = pd.DataFrame({'block':(actual['horizon_day'].to_numpy()-1)//7,
+            'candidate':np.abs(actual[TARGET_COLUMN].to_numpy()-actual['prediction'].to_numpy()),
+            'control':np.abs(baseline[TARGET_COLUMN].to_numpy()-baseline['prediction'].to_numpy()),
+            'target':actual[TARGET_COLUMN].to_numpy()})
+        blocks.extend(paired.groupby('block')[['candidate','control','target']].sum().to_numpy().tolist())
+    actual=pd.concat(candidate,ignore_index=True); baseline=pd.concat(control,ignore_index=True)
+    route_changes={}
+    for route in actual.loc[actual['status']=='ok','route'].unique():
+        mask=actual['route']==route
+        a=float(np.abs(actual.loc[mask,TARGET_COLUMN]-actual.loc[mask,'prediction']).mean())
+        b=float(np.abs(baseline.loc[mask,TARGET_COLUMN]-baseline.loc[mask,'prediction']).mean())
+        route_changes[str(route)]={'candidate_mae':a,'control_mae':b,'passed':a <= b * 1.05}
+    summary=_combined_metrics(candidate); baseline_summary=_combined_metrics(control)
+    positive=summary['wape_score'] > baseline_summary['wape_score']
+    matrix=np.asarray(blocks)
+    rng=np.random.default_rng(RANDOM_SEED)
+    gains=[]
+    for _ in range(500):
+        sampled=matrix[rng.integers(0,len(matrix),len(matrix))].sum(axis=0)
+        if sampled[2]>0:
+            gains.append(max(0,1-sampled[0]/sampled[2])-max(0,1-sampled[1]/sampled[2]))
+    return {'passed':bool(positive and all(delta > 0 for delta in deltas) and all(r['passed'] for r in route_changes.values())),
+            'overall_gain':summary['wape_score']-baseline_summary['wape_score'],'fold_gains':deltas,'routes':route_changes,
+            'uncertainty':{'method':'paired non-overlapping 7-day blocks within each fold, 500 bootstrap resamples; exploratory interval',
+                           'gain_q025_q975':np.quantile(gains,[.025,.975]).tolist() if gains else None}}
+
+
+def run_weather_selection(dataset_dir, config_document, factors, snapshot_manifest):
+    """Select weather groups without evaluating September–October."""
+    if config_document.get('schema_version') != 'weather-experiments-v1' or config_document.get('combination_policy') != 'one_combination_of_guardrail_passing_single_groups':
+        raise ValueError('Unknown weather experiment protocol')
+    alignment=config_document.get('alignment','legacy_timestamp_v1')
+    if snapshot_manifest.get('alignment') != alignment:
+        raise ValueError('Experiment and snapshot alignment disagree')
+    configs=[normalize_config({**c,'alignment':alignment}) for c in config_document['experiments']]
+    expected=[[],['temperature'],['precipitation'],['snow'],['wind'],['temperature','precipitation','snow','wind']]
+    if [(c['id'],c['weather_groups']) for c in configs] != [(f'W0{i}',groups) for i,groups in enumerate(expected)]:
+        raise ValueError('Expected the fixed W00–W05 protocol; W06 is determined only from W01–W04')
+    experiments=[]; predictions={}; summary={}; checks={}
+    def evaluate(config):
+        key=config['id']; predictions[key]=[]
+        for fold in SELECTION_FOLDS:
+            record,predicted=evaluate_model(dataset_dir,fold,config['model_name'],factors=factors,experiment_config=config)
+            record['decision']='pending_selection'; experiments.append(record); predictions[key].append(predicted)
+        summary[key]=_combined_metrics(predictions[key])
+        if key != 'W00': checks[key]=weather_guardrail(predictions[key],predictions['W00'])
+    for config in configs: evaluate(config)
+    groups=[c['weather_groups'][0] for c in configs[1:5] if checks[c['id']]['passed']]
+    combination={'status':'not_run','reason':'Fewer than two single groups passed the predefined guardrail'}
+    if len(groups)>=2:
+        combined=normalize_config({'id':'W06','weather_groups':groups,'alignment':alignment})
+        if set(groups)==set(configs[-1]['weather_groups']):
+            combination={'status':'reused_W05','reason':'All four groups passed; this exact combination is already W05'}
+        else:
+            evaluate(combined); configs.append(combined)
+            combination={'status':'evaluated','reason':'One combination of the single groups that passed the guardrail'}
+    eligible=['W00']+[key for key,value in checks.items() if value['passed']]
+    chosen=max(eligible,key=lambda key:summary[key]['wape_score'])
+    chosen_config=next(c for c in configs if c['id']==chosen)
+    for record in experiments:
+        key=record['config']['id']
+        record['decision']='selected' if key==chosen else 'control_retained' if key=='W00' else 'rejected_by_guardrail' if not checks[key]['passed'] else 'eligible_not_best'
+    residuals=np.concatenate([np.abs(p.loc[p.status=='ok',TARGET_COLUMN]-p.loc[p.status=='ok','prediction']) for p in predictions[chosen]])
+    return {'protocol':{'stage':'selection','selection_folds':[asdict(f) for f in SELECTION_FOLDS],
+            'holdout_opened':False,'holdout_history':'September–October was used in prior work; any later assessment is reuse, not a first independent holdout',
+            'target_mask':'existing organizer-label grid, unchanged','random_seed':RANDOM_SEED,'future_target_used_within_horizon':False},
+            'selected_model':chosen_config['model_name'],'selected_config':chosen_config,
+            'experiment_config':config_document,'snapshot':snapshot_manifest,'selection_summary':summary,'guardrails':checks,
+            'combination':combination,'interval':{'absolute_error_q90':float(np.quantile(residuals,.9)),'nominal_coverage':.9,'source':'selected selection-fold residuals'},
+            'experiments':experiments}, predictions
+
+
+def run_frozen_holdout(dataset_dir, selection_report, factors=None):
+    if selection_report.get('protocol',{}).get('stage') != 'selection':
+        raise ValueError('Holdout requires a frozen selection report')
+    selected=normalize_config(selection_report['selected_config'])
+    experiments=[]
+    for config in (normalize_config({'id':'W00','weather_groups':[]}),selected):
+        if any(e['config']['id']==config['id'] for e in experiments): continue
+        record,prediction=evaluate_model(dataset_dir,FINAL_HOLDOUT,config['model_name'],factors=factors,experiment_config=config)
+        record['decision']='reused_holdout_after_frozen_selection_no_retuning'
+        q90=selection_report['interval']['absolute_error_q90']
+        supported=prediction[prediction.status=='ok']
+        record['interval_coverage']=float((np.abs(supported[TARGET_COLUMN]-supported['prediction']) <= q90).mean())
+        rounded=prediction.copy(); rounded['prediction']=np.floor(rounded['prediction']+.5)
+        record['metrics_after_submission_rounding']=slice_metrics(rounded)
+        experiments.append(record)
+    return {**selection_report,'protocol':{**selection_report['protocol'],'stage':'holdout','holdout_opened':True,'holdout_reused':True},'experiments':experiments}

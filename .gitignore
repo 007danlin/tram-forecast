@@ -7,6 +7,7 @@ tramflow-users.caddy
 jury-access.txt
 # Generated handoff/release documents are local artifacts, not source files.
 output/
+tmp/
 .venv/
 venv/
 __pycache__/

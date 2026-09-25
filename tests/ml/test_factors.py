@@ -7,6 +7,7 @@ import pandas as pd
 
 from ml.factors import (
     WEATHER_MODEL_COLUMNS,
+    WEATHER_UNITS,
     load_weather_factors,
     normalize_open_meteo_snapshot,
     official_calendar_2025,
@@ -42,7 +43,7 @@ class WeatherFactorTests(unittest.TestCase):
             "longitude": 37.62,
             "timezone": "Europe/Moscow",
             "utc_offset_seconds": 10_800,
-            "hourly_units": {},
+            "hourly_units": WEATHER_UNITS,
             "hourly": values,
         }
 
