@@ -1,6 +1,8 @@
 export type Lane = { id: string; colorKey: string; color: string; points: [number, number][]; routes?: string[]; inferred?: boolean };
 export type LabelLine = { t: string; dx: number; dy: number; w: number };
 export type MapLabel = { id: string; text: string; x: number; y: number; angle: number; lines: LabelLine[]; fs: number; bold: boolean; lanes: string[] };
+export type Shape = { d: string; f: string; o?: number; eo?: number };
+export type IconGroup = { id: string; x: number; y: number; w: number; shapes: Shape[] };
 export type Stop = { id: string; routes: string[]; lane: string; x: number; y: number; label: string | null };
 export type Network = {
   source: string;
@@ -9,6 +11,8 @@ export type Network = {
   lanes: Lane[];
   stops?: Stop[];
   labels?: MapLabel[];
+  landmarks?: (IconGroup & { h: number })[];
+  metro?: IconGroup[];
   legend?: Record<string, string>; // номер маршрута → цвет
 };
 
