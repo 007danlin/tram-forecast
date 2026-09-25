@@ -1,1 +1,60 @@
-* { box-sizing: border-box; } body { margin: 0; background: #f4f6fa; color: #18243a; font-family: system-ui, sans-serif; } main { max-width: 780px; margin: 48px auto; padding: 24px; } h1 { font-size: clamp(26px, 5vw, 38px); } h2 { font-size: 19px; } .eyebrow { font-size: 12px; letter-spacing: .12em; } .notice { padding: 16px; background: #fff0c2; border-left: 4px solid #c48000; font-weight: 650; } section { background: white; padding: 20px; border-radius: 12px; } svg { width: 100%; } svg text { font-size: 13px; fill: #526077; } table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 2.4vw, 14px); } th, td { padding: 10px 4px; text-align: left; border-bottom: 1px solid #e5e9ef; } caption { text-align: left; margin-bottom: 12px; color: #526077; } button { margin-top: 20px; padding: 12px 18px; border: 0; border-radius: 8px; background: #2456ca; color: white; cursor: pointer; } button:disabled { opacity: .5; } [role=alert] { color: #ac2121; }
+:root {
+  --ink: #18243a;
+  --ink-soft: #526077;
+  --border: #c9d1de;
+  --accent: #2456ca;
+  --accent-ink: #ffffff;
+  --focus: #ffb800;
+  --surface-solid: #ffffff;
+  --surface: rgba(255, 255, 255, .88);
+  --surface-muted: #f4f6fa;
+  --overlay-blur: blur(14px);
+  --radius: 12px;
+  --radius-control: 10px;
+  --shadow: 0 8px 28px rgba(24, 36, 58, .22);
+
+  /* Plain page background behind the tram schematic (TramMap's own line
+     colours/geometry are untouched) — no decorative backdrop. */
+  --map-land: #eef0ee;
+}
+
+/* Single standard theme (light) — no prefers-color-scheme dark variant. */
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+
+button, select, input { font: inherit; color: inherit; }
+
+/* Standard visually-hidden pattern: keeps content for assistive tech
+   (e.g. TramMap's own title/note) without showing it over the full-bleed map. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app-shell__button:focus-visible,
+.app-shell__control:focus-visible,
+.app-shell a:focus-visible,
+.app-shell button:focus-visible,
+.app-shell select:focus-visible,
+.app-shell input:focus-visible,
+.app-shell [tabindex]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
