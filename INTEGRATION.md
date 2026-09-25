@@ -137,8 +137,8 @@ A-запись, но авторитетный сервер зоны `.ru` воз
 
 ## История контрактов
 
-| Дата | Автор | Изменение | Компоненты |
+| Дата | Основание | Изменение | Компоненты |
 |---|---|---|---|
-| 2026-09-19 | Codex по ТЗ команды | Начальный временный контракт, ML-модуль, HTTP API, прокси, локальный запуск | frontend, backend, ML, data |
-| 2026-09-19 | Codex по просьбе Даниэля | CI на push и PR: backend/ML, сборка frontend, запуск Compose и проверка прокси | CI, frontend, backend, ML |
-| 2026-09-21 | Codex по просьбе Даниэля | Отдельный серверный Compose, экспорт frontend, Caddy HTTP/HTTPS и инструкции; HTTP проверен пользователем | deploy, backend, frontend |
+| 2026-09-19 | ТЗ команды | Начальный временный контракт, ML-модуль, HTTP API, прокси, локальный запуск | frontend, backend, ML, data |
+| 2026-09-19 | Запрос Даниэля | CI на push и PR: backend/ML, сборка frontend, запуск Compose и проверка прокси | CI, frontend, backend, ML |
+| 2026-09-21 | Запрос Даниэля | Отдельный серверный Compose, экспорт frontend, Caddy HTTP/HTTPS и инструкции; HTTP проверен пользователем | deploy, backend, frontend |
