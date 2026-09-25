@@ -13,6 +13,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from ml.data import full_hourly_grid
+from ml.factors import (
+    HOLIDAY_MODEL_COLUMNS,
+    WEATHER_MODEL_COLUMNS,
+    add_official_calendar_features,
+)
 from ml.settings import RANDOM_SEED, ROUTES, TARGET_COLUMN
 
 
@@ -29,7 +34,28 @@ HGBT_FIXED_PARAMETERS = {
 }
 
 
-def _calendar_features(frame: pd.DataFrame) -> pd.DataFrame:
+def build_hgbt_model(model_name: str) -> "HourlyGradientBoostingModel":
+    variants = {
+        "calendar_hgbt": dict(include_lags=False),
+        "lagged_hgbt": dict(include_lags=True),
+        "calendar_holiday_hgbt": dict(
+            include_lags=False,
+            include_official_calendar=True,
+            information_mode="operational",
+        ),
+        "competition_weather_hgbt": dict(
+            include_lags=False,
+            include_official_calendar=True,
+            include_weather=True,
+            information_mode="competition_retro",
+        ),
+    }
+    if model_name not in variants:
+        raise ValueError(f"Unknown gradient-boosting model variant: {model_name}")
+    return HourlyGradientBoostingModel(**variants[model_name])
+
+
+def _calendar_features(frame: pd.DataFrame, *, include_official_calendar: bool = False) -> pd.DataFrame:
     result = frame.copy()
     result["dow"] = result["date"].dt.dayofweek.astype("int8")
     result["month"] = result["date"].dt.month.astype("int8")
@@ -37,11 +63,39 @@ def _calendar_features(frame: pd.DataFrame) -> pd.DataFrame:
     day_of_year = result["date"].dt.dayofyear.to_numpy(dtype=float)
     result["day_of_year_sin"] = np.sin(2.0 * np.pi * day_of_year / 365.25)
     result["day_of_year_cos"] = np.cos(2.0 * np.pi * day_of_year / 365.25)
+    if include_official_calendar:
+        result = add_official_calendar_features(result)
     return result
 
 
-def make_training_features(history: pd.DataFrame, *, include_lags: bool) -> tuple[pd.DataFrame, np.ndarray]:
-    data = _calendar_features(history.sort_values(["route", "timestamp"], ignore_index=True))
+def _attach_weather(frame: pd.DataFrame, factors: pd.DataFrame | None) -> pd.DataFrame:
+    if factors is None:
+        raise ValueError("Weather factors are required for this model variant")
+    columns = ["timestamp", *WEATHER_MODEL_COLUMNS]
+    missing = set(columns) - set(factors.columns)
+    if missing:
+        raise ValueError(f"Weather factors miss required columns: {sorted(missing)}")
+    result = frame.merge(factors[columns], on="timestamp", how="left", validate="many_to_one")
+    if result[list(WEATHER_MODEL_COLUMNS)].isna().any().any():
+        first_missing = result.loc[result[list(WEATHER_MODEL_COLUMNS)].isna().any(axis=1), "timestamp"].min()
+        raise ValueError(f"Weather factors do not cover model rows from {first_missing}")
+    return result
+
+
+def make_training_features(
+    history: pd.DataFrame,
+    *,
+    include_lags: bool,
+    include_official_calendar: bool = False,
+    include_weather: bool = False,
+    factors: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    data = _calendar_features(
+        history.sort_values(["route", "timestamp"], ignore_index=True),
+        include_official_calendar=include_official_calendar,
+    )
+    if include_weather:
+        data = _attach_weather(data, factors)
     if include_lags:
         grouped = data.groupby("route", sort=False)[TARGET_COLUMN]
         for days, column in zip(LAG_DAYS, LAG_COLUMNS):
@@ -52,6 +106,10 @@ def make_training_features(history: pd.DataFrame, *, include_lags: bool) -> tupl
         data["recent_trend"] = (data["lag_7d"] / denominator).clip(0.0, 3.0)
         data = data.dropna(subset=list(LAG_COLUMNS))
     columns = [*CATEGORICAL_COLUMNS, *CALENDAR_NUMERIC_COLUMNS]
+    if include_official_calendar:
+        columns.extend(HOLIDAY_MODEL_COLUMNS)
+    if include_weather:
+        columns.extend(WEATHER_MODEL_COLUMNS)
     if include_lags:
         columns.extend(LAG_NUMERIC_COLUMNS)
     return data[columns], data[TARGET_COLUMN].to_numpy(dtype=float)
@@ -79,20 +137,39 @@ class HourlyGradientBoostingModel:
     """Calendar model with an optional leakage-safe recursive weekly-lag mode."""
 
     include_lags: bool = True
+    include_official_calendar: bool = False
+    include_weather: bool = False
+    information_mode: str = "operational"
     max_iter: int = 220
     max_leaf_nodes: int = 31
 
     @property
     def name(self) -> str:
+        if self.include_weather:
+            return "competition_weather_hgbt"
+        if self.include_official_calendar:
+            return "calendar_holiday_hgbt"
         return "lagged_hgbt" if self.include_lags else "calendar_hgbt"
 
-    def fit(self, history: pd.DataFrame) -> "HourlyGradientBoostingModel":
+    def fit(self, history: pd.DataFrame, factors: pd.DataFrame | None = None) -> "HourlyGradientBoostingModel":
         ordered = history.sort_values(["route", "timestamp"], ignore_index=True).copy()
         route_totals = ordered.groupby("route")[TARGET_COLUMN].sum()
         self.supported_routes_ = tuple(sorted(route_totals[route_totals > 0].index.astype(int)))
         training = ordered[ordered["route"].isin(self.supported_routes_)].copy()
-        features, target = make_training_features(training, include_lags=self.include_lags)
-        numeric = CALENDAR_NUMERIC_COLUMNS + (LAG_NUMERIC_COLUMNS if self.include_lags else ())
+        features, target = make_training_features(
+            training,
+            include_lags=self.include_lags,
+            include_official_calendar=self.include_official_calendar,
+            include_weather=self.include_weather,
+            factors=factors,
+        )
+        numeric = CALENDAR_NUMERIC_COLUMNS
+        if self.include_official_calendar:
+            numeric += HOLIDAY_MODEL_COLUMNS
+        if self.include_weather:
+            numeric += WEATHER_MODEL_COLUMNS
+        if self.include_lags:
+            numeric += LAG_NUMERIC_COLUMNS
         self.pipeline_ = _pipeline(numeric, max_iter=self.max_iter, max_leaf_nodes=self.max_leaf_nodes)
         self.pipeline_.fit(features, target)
         self.history_ = ordered[["route", "date", "hour", "timestamp", TARGET_COLUMN]].copy()
@@ -100,8 +177,15 @@ class HourlyGradientBoostingModel:
         self.history_end_ = ordered["date"].max()
         return self
 
-    def _future_features(self, frame: pd.DataFrame, values: dict[tuple[int, pd.Timestamp], float]) -> pd.DataFrame:
-        result = _calendar_features(frame)
+    def _future_features(
+        self,
+        frame: pd.DataFrame,
+        values: dict[tuple[int, pd.Timestamp], float],
+        factors: pd.DataFrame | None,
+    ) -> pd.DataFrame:
+        result = _calendar_features(frame, include_official_calendar=self.include_official_calendar)
+        if self.include_weather:
+            result = _attach_weather(result, factors)
         if self.include_lags:
             for days, column in zip(LAG_DAYS, LAG_COLUMNS):
                 result[column] = [values.get((int(r), ts - pd.Timedelta(days=days)), np.nan) for r, ts in zip(result.route, result.timestamp)]
@@ -112,11 +196,15 @@ class HourlyGradientBoostingModel:
             denominator = result[["lag_14d", "lag_21d", "lag_28d"]].mean(axis=1).clip(lower=1.0)
             result["recent_trend"] = (result["lag_7d"] / denominator).clip(0.0, 3.0)
         columns = [*CATEGORICAL_COLUMNS, *CALENDAR_NUMERIC_COLUMNS]
+        if self.include_official_calendar:
+            columns.extend(HOLIDAY_MODEL_COLUMNS)
+        if self.include_weather:
+            columns.extend(WEATHER_MODEL_COLUMNS)
         if self.include_lags:
             columns.extend(LAG_NUMERIC_COLUMNS)
         return result[columns]
 
-    def predict(self, start: date | str, end: date | str) -> pd.DataFrame:
+    def predict(self, start: date | str, end: date | str, factors: pd.DataFrame | None = None) -> pd.DataFrame:
         start_ts = pd.Timestamp(start).normalize()
         end_ts = pd.Timestamp(end).normalize()
         if start_ts <= self.history_end_:
@@ -132,7 +220,7 @@ class HourlyGradientBoostingModel:
         daily_results: list[pd.DataFrame] = []
         for prediction_date in pd.date_range(start_ts, end_ts, freq="D"):
             batch = grid[(grid["date"] == prediction_date) & grid["route"].isin(self.supported_routes_)].copy()
-            features = self._future_features(batch, values)
+            features = self._future_features(batch, values, factors)
             batch["prediction"] = np.maximum(self.pipeline_.predict(features), 0.0)
             for row in batch.itertuples(index=False):
                 values[(int(row.route), row.timestamp)] = float(row.prediction)
