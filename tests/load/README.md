@@ -75,6 +75,26 @@ docker run --rm --network "${project}_default" \
 
 Не запускайте одновременно два Compose-проекта с одинаковыми опубликованными
 портами; для параллельного окружения нужен отдельный port-overlay.
+
+После окончания RPS/export измерений, **до `down`**, отдельно проверьте запуск
+нового backend-процесса, сохранение mount/run при двух пересозданиях и времена
+повторных/разных фильтров. Команда меняет только backend указанного локального
+тестового Compose-проекта, поэтому имя проекта обязательно:
+
+```sh
+python -m tests.load.lifecycle --project tramflow-load \
+  --base-url http://127.0.0.1:5173 \
+  --reference artifacts/load/run-01/reference.json \
+  --output artifacts/load/run-01/lifecycle.json
+```
+
+При другом наборе Compose-файлов перечислите каждый через `--compose-file`;
+переменная `TRAMFLOW_HANDOFF_HOST_DIR` должна указывать на тот же release.
+Результат включает `/proc/1/status` до пересоздания (RSS/HWM после нагрузки),
+два времени up → ready и первого query, серии повторных/разных запросов и размеры
+ответов. Это холодный процесс с уже собранным образом и возможным файловым кэшем
+ОС, не холодная VM. Последовательные клиентские измерения включают HTTP и JSON
+decode; для приёмочных latency используется k6. Кэш query не реализован.
 Сводка — [verification-load](../../docs/verification-load.md); исходные JSON
 остаются в `artifacts/`.
 [Семантика constant-arrival-rate](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/).
