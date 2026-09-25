@@ -1,0 +1,5 @@
+pymupdf
+Pillow
+numpy
+scikit-image
+shapely

@@ -26,3 +26,6 @@ data/*
 artifacts/
 models/
 *.tsbuildinfo
+
+# Локальные ресурсы интерактивной карты (получаются из PDF скриптами scripts/map)
+frontend/public/map-local/

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
+import { TramMap } from './components/TramMap';
 
 type Forecast = { is_mock: true; unit: 'passengers'; points: { timestamp: string; value: number }[] };
 
@@ -53,7 +54,7 @@ function App() {
   const points = forecast?.points ?? [];
   const max = Math.max(1, ...points.map(p => p.value));
   const line = points.map((p, i) => `${40 + i * 520 / Math.max(1, points.length - 1)},${190 - p.value / max * 160}`).join(' ');
-  return <main>
+  return <><TramMap /><main>
     <p className="eyebrow">TRAMFLOW / ПРОВЕРКА ИНТЕГРАЦИИ</p>
     <h1>Пассажиропоток трамваев</h1>
     <p className="notice">Тестовые данные — не реальный прогноз</p>
@@ -75,7 +76,7 @@ function App() {
       </table>
     </section>}
     <button disabled={loading} onClick={() => setAttempt(a => a + 1)}>Повторить запрос</button>
-  </main>;
+  </main></>;
 }
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
