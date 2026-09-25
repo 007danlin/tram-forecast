@@ -1,0 +1,23 @@
+{
+  "calendar": {
+    "status": "integrated",
+    "features": ["hour", "weekday", "weekend", "month", "annual_phase"],
+    "external_download": false,
+    "decision": "retained after temporal comparison"
+  },
+  "weather": {
+    "status": "candidate",
+    "decision": "not integrated",
+    "reason": "No versioned historical forecast archive with available_at was supplied."
+  },
+  "events_and_closures": {
+    "status": "candidate",
+    "decision": "not integrated",
+    "reason": "No route-linked historical archive with publication timestamps was supplied."
+  },
+  "traffic": {
+    "status": "candidate",
+    "decision": "not integrated",
+    "reason": "No historical route-linked series was supplied."
+  }
+}

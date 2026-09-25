@@ -1,0 +1,11 @@
+{
+  "route": 1,
+  "date": "2025-11-01",
+  "hour": 8,
+  "prediction": 123.45,
+  "reference_value": 120.0,
+  "lower_90": 0.0,
+  "upper_90": 542.3085,
+  "priority_score": 3.45,
+  "status": "ok"
+}
