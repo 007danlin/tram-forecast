@@ -119,6 +119,9 @@ release. SHA-256 подтверждает целостность, а не кач
 CI проверяет комплектность Git, backend/ML/tooling, runtime OpenAPI, зависимости,
 TypeScript и сборку. Compose smoke проверяет synthetic v1 и полный синтетический
 handoff через read-only mount, включая восстановление после остановки backend.
+У frontend есть HTTP healthcheck: `docker compose up --wait` ждёт ответа страницы,
+а не только запуска контейнера. Идемпотентный GET в CI также повторяет временные
+ошибки соединения, включая reset при старте; после него API проверяется отдельно.
 Отдельный `handoff-browser.yml` проверяет batch → API → UI → CSV, ошибки и responsive.
 Две сгенерированные копии ТЗ в `output/` исключены из Git; исходники остаются
 в [docs/team-specs](docs/team-specs/README.md), локальные копии не удаляются.
