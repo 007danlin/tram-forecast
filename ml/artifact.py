@@ -19,6 +19,7 @@ from ml.baselines import ComparableWeeksMedianBaseline
 from ml.data import load_organizer_labels
 from ml.experiment_config import normalize_config
 from ml.factors import HOLIDAY_MODEL_COLUMNS, WEATHER_MODEL_COLUMNS, load_weather_factors
+from ml.metrics import round_submission_predictions
 from ml.model import HGBT_FIXED_PARAMETERS, build_hgbt_model
 from ml.settings import (
     FINAL_TRAIN_END,
@@ -133,7 +134,7 @@ def _write_artifact(
         "product_timezone_contract": "Europe/Moscow",
         "prediction": {"nonnegative": True, "rounded": False, "clipping": "max(raw_prediction, 0)"},
         "interval": {
-            "method": "symmetric absolute-residual q90 from pre-holdout selection folds",
+            "method": "symmetric absolute-residual q90 from early selection folds",
             "absolute_error_q90": float(interval_absolute_error_q90),
         },
         "limitations": limitations,
@@ -266,10 +267,7 @@ def write_submission(prediction: pd.DataFrame, template_path: str | Path, output
     )
     if len(merged) != len(template) or merged["prediction"].isna().any():
         raise ValueError("Prediction does not match every submission template key")
-    values = merged["prediction"].to_numpy(dtype=float)
-    if not np.isfinite(values).all() or (values < 0).any():
-        raise ValueError("Submission predictions must be finite and nonnegative")
-    merged["prediction"] = np.floor(values + 0.5).astype("int64")
+    merged["prediction"] = round_submission_predictions(merged["prediction"])
     merged["date"] = merged["date"].dt.strftime("%Y-%m-%d")
     destination = Path(output_path)
     destination.parent.mkdir(parents=True, exist_ok=True)

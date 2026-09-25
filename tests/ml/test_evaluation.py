@@ -40,6 +40,12 @@ class ExperimentLogTests(unittest.TestCase):
                             "mae": 1.0,
                             "wape": 0.2,
                             "wape_score": 0.8,
+                            "submission_rows": 2,
+                            "submission_sum_y": 10.0,
+                            "submission_sum_abs_error": 1.0,
+                            "submission_mae": 0.5,
+                            "submission_wape": 0.1,
+                            "submission_wape_score": 0.9,
                         },
                         {
                             "slice": "route",
@@ -50,6 +56,12 @@ class ExperimentLogTests(unittest.TestCase):
                             "mae": 1.0,
                             "wape": 0.2,
                             "wape_score": 0.8,
+                            "submission_rows": 2,
+                            "submission_sum_y": 10.0,
+                            "submission_sum_abs_error": 1.0,
+                            "submission_mae": 0.5,
+                            "submission_wape": 0.1,
+                            "submission_wape_score": 0.9,
                         },
                     ],
                 }
@@ -63,10 +75,29 @@ class ExperimentLogTests(unittest.TestCase):
         self.assertEqual(result.loc[0, "information_mode"], "operational")
         self.assertEqual(json.loads(result.loc[0, "factor_groups_json"]), ["F01_official_calendar"])
         self.assertEqual(json.loads(result.loc[0, "parameters_json"]), {"depth": 3})
+        self.assertEqual(result.loc[0, "submission_wape_score"], 0.9)
         slices = json.loads(result.loc[0, "important_slices_json"])
         self.assertEqual(slices["route"]["1"]["wape_score"], 0.8)
+        self.assertEqual(slices["route"]["1"]["submission_wape_score"], 0.9)
 
-    def test_61_day_holdout_has_exact_required_horizon_buckets(self):
+    def test_slice_metrics_include_exact_submission_rounding(self):
+        actual = full_hourly_grid("2025-09-01", "2025-09-01", routes=[1]).iloc[:2].copy()
+        actual["timestamp"] = actual["date"] + pd.to_timedelta(actual["hour"], unit="h")
+        actual["boardings"] = [1, 2]
+        predicted = actual[["route", "date", "hour"]].copy()
+        predicted["prediction"] = [1.49, 1.5]
+        predicted["status"] = "ok"
+
+        overall = next(
+            metric
+            for metric in slice_metrics(_merge_actual_prediction(actual, predicted))
+            if metric["slice"] == "overall"
+        )
+        self.assertAlmostEqual(overall["wape_score"], 0.67)
+        self.assertEqual(overall["submission_wape_score"], 1.0)
+        self.assertEqual(overall["submission_mae"], 0.0)
+
+    def test_61_day_validation_has_exact_required_horizon_buckets(self):
         actual = full_hourly_grid("2025-09-01", "2025-10-31", routes=[1])
         actual["timestamp"] = actual["date"] + pd.to_timedelta(actual["hour"], unit="h")
         actual["boardings"] = 1

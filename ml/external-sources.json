@@ -24,7 +24,7 @@
       "coverage": {"train_2025_01_01_08_31": 1.0, "validation_2025_09_01_10_31": 1.0, "forecast_2025_11_01_12_31": 1.0, "routes": "10/10"},
       "implementation": "Verified 2025 days off, transfers, working weekend, adjacent-day flags and day-off streak; date join is many-to-one.",
       "experiment_id": "selection_2025_*__calendar_holiday_hgbt",
-      "effect": {"reference": "calendar_hgbt", "wape_score_delta": 0.0380472082145768, "mae_delta": -28.70754786744844},
+      "effect": {"reference": "calendar_hgbt", "metric_basis": "submission_rounded_floor_x_plus_0_5", "wape_score_delta": 0.0380429065653219, "mae_delta": -28.70430216802169, "raw_wape_score_delta": 0.0380472082145768},
       "decision": "included_in_selected_model", "blocker": null
     },
     {
@@ -36,7 +36,7 @@
       "coverage": {"train_2025_01_01_08_31": 1.0, "validation_2025_09_01_10_31": 1.0, "forecast_2025_11_01_12_31": 1.0, "routes": "10/10 common-city proxy"},
       "implementation": "Hourly ERA5 reanalysis at one Moscow grid point; all-null snow_depth excluded without imputation; strict timestamp join.",
       "experiment_id": "selection_2025_*__competition_weather_hgbt",
-      "effect": {"reference": "calendar_holiday_hgbt", "wape_score_delta": -0.006813813346236, "mae_delta": 5.14118859112474},
+      "effect": {"reference": "calendar_holiday_hgbt", "metric_basis": "submission_rounded_floor_x_plus_0_5", "wape_score_delta": -0.0068138633063657, "mae_delta": 5.14122628726288, "raw_wape_score_delta": -0.006813813346236},
       "decision": "excluded_no_incremental_selection_gain",
       "blocker": "Operational mode remains unimplemented because no matching as-of forecast-run archive was used.",
       "verification_2026_09_25": {

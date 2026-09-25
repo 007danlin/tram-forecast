@@ -7,6 +7,16 @@ from collections.abc import Iterable
 import numpy as np
 
 
+def round_submission_predictions(values: Iterable[float]) -> np.ndarray:
+    """Apply the exact integer export policy used by the organizer submission."""
+    predicted = np.asarray(tuple(values), dtype=float)
+    if predicted.ndim != 1:
+        raise ValueError("Submission rounding requires one-dimensional inputs")
+    if not np.isfinite(predicted).all() or (predicted < 0).any():
+        raise ValueError("Submission rounding requires finite nonnegative values")
+    return np.floor(predicted + 0.5).astype("int64")
+
+
 def regression_metrics(y_true: Iterable[float], y_pred: Iterable[float]) -> dict[str, float | int | None]:
     """Return organizer WAPE metrics without inventing a zero-denominator score."""
     actual = np.asarray(tuple(y_true), dtype=float)

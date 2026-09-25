@@ -432,13 +432,15 @@ HTTP API v1 по-прежнему использует только эту те�
 Batch-команды, зависимости, temporal folds и ограничения описаны в
 [ml/README.md](ml/README.md). Текущий выбранный метод — calendar
 HistGradientBoosting с официальным производственным календарём F01. На ранних
-selection folds он получил 0.84009 против 0.80204 без F01. WAPE-score
-однократного непрерывного 61-дневного holdout сентября–октября 2025 — 0.82170
-против 0.82319 у previous-weekday baseline; holdout не использовался для
-повторного выбора. Это оценка автора, не независимый повтор и не результат платформы.
+selection folds его rounded score — 0.8400868 против 0.8020439 без F01.
+На повторно использованном 61-дневном validation-окне сентября–октября 2025
+rounded score — 0.8216978 против 0.8231869 у previous-weekday baseline. Этот
+период уже оценивался в PR #2 (`calendar_hgbt`, опубликованный raw score 0.8287),
+поэтому pristine holdout не заявляется; текущий addendum-run не выбирал модель
+по этому окну. Это оценка автора, не независимый повтор и не результат платформы.
 Для артефакта, реальных прогнозов и submission предусмотрен локальный `artifacts/`;
-новые веса и погодные snapshot в эту рабочую папку не переданы.
-Они игнорируются Git и не входят в Docker/backend image.
+содержимое каталога игнорируется Git, не входит в Docker/backend image и не
+гарантируется в новом checkout.
 
 Поддержаны: почасовой день, почасовой batch на 61 день, дневная агрегация и пики
 для месяца. Годовой режим возвращает только qualitative scenarios с `value=null`.
@@ -447,7 +449,7 @@ selection folds он получил 0.84009 против 0.80204 без F01. WAP
 информации отчёты различают `operational` (`available_at <= as_of`) и
 `competition_retro` (поздние разрешённые внешние факторы, но никогда не будущий
 target). ERA5 F02 с полным часовым покрытием 2025 проверен только во втором
-режиме и ухудшил selection score до 0.83327, поэтому в выбранный артефакт не
+режиме и ухудшил rounded selection score до 0.8332729, поэтому в выбранный артефакт не
 включён. F03–F16 остаются candidate/blocked с причинами в
 [ml/external-sources.json](ml/external-sources.json). HTTP API v1 и v2 draft не
 менялись.
@@ -515,7 +517,7 @@ README и листы справочника из `/Users/daniellineckij/Download
 
 `.github/workflows/ci.yml` запускается на каждый push в любую ветку, на открытие/обновление PR и вручную (`workflow_dispatch`). На Ubuntu 24.04 независимо выполняются:
 
-- backend/ML: Python 3.12, установка `backend/requirements.txt` и `ml/requirements.txt`, `pip check`, 37 backend-тестов (контракт и handoff), сверка OpenAPI, 9 интеграционных, 17 ML и 8 tooling-тестов; проверки включают календарь, погоду, 61-дневные срезы, submission preflight и инструменты подготовки сдачи;
+- backend/ML: Python 3.12, установка `backend/requirements.txt` и `ml/requirements.txt`, `pip check`, 37 backend-тестов (контракт и handoff), сверка OpenAPI, 9 интеграционных, 31 ML и 24 tooling-теста; проверки включают отказ до inference при несовместимой/отсутствующей версии, raw/rounded-метрики, календарные переносы, нормализацию погоды, реестр F01–F16, 61-дневные срезы, submission preflight и инструменты подготовки сдачи;
 - frontend: Node.js 22.16.0, `npm ci --prefix frontend`, `npm run build --prefix frontend`;
 - Compose: проверка конфигурации, сборка и запуск контейнеров, HTTP-проверка страницы и API через прокси на порту 5173. Результат контейнерного API сравнивается с ML-модулем из текущего checkout.
 
@@ -694,7 +696,7 @@ Commit/push, сообщения, публикация и загрузка на �
 | 2026-09-19 | Запрос Даниэля | CI на push и PR: backend/ML, сборка frontend, запуск Compose и проверка прокси | CI, frontend, backend, ML |
 | 2026-09-21 | Запрос Даниэля | Отдельный серверный Compose, экспорт frontend, Caddy HTTP/HTTPS и инструкции; HTTP проверен пользователем | deploy, backend, frontend |
 | 2026-09-25 | Выполнение личного ТЗ Даниэля | Адаптер совместимости synthetic v1, два дополнительных интеграционных теста и общая smoke-команда; HTTP v1 сохранён. Архитектура v2 подготовлена к согласованию | ML-интерфейс, backend, tests, CI, docs |
-| 2026-09-25 | Выполнение ML-ТЗ Георгия | Аудит real data, temporal baselines и модель, однократный holdout, versioned batch-артефакт, интервалы, month/year fallback и submission-адаптер; HTTP v1 не изменён | ML batch, tests, CI, docs |
+| 2026-09-25 | Выполнение ML-ТЗ Георгия | Аудит real data, temporal baselines и модель, первичная оценка окна Sep–Oct, versioned batch-артефакт, интервалы, month/year fallback и submission-адаптер; HTTP v1 не изменён | ML batch, tests, CI, docs |
 | 2026-09-25 | Дополнение Георгия по конкурсному датасету | Непрерывный 61-дневный протокол, F01/F02 на одинаковых folds, два режима внешней информации, реестр F01–F16 и строгий submission preflight; HTTP v1/v2 не изменены | ML batch, tests, docs |
 
 ## Единая доставка карты и серверное обновление — 2026-09-25

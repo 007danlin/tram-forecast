@@ -53,8 +53,8 @@ python -m ml prepare-weather \
   --source-url "https://archive-api.open-meteo.com/v1/archive?latitude=55.7558&longitude=37.6173&start_date=2025-01-01&end_date=2025-12-31&hourly=temperature_2m,apparent_temperature,precipitation,snowfall,snow_depth,wind_speed_10m,wind_gusts_10m&timezone=Europe%2FMoscow&models=era5"
 ```
 
-Выбор модели на двух ранних временных folds и однократный непрерывный
-61-дневный holdout сентября–октября:
+Выбор модели на двух ранних временных folds и повторная непрерывная 61-дневная
+проверка сентября–октября:
 
 ```sh
 python -m ml backtest \
@@ -99,8 +99,9 @@ Preflight проверяет точные колонки и порядок кл�
 экспортных значений и записывает checksum. Он не отправляет файл на платформу.
 
 Внутренний прогноз хранит неокруглённые значения, reference, 90% интервал,
-priority score и status. Округление `floor(x + 0.5)` выполняется только адаптером
-submission.
+priority score и status. Backtest публикует raw-метрики и метрики после
+`floor(x + 0.5)`; модель выбирается по rounded score. Тот же общий helper
+применяется адаптером submission.
 
 ```sh
 python -m ml forecast --artifact-dir artifacts/calendar-holiday-hgbt \
@@ -132,10 +133,12 @@ python -m unittest discover -s tests/integration -v
 Журнал содержит гипотезу, версию схемы, seed, параметры, одинаковые временные границы, общие метрики, JSON со
 срезами по маршрутам, часам, типу дня, пику, величине потока, горизонту и статусу,
 а также решение по эксперименту.
-Выбран `calendar_holiday_hgbt`: selection WAPE-score 0,84009. На однократно
-открытом 61-дневном holdout score 0,82170 против 0,82319 у previous-weekday;
-holdout не использовался для повторного выбора. Погодный кандидат получил
-0,83327 на selection и отклонён относительно календарного кандидата.
+Выбран `calendar_holiday_hgbt`: rounded selection WAPE-score 0,8400868
+(raw 0,8400881). На повторно использованном 61-дневном validation-окне rounded
+score 0,8216978 (raw 0,8217020) против 0,8231869 у previous-weekday. Сентябрь–октябрь
+уже оценивался в PR #2 (`calendar_hgbt`, опубликованный raw score 0,8287), поэтому
+это не pristine holdout; в текущем run период не использовался для выбора.
+Погодный кандидат получил rounded 0,8332729 и отклонён.
 
 Результаты автора повторены локально 25.09.2026; новые группы, повторный holdout
 и качество после DS-округления — в [отчёте](reports/weather-groups-2026-09-25.md).
