@@ -13,8 +13,9 @@ import pandas as pd
 
 from ml.baselines import BlockMeanBaseline, ComparableWeeksMedianBaseline, PreviousWeekdayBaseline
 from ml.data import load_organizer_labels
+from ml.factors import weather_coverage
 from ml.metrics import regression_metrics
-from ml.model import HGBT_FIXED_PARAMETERS, HourlyGradientBoostingModel
+from ml.model import HGBT_FIXED_PARAMETERS, HourlyGradientBoostingModel, build_hgbt_model
 from ml.settings import (
     FINAL_HOLDOUT,
     KEY_COLUMNS,
@@ -33,8 +34,10 @@ MODEL_FACTORIES: dict[str, ModelFactory] = {
     "block_mean": BlockMeanBaseline,
     "previous_weekday": PreviousWeekdayBaseline,
     "median_comparable_weeks": ComparableWeeksMedianBaseline,
-    "calendar_hgbt": lambda: HourlyGradientBoostingModel(include_lags=False),
-    "lagged_hgbt": lambda: HourlyGradientBoostingModel(include_lags=True),
+    "calendar_hgbt": lambda: build_hgbt_model("calendar_hgbt"),
+    "lagged_hgbt": lambda: build_hgbt_model("lagged_hgbt"),
+    "calendar_holiday_hgbt": lambda: build_hgbt_model("calendar_holiday_hgbt"),
+    "competition_weather_hgbt": lambda: build_hgbt_model("competition_weather_hgbt"),
 }
 
 MODEL_PARAMETERS: dict[str, dict[str, object]] = {
@@ -56,9 +59,47 @@ MODEL_PARAMETERS: dict[str, dict[str, object]] = {
         "max_iter": 220,
         "max_leaf_nodes": 31,
     },
+    "calendar_holiday_hgbt": {
+        "algorithm": "HistGradientBoostingRegressor",
+        "include_lags": False,
+        "include_official_calendar": True,
+        "information_mode": "operational",
+        **HGBT_FIXED_PARAMETERS,
+        "max_iter": 220,
+        "max_leaf_nodes": 31,
+    },
+    "competition_weather_hgbt": {
+        "algorithm": "HistGradientBoostingRegressor",
+        "include_lags": False,
+        "include_official_calendar": True,
+        "include_weather": True,
+        "information_mode": "competition_retro",
+        **HGBT_FIXED_PARAMETERS,
+        "max_iter": 220,
+        "max_leaf_nodes": 31,
+    },
 }
 
-IMPORTANT_LOG_SLICES = ("route", "hour", "weekpart", "daypart", "flow_band", "horizon_week", "status")
+MODEL_HYPOTHESES = {
+    "block_mean": "Three broad hourly blocks provide a reproducible floor.",
+    "previous_weekday": "The latest comparable weekday improves over broad blocks.",
+    "median_comparable_weeks": "A robust eight-week weekday median reduces one-week noise.",
+    "calendar_hgbt": "A compact nonlinear calendar model captures route and seasonal interactions.",
+    "lagged_hgbt": "Leakage-safe recursive weekly lags improve the calendar model.",
+    "calendar_holiday_hgbt": "Verified 2025 days off improve over weekend-only calendar features.",
+    "competition_weather_hgbt": "ERA5 reanalysis improves the calendar-holiday model in competition-retrospective mode.",
+}
+
+IMPORTANT_LOG_SLICES = (
+    "route",
+    "hour",
+    "weekpart",
+    "daypart",
+    "flow_band",
+    "horizon_bucket",
+    "horizon_week",
+    "status",
+)
 
 
 def _merge_actual_prediction(actual: pd.DataFrame, predicted: pd.DataFrame) -> pd.DataFrame:
@@ -74,6 +115,11 @@ def _merge_actual_prediction(actual: pd.DataFrame, predicted: pd.DataFrame) -> p
         raise ValueError("Prediction contains invalid values")
     merged["horizon_day"] = (merged["date"] - merged["date"].min()).dt.days + 1
     merged["horizon_week"] = ((merged["horizon_day"] - 1) // 7) + 1
+    merged["horizon_bucket"] = pd.cut(
+        merged["horizon_day"],
+        bins=[0, 7, 30, 61, np.inf],
+        labels=["days_1_7", "days_8_30", "days_31_61", "days_62_plus"],
+    ).astype("string")
     merged["dow"] = merged["date"].dt.dayofweek
     merged["weekpart"] = np.where(merged["dow"] >= 5, "weekend", "weekday")
     merged["daypart"] = np.where(merged["hour"].isin([7, 8, 9, 16, 17, 18, 19]), "peak", "offpeak")
@@ -95,7 +141,16 @@ def _metric_record(frame: pd.DataFrame, slice_name: str, slice_value: object) ->
 
 def slice_metrics(frame: pd.DataFrame) -> list[dict[str, object]]:
     records = [_metric_record(frame, "overall", "all")]
-    for column in ("route", "hour", "weekpart", "daypart", "flow_band", "horizon_week", "status"):
+    for column in (
+        "route",
+        "hour",
+        "weekpart",
+        "daypart",
+        "flow_band",
+        "horizon_bucket",
+        "horizon_week",
+        "status",
+    ):
         for value, part in frame.groupby(column, observed=True, sort=True):
             records.append(_metric_record(part, column, value))
     return records
@@ -105,6 +160,7 @@ def evaluate_model(
     dataset_dir: str | Path,
     fold: TemporalFold,
     model_name: str,
+    factors: pd.DataFrame | None = None,
 ) -> tuple[dict[str, object], pd.DataFrame]:
     if model_name not in MODEL_FACTORIES:
         raise KeyError(f"Unknown model: {model_name}")
@@ -113,20 +169,36 @@ def evaluate_model(
     actual = target[target["date"].between(pd.Timestamp(fold.val_start), pd.Timestamp(fold.val_end))].copy()
     model = MODEL_FACTORIES[model_name]()
     started = time.perf_counter()
-    model.fit(history)
-    predicted = model.predict(fold.val_start, fold.val_end)
+    if isinstance(model, HourlyGradientBoostingModel):
+        model.fit(history, factors=factors)
+        predicted = model.predict(fold.val_start, fold.val_end, factors=factors)
+        information_mode = model.information_mode
+        factor_groups = [
+            factor
+            for factor, enabled in (
+                ("F01_official_calendar", model.include_official_calendar),
+                ("F02_weather_reanalysis", model.include_weather),
+            )
+            if enabled
+        ]
+    else:
+        model.fit(history)
+        predicted = model.predict(fold.val_start, fold.val_end)
+        information_mode = "operational"
+        factor_groups = []
     elapsed = time.perf_counter() - started
     merged = _merge_actual_prediction(actual, predicted)
     return {
         "experiment_id": f"{fold.name}__{model_name}",
-        "hypothesis": {
-            "block_mean": "Three broad hourly blocks provide a reproducible floor.",
-            "previous_weekday": "The latest comparable weekday improves over broad blocks.",
-            "median_comparable_weeks": "A robust eight-week weekday median reduces one-week noise.",
-            "calendar_hgbt": "A compact nonlinear calendar model captures route and seasonal interactions.",
-            "lagged_hgbt": "Leakage-safe recursive weekly lags improve the calendar model.",
-        }[model_name],
+        "hypothesis": MODEL_HYPOTHESES[model_name],
         "change": model_name,
+        "information_mode": information_mode,
+        "factor_groups": factor_groups,
+        "factor_coverage": (
+            weather_coverage(factors, fold.train_start, fold.val_end)
+            if "F02_weather_reanalysis" in factor_groups and factors is not None
+            else None
+        ),
         "model_schema_version": MODEL_SCHEMA_VERSION,
         "random_seed": RANDOM_SEED,
         "parameters": MODEL_PARAMETERS[model_name],
@@ -163,6 +235,13 @@ def experiment_log_frame(report: dict[str, object]) -> pd.DataFrame:
                 "role": fold["role"],
                 "hypothesis": experiment["hypothesis"],
                 "change": experiment["change"],
+                "information_mode": experiment["information_mode"],
+                "factor_groups_json": json.dumps(
+                    experiment["factor_groups"], ensure_ascii=False, separators=(",", ":")
+                ),
+                "factor_coverage_json": json.dumps(
+                    experiment["factor_coverage"], ensure_ascii=False, separators=(",", ":"), sort_keys=True
+                ) if experiment["factor_coverage"] is not None else "",
                 "model_schema_version": experiment["model_schema_version"],
                 "random_seed": experiment["random_seed"],
                 "parameters_json": json.dumps(
@@ -190,13 +269,17 @@ def experiment_log_frame(report: dict[str, object]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def run_full_evaluation(dataset_dir: str | Path) -> tuple[dict[str, object], dict[str, list[pd.DataFrame]]]:
+def run_full_evaluation(
+    dataset_dir: str | Path,
+    factors: pd.DataFrame | None = None,
+) -> tuple[dict[str, object], dict[str, list[pd.DataFrame]]]:
     """Select on early folds, then open the final holdout once for the chosen approach."""
+    enabled_models = [name for name in MODEL_FACTORIES if name != "competition_weather_hgbt" or factors is not None]
     experiments: list[dict[str, object]] = []
-    selection_predictions: dict[str, list[pd.DataFrame]] = {name: [] for name in MODEL_FACTORIES}
-    for fold in SELECTION_FOLDS:
-        for model_name in MODEL_FACTORIES:
-            record, prediction = evaluate_model(dataset_dir, fold, model_name)
+    selection_predictions: dict[str, list[pd.DataFrame]] = {name: [] for name in enabled_models}
+    for model_name in enabled_models:
+        for fold in SELECTION_FOLDS:
+            record, prediction = evaluate_model(dataset_dir, fold, model_name, factors=factors)
             experiments.append(record)
             selection_predictions[model_name].append(prediction)
 
@@ -233,7 +316,7 @@ def run_full_evaluation(dataset_dir: str | Path) -> tuple[dict[str, object], dic
         if model_name in seen:
             continue
         seen.add(model_name)
-        record, prediction = evaluate_model(dataset_dir, FINAL_HOLDOUT, model_name)
+        record, prediction = evaluate_model(dataset_dir, FINAL_HOLDOUT, model_name, factors=factors)
         record["decision"] = "evaluated_once_after_selection"
         experiments.append(record)
         holdout_predictions[model_name] = [prediction]
@@ -254,6 +337,8 @@ def run_full_evaluation(dataset_dir: str | Path) -> tuple[dict[str, object], dic
             "random_split": False,
             "model_schema_version": MODEL_SCHEMA_VERSION,
             "random_seed": RANDOM_SEED,
+            "primary_61_day_validation": asdict(FINAL_HOLDOUT),
+            "future_target_used_within_horizon": False,
         },
         "selection_summary": selection_summary,
         "selected_model": selected_model,
@@ -267,7 +352,21 @@ def run_full_evaluation(dataset_dir: str | Path) -> tuple[dict[str, object], dic
         "experiments": experiments,
         "external_factors": {
             "calendar": {"status": "integrated", "scope": "hour, weekday, weekend, month, annual phase"},
-            "weather": {"status": "candidate", "reason": "No archived as-of forecast snapshot supplied."},
+            "F01_official_calendar": {
+                "status": "validated",
+                "information_mode": "operational",
+                "decision": "selected" if selected_model == "calendar_holiday_hgbt" else "not selected on combined folds",
+            },
+            "F02_weather_reanalysis": {
+                "status": "validated" if factors is not None else "candidate",
+                "information_mode": "competition_retro",
+                "decision": (
+                    "selected" if selected_model == "competition_weather_hgbt"
+                    else "not selected on combined folds" if factors is not None
+                    else "normalized snapshot not supplied"
+                ),
+                "operational_status": "not integrated; no matching as-of forecast-run archive in this experiment",
+            },
             "events_and_closures": {"status": "candidate", "reason": "No versioned historical archive supplied."},
             "traffic": {"status": "candidate", "reason": "No historical route-linked series supplied."},
         },

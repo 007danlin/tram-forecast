@@ -37,41 +37,65 @@ export DATASET_DIR="/absolute/path/to/unpacked/dataset"
 python -m ml verify-target --dataset-dir "$DATASET_DIR" --chunksize 500000
 ```
 
-Выбор модели на двух ранних временных folds и однократный финальный holdout:
+Подготовка локального погодного snapshot для отдельного
+`competition_retro`-эксперимента (сырой JSON остаётся неизменным вне Git):
+
+```sh
+python -m ml prepare-weather \
+  --snapshot artifacts/external/open-meteo/moscow-2025-era5.json \
+  --output artifacts/external/open-meteo/moscow-2025-era5.normalized.csv \
+  --manifest artifacts/external/open-meteo/moscow-2025-era5.manifest.json \
+  --source-url "https://archive-api.open-meteo.com/v1/archive?latitude=55.7558&longitude=37.6173&start_date=2025-01-01&end_date=2025-12-31&hourly=temperature_2m,apparent_temperature,precipitation,snowfall,snow_depth,wind_speed_10m,wind_gusts_10m&timezone=Europe%2FMoscow&models=era5"
+```
+
+Выбор модели на двух ранних временных folds и однократный непрерывный
+61-дневный holdout сентября–октября:
 
 ```sh
 python -m ml backtest \
   --dataset-dir "$DATASET_DIR" \
-  --output artifacts/evaluation.json \
+  --weather-factors artifacts/external/open-meteo/moscow-2025-era5.normalized.csv \
+  --output artifacts/evaluation-addendum.json \
   --experiment-log ml/reports/experiment-log.csv
 ```
+
+Порядок P0-гипотез фиксирован: сначала официальный календарь F01, затем на той
+же основе ERA5 F02. Фактический реанализ относится только к
+`competition_retro`; эксплуатационная погода требует архивных forecast runs,
+доступных на соответствующий `as_of`. Будущий пассажиропоток внутри горизонта
+не используется ни в одном режиме.
 
 Обучение выбранной модели на январе–октябре:
 
 ```sh
 python -m ml train \
   --dataset-dir "$DATASET_DIR" \
-  --evaluation-report artifacts/evaluation.json \
-  --artifact-dir artifacts/calendar-hgbt-v1
+  --evaluation-report artifacts/evaluation-addendum.json \
+  --artifact-dir artifacts/calendar-holiday-hgbt
 ```
 
 Формирование submission строго по шаблону:
 
 ```sh
 python -m ml submission \
-  --artifact-dir artifacts/calendar-hgbt-v1 \
+  --artifact-dir artifacts/calendar-holiday-hgbt \
   --template "$DATASET_DIR/test_submission.csv" \
-  --output artifacts/submission.csv
+  --output artifacts/submission-calendar-holiday-hgbt.csv \
+  --preflight-output artifacts/submission-calendar-holiday-hgbt.preflight.json
 ```
+
+Preflight проверяет точные колонки и порядок ключей шаблона, 14 640 строк,
+дубли, пропуски, даты, часы, маршруты, конечность/неотрицательность/целочисленность
+экспортных значений и записывает checksum. Он не отправляет файл на платформу.
 
 Внутренний прогноз хранит неокруглённые значения, reference, 90% интервал,
 priority score и status. Округление `floor(x + 0.5)` выполняется только адаптером
 submission.
 
 ```sh
-python -m ml forecast --artifact-dir artifacts/calendar-hgbt-v1 \
+python -m ml forecast --artifact-dir artifacts/calendar-holiday-hgbt \
   --start 2025-11-01 --end 2025-11-01 --output artifacts/day.csv
-python -m ml month --artifact-dir artifacts/calendar-hgbt-v1 \
+python -m ml month --artifact-dir artifacts/calendar-holiday-hgbt \
   --start 2025-11-01 --end 2025-11-30 --output artifacts/month.csv
 python -m ml year-scenario --output artifacts/year-scenario.json
 ```
@@ -84,10 +108,16 @@ python -m unittest discover -s tests/integration -v
 ```
 
 Фактические результаты: [паспорт модели](reports/model-card.md),
-[аудит данных](reports/data-audit.md), [журнал экспериментов](reports/experiment-log.csv).
+[аудит данных](reports/data-audit.md), [журнал экспериментов](reports/experiment-log.csv)
+и [реестр F01–F16](external-sources.json).
 Журнал содержит гипотезу, версию схемы, seed, параметры, одинаковые временные границы, общие метрики, JSON со
 срезами по маршрутам, часам, типу дня, пику, величине потока, горизонту и статусу,
 а также решение по эксперименту.
+Выбран `calendar_holiday_hgbt`: selection WAPE-score 0,84009. На однократно
+открытом 61-дневном holdout score 0,82170 против 0,82319 у previous-weekday;
+holdout не использовался для повторного выбора. Погодный кандидат получил
+0,83327 на selection и отклонён относительно календарного кандидата.
+
 Это результаты автора: обучение и аудит реальных данных в текущей рабочей папке
 не повторялись. Для модели, прогнозов и submission предусмотрен `artifacts/`,
 для данных — локальный датасет; они исключены из Git и сюда не переданы.
