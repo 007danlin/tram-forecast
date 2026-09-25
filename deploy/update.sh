@@ -36,7 +36,14 @@ cp compose.server.yaml "$backup/compose.server.yaml"
 cp -a /srv/tramflow "$backup/frontend"
 image_id=$(docker compose -f compose.server.yaml images -q backend)
 if [[ -n "$image_id" ]]; then
-  docker image tag "$image_id" "tramflow-backend:backup-$stamp"
+  if docker image inspect "$image_id" >/dev/null 2>&1; then
+    docker image tag "$image_id" "tramflow-backend:backup-$stamp"
+  else
+    # A running container can survive removal of its original image.
+    container_id=$(docker compose -f compose.server.yaml ps -q backend)
+    [[ -n "$container_id" ]] || { echo 'Нет контейнера для резервной копии.' >&2; exit 1; }
+    docker container commit "$container_id" "tramflow-backend:backup-$stamp"
+  fi
 fi
 stage=$(mktemp -d /srv/tramflow-build.XXXXXX)
 trap 'rm -rf -- "$stage"' EXIT
