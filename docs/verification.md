@@ -14,7 +14,9 @@
 | `docker compose config --quiet` | Конфигурация валидна |
 | `git diff --check` | Ошибок пробелов нет |
 
-**Не проверено:** сборка образов и `docker compose up --build`: Docker CLI есть, но daemon не запущен (сокет отсутствует). Работу Linux-контейнеров и Python 3.12 необходимо подтвердить с работающим Docker.
+**Локальное ограничение:** Docker CLI есть, но daemon не запущен (сокет отсутствует).
+
+**Проверено в GitHub Actions:** [CI #1](https://github.com/MISISion-Possible/tram-forecast/actions/runs/35459889637), commit `82747a5`, успешно завершён за 42 секунды. Прошли тесты backend/ML на Python 3.12, проверка типов и сборка frontend, сборка и запуск Linux-контейнеров Compose с HTTP-проверкой страницы и прогноза через прокси. Workflow запускается при push и в PR.
 На Python 3.14 uvicorn 0.34.2 выводит предупреждение об устаревающей функции asyncio; запуск и тесты проходят.
 Фиксация зависимостей: `frontend/package-lock.json` и `backend/requirements.txt`.
 Синтетическая проверка не является проверкой качества прогнозирования.
