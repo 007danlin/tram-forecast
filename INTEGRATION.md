@@ -79,6 +79,22 @@ HTTP 200:
 Если ML-функция бросает исключение или возвращает некорректный результат: HTTP 503, `{"detail":"Forecast temporarily unavailable"}`; подробности пишутся в серверный журнал.
 Фильтров и параметров запроса нет.
 
+### Подготовка Backend v2 — 2026-09-25
+
+В ветке `feat-backend-contract` подготовлен [пакет BE-01](backend/contracts/README.md):
+Pydantic-схемы, генератор OpenAPI для шести предлагаемых операций, синтетические
+примеры ответов/ошибок и контрактные тесты. Версия `2.0-draft.1` — **предложение,
+подтверждения принимающих участников не получены**. Схемы не подключены к
+`backend.main:app`, HTTP v1, ML, frontend и действующие команды запуска сохранены.
+Проект не задаёт формат файлов организаторов или manifest реального артефакта.
+
+Проверки из корня: `.venv/bin/python -m unittest discover -s backend/tests -v`
+и `.venv/bin/python -m backend.contracts.openapi --check`; добавлены в backend job CI.
+Генерация: `.venv/bin/python -m backend.contracts.openapi`.
+Новые предложения — версии фактов/расчётов, expected_result_id и 409 при
+несовпадении CSV, формы служебных ответов — перечислены в пакете для CR-01..08.
+BE-02..08, runtime v2, реальные артефакты, CSV и замеры остаются будущей работой.
+
 ## ML — Георгий; интерфейс — Даниэль
 
 `from ml.forecast import predict_mock`, затем `predict_mock() -> dict`.

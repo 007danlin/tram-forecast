@@ -1,0 +1,1032 @@
+{
+  "notice": "Synthetic draft fixtures, not organizer data. result_id values are illustrative, not hashes.",
+  "query": {
+    "start": "2026-01-01T09:00:00+03:00",
+    "end": "2026-01-01T13:00:00+03:00",
+    "horizon": "day",
+    "resolution": "hour",
+    "metric_id": "synthetic_count",
+    "spatial_level": "route",
+    "route_ids": [
+      "demo-route"
+    ],
+    "direction_id": "demo-outbound",
+    "entity_ids": [],
+    "scenario": null
+  },
+  "export": {
+    "start": "2026-01-01T09:00:00+03:00",
+    "end": "2026-01-01T13:00:00+03:00",
+    "horizon": "day",
+    "resolution": "hour",
+    "metric_id": "synthetic_count",
+    "spatial_level": "route",
+    "route_ids": [
+      "demo-route"
+    ],
+    "direction_id": "demo-outbound",
+    "entity_ids": [],
+    "scenario": null,
+    "forecast_run_id": "demo-run-1",
+    "expected_result_id": "example-only-success"
+  },
+  "responses": {
+    "success": {
+      "schema_version": "2.0-draft.1",
+      "request_id": "demo-request-success",
+      "result_id": "example-only-success",
+      "forecast_run_id": "demo-run-1",
+      "model_version": "demo-model",
+      "dataset_version": "demo-data",
+      "network_version": "demo-network",
+      "facts_version": "demo-facts",
+      "calculation_version": "draft-calculation-1",
+      "generated_at": "2026-01-01T08:00:00+03:00",
+      "as_of": "2026-01-01T07:00:00+03:00",
+      "data_cutoff": "2026-01-01T06:00:00+03:00",
+      "timezone": "Europe/Moscow",
+      "mode": "synthetic",
+      "metric_id": "synthetic_count",
+      "unit": "synthetic_units",
+      "filters": {
+        "start": "2026-01-01T09:00:00+03:00",
+        "end": "2026-01-01T13:00:00+03:00",
+        "horizon": "day",
+        "resolution": "hour",
+        "metric_id": "synthetic_count",
+        "spatial_level": "route",
+        "route_ids": [
+          "demo-route"
+        ],
+        "direction_id": "demo-outbound",
+        "entity_ids": [],
+        "scenario": null,
+        "forecast_run_id": "demo-run-1"
+      },
+      "scenario": null,
+      "coverage": 1.0,
+      "warnings": [
+        {
+          "code": "synthetic_example",
+          "message": "Synthetic review fixture"
+        }
+      ],
+      "factors": [],
+      "rows": [
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T09:00:00+03:00",
+          "end": "2026-01-01T10:00:00+03:00",
+          "base_value": 10,
+          "value": 10,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T10:00:00+03:00",
+          "end": "2026-01-01T11:00:00+03:00",
+          "base_value": 20,
+          "value": 20,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T11:00:00+03:00",
+          "end": "2026-01-01T12:00:00+03:00",
+          "base_value": 0,
+          "value": 0,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00",
+          "base_value": 30,
+          "value": 30,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        }
+      ],
+      "summary": {
+        "total": 60,
+        "total_scope": "complete",
+        "peak_interval": {
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00"
+        },
+        "peak_value": 30,
+        "problem_objects": 0,
+        "coverage": 1.0
+      }
+    },
+    "empty": {
+      "schema_version": "2.0-draft.1",
+      "request_id": "demo-request-empty",
+      "result_id": "example-only-empty",
+      "forecast_run_id": "demo-run-1",
+      "model_version": "demo-model",
+      "dataset_version": "demo-data",
+      "network_version": "demo-network",
+      "facts_version": "demo-facts",
+      "calculation_version": "draft-calculation-1",
+      "generated_at": "2026-01-01T08:00:00+03:00",
+      "as_of": "2026-01-01T07:00:00+03:00",
+      "data_cutoff": "2026-01-01T06:00:00+03:00",
+      "timezone": "Europe/Moscow",
+      "mode": "synthetic",
+      "metric_id": "synthetic_count",
+      "unit": "synthetic_units",
+      "filters": {
+        "start": "2026-01-01T09:00:00+03:00",
+        "end": "2026-01-01T13:00:00+03:00",
+        "horizon": "day",
+        "resolution": "hour",
+        "metric_id": "synthetic_count",
+        "spatial_level": "route",
+        "route_ids": [
+          "demo-route"
+        ],
+        "direction_id": "demo-outbound",
+        "entity_ids": [],
+        "scenario": null,
+        "forecast_run_id": "demo-run-1"
+      },
+      "scenario": null,
+      "coverage": null,
+      "warnings": [
+        {
+          "code": "synthetic_example",
+          "message": "Synthetic review fixture"
+        },
+        {
+          "code": "empty_selection",
+          "message": "No matching cells"
+        }
+      ],
+      "factors": [],
+      "rows": [],
+      "summary": {
+        "total": null,
+        "total_scope": "not_applicable",
+        "peak_interval": null,
+        "peak_value": null,
+        "problem_objects": 0,
+        "coverage": null
+      }
+    },
+    "partial": {
+      "schema_version": "2.0-draft.1",
+      "request_id": "demo-request-partial",
+      "result_id": "example-only-partial",
+      "forecast_run_id": "demo-run-1",
+      "model_version": "demo-model",
+      "dataset_version": "demo-data",
+      "network_version": "demo-network",
+      "facts_version": "demo-facts",
+      "calculation_version": "draft-calculation-1",
+      "generated_at": "2026-01-01T08:00:00+03:00",
+      "as_of": "2026-01-01T07:00:00+03:00",
+      "data_cutoff": "2026-01-01T06:00:00+03:00",
+      "timezone": "Europe/Moscow",
+      "mode": "synthetic",
+      "metric_id": "synthetic_count",
+      "unit": "synthetic_units",
+      "filters": {
+        "start": "2026-01-01T09:00:00+03:00",
+        "end": "2026-01-01T13:00:00+03:00",
+        "horizon": "day",
+        "resolution": "hour",
+        "metric_id": "synthetic_count",
+        "spatial_level": "route",
+        "route_ids": [
+          "demo-route"
+        ],
+        "direction_id": "demo-outbound",
+        "entity_ids": [],
+        "scenario": null,
+        "forecast_run_id": "demo-run-1"
+      },
+      "scenario": null,
+      "coverage": 0.75,
+      "warnings": [
+        {
+          "code": "synthetic_example",
+          "message": "Synthetic review fixture"
+        },
+        {
+          "code": "partial_coverage",
+          "message": "Only available values summed"
+        }
+      ],
+      "factors": [],
+      "rows": [
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T09:00:00+03:00",
+          "end": "2026-01-01T10:00:00+03:00",
+          "base_value": 10,
+          "value": 10,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T10:00:00+03:00",
+          "end": "2026-01-01T11:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "no_data",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T11:00:00+03:00",
+          "end": "2026-01-01T12:00:00+03:00",
+          "base_value": 0,
+          "value": 0,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00",
+          "base_value": 30,
+          "value": 30,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        }
+      ],
+      "summary": {
+        "total": 40,
+        "total_scope": "available_only",
+        "peak_interval": {
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00"
+        },
+        "peak_value": 30,
+        "problem_objects": 1,
+        "coverage": 0.75
+      }
+    },
+    "stale": {
+      "schema_version": "2.0-draft.1",
+      "request_id": "demo-request-stale",
+      "result_id": "example-only-stale",
+      "forecast_run_id": "demo-run-1",
+      "model_version": "demo-model",
+      "dataset_version": "demo-data",
+      "network_version": "demo-network",
+      "facts_version": "demo-facts",
+      "calculation_version": "draft-calculation-1",
+      "generated_at": "2026-01-01T08:00:00+03:00",
+      "as_of": "2026-01-01T07:00:00+03:00",
+      "data_cutoff": "2026-01-01T06:00:00+03:00",
+      "timezone": "Europe/Moscow",
+      "mode": "synthetic",
+      "metric_id": "synthetic_count",
+      "unit": "synthetic_units",
+      "filters": {
+        "start": "2026-01-01T09:00:00+03:00",
+        "end": "2026-01-01T13:00:00+03:00",
+        "horizon": "day",
+        "resolution": "hour",
+        "metric_id": "synthetic_count",
+        "spatial_level": "route",
+        "route_ids": [
+          "demo-route"
+        ],
+        "direction_id": "demo-outbound",
+        "entity_ids": [],
+        "scenario": null,
+        "forecast_run_id": "demo-run-1"
+      },
+      "scenario": null,
+      "coverage": 1.0,
+      "warnings": [
+        {
+          "code": "synthetic_example",
+          "message": "Synthetic review fixture"
+        },
+        {
+          "code": "stale_run",
+          "message": "Pinned run is stale"
+        }
+      ],
+      "factors": [],
+      "rows": [
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T09:00:00+03:00",
+          "end": "2026-01-01T10:00:00+03:00",
+          "base_value": 10,
+          "value": 10,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T10:00:00+03:00",
+          "end": "2026-01-01T11:00:00+03:00",
+          "base_value": 20,
+          "value": 20,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T11:00:00+03:00",
+          "end": "2026-01-01T12:00:00+03:00",
+          "base_value": 0,
+          "value": 0,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00",
+          "base_value": 30,
+          "value": 30,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        }
+      ],
+      "summary": {
+        "total": 60,
+        "total_scope": "complete",
+        "peak_interval": {
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00"
+        },
+        "peak_value": 30,
+        "problem_objects": 0,
+        "coverage": 1.0
+      }
+    },
+    "scenario": {
+      "schema_version": "2.0-draft.1",
+      "request_id": "demo-request-scenario",
+      "result_id": "example-only-scenario",
+      "forecast_run_id": "demo-run-1",
+      "model_version": "demo-model",
+      "dataset_version": "demo-data",
+      "network_version": "demo-network",
+      "facts_version": "demo-facts",
+      "calculation_version": "draft-calculation-1",
+      "generated_at": "2026-01-01T08:00:00+03:00",
+      "as_of": "2026-01-01T07:00:00+03:00",
+      "data_cutoff": "2026-01-01T06:00:00+03:00",
+      "timezone": "Europe/Moscow",
+      "mode": "synthetic",
+      "metric_id": "synthetic_count",
+      "unit": "synthetic_units",
+      "filters": {
+        "start": "2026-01-01T09:00:00+03:00",
+        "end": "2026-01-01T13:00:00+03:00",
+        "horizon": "day",
+        "resolution": "hour",
+        "metric_id": "synthetic_count",
+        "spatial_level": "route",
+        "route_ids": [
+          "demo-route"
+        ],
+        "direction_id": "demo-outbound",
+        "entity_ids": [],
+        "scenario": {
+          "k_weather": 1.2,
+          "k_event": 1.0,
+          "k_season": 1.0
+        },
+        "forecast_run_id": "demo-run-1"
+      },
+      "scenario": {
+        "k_weather": 1.2,
+        "k_event": 1.0,
+        "k_season": 1.0
+      },
+      "coverage": 1.0,
+      "warnings": [
+        {
+          "code": "synthetic_example",
+          "message": "Synthetic review fixture"
+        }
+      ],
+      "factors": [],
+      "rows": [
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T09:00:00+03:00",
+          "end": "2026-01-01T10:00:00+03:00",
+          "base_value": 10,
+          "value": 12,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T10:00:00+03:00",
+          "end": "2026-01-01T11:00:00+03:00",
+          "base_value": 20,
+          "value": 24,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T11:00:00+03:00",
+          "end": "2026-01-01T12:00:00+03:00",
+          "base_value": 0,
+          "value": 0,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00",
+          "base_value": 30,
+          "value": 36,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "ok",
+          "method": "synthetic",
+          "priority": null
+        }
+      ],
+      "summary": {
+        "total": 72,
+        "total_scope": "complete",
+        "peak_interval": {
+          "start": "2026-01-01T12:00:00+03:00",
+          "end": "2026-01-01T13:00:00+03:00"
+        },
+        "peak_value": 36,
+        "problem_objects": 0,
+        "coverage": 1.0
+      }
+    },
+    "qualitative": {
+      "schema_version": "2.0-draft.1",
+      "request_id": "demo-request-qualitative",
+      "result_id": "example-only-qualitative",
+      "forecast_run_id": "demo-run-1",
+      "model_version": "demo-model",
+      "dataset_version": "demo-data",
+      "network_version": "demo-network",
+      "facts_version": "demo-facts",
+      "calculation_version": "draft-calculation-1",
+      "generated_at": "2026-01-01T08:00:00+03:00",
+      "as_of": "2026-01-01T07:00:00+03:00",
+      "data_cutoff": "2026-01-01T06:00:00+03:00",
+      "timezone": "Europe/Moscow",
+      "mode": "qualitative",
+      "metric_id": "synthetic_count",
+      "unit": "synthetic_units",
+      "filters": {
+        "start": "2026-01-01T00:00:00+03:00",
+        "end": "2027-01-01T00:00:00+03:00",
+        "horizon": "year",
+        "resolution": "month",
+        "metric_id": "synthetic_count",
+        "spatial_level": "route",
+        "route_ids": [
+          "demo-route"
+        ],
+        "direction_id": "demo-outbound",
+        "entity_ids": [],
+        "scenario": null,
+        "forecast_run_id": "demo-run-1"
+      },
+      "scenario": null,
+      "coverage": 0.0,
+      "warnings": [
+        {
+          "code": "synthetic_example",
+          "message": "Synthetic review fixture"
+        }
+      ],
+      "factors": [],
+      "rows": [
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-01-01T00:00:00+03:00",
+          "end": "2026-02-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-02-01T00:00:00+03:00",
+          "end": "2026-03-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-03-01T00:00:00+03:00",
+          "end": "2026-04-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-04-01T00:00:00+03:00",
+          "end": "2026-05-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-05-01T00:00:00+03:00",
+          "end": "2026-06-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-06-01T00:00:00+03:00",
+          "end": "2026-07-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-07-01T00:00:00+03:00",
+          "end": "2026-08-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-08-01T00:00:00+03:00",
+          "end": "2026-09-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-09-01T00:00:00+03:00",
+          "end": "2026-10-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-10-01T00:00:00+03:00",
+          "end": "2026-11-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-11-01T00:00:00+03:00",
+          "end": "2026-12-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        },
+        {
+          "route_id": "demo-route",
+          "direction_id": "demo-outbound",
+          "entity_id": "demo-route",
+          "start": "2026-12-01T00:00:00+03:00",
+          "end": "2027-01-01T00:00:00+03:00",
+          "base_value": null,
+          "value": null,
+          "actual_value": null,
+          "reference_value": null,
+          "lower": null,
+          "upper": null,
+          "status": "unsupported",
+          "method": "qualitative",
+          "priority": null,
+          "outlook": "Illustrative outlook only, not a numeric prediction",
+          "assumptions": [
+            "Synthetic review example; history is unavailable"
+          ]
+        }
+      ],
+      "summary": {
+        "total": null,
+        "total_scope": "not_applicable",
+        "peak_interval": null,
+        "peak_value": null,
+        "problem_objects": 0,
+        "coverage": 0.0
+      }
+    }
+  },
+  "errors": {
+    "invalid_request": {
+      "status": 422,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "invalid request",
+          "request_id": "demo-error-invalid_request",
+          "details": []
+        }
+      }
+    },
+    "unsupported_query": {
+      "status": 422,
+      "body": {
+        "error": {
+          "code": "unsupported_query",
+          "message": "unsupported query",
+          "request_id": "demo-error-unsupported_query",
+          "details": []
+        }
+      }
+    },
+    "unknown_id": {
+      "status": 404,
+      "body": {
+        "error": {
+          "code": "unknown_id",
+          "message": "unknown id",
+          "request_id": "demo-error-unknown_id",
+          "details": []
+        }
+      }
+    },
+    "run_expired": {
+      "status": 410,
+      "body": {
+        "error": {
+          "code": "run_expired",
+          "message": "run expired",
+          "request_id": "demo-error-run_expired",
+          "details": []
+        }
+      }
+    },
+    "request_too_large": {
+      "status": 413,
+      "body": {
+        "error": {
+          "code": "request_too_large",
+          "message": "request too large",
+          "request_id": "demo-error-request_too_large",
+          "details": []
+        }
+      }
+    },
+    "artifacts_unavailable": {
+      "status": 503,
+      "body": {
+        "error": {
+          "code": "artifacts_unavailable",
+          "message": "artifacts unavailable",
+          "request_id": "demo-error-artifacts_unavailable",
+          "details": []
+        }
+      }
+    },
+    "result_mismatch": {
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "result_mismatch",
+          "message": "result mismatch",
+          "request_id": "demo-error-result_mismatch",
+          "details": []
+        }
+      }
+    }
+  },
+  "ready": {
+    "status": "ready",
+    "mode": "synthetic",
+    "real_ready": false,
+    "forecast_run_id": "demo-run-1",
+    "checks": []
+  },
+  "not_ready": {
+    "status": "not_ready",
+    "mode": null,
+    "real_ready": false,
+    "forecast_run_id": null,
+    "checks": [
+      {
+        "code": "missing_run",
+        "message": "No validated run"
+      }
+    ]
+  },
+  "capabilities": {
+    "forecast_run_id": "demo-run-1",
+    "network_version": "demo-network",
+    "supported_queries": [
+      {
+        "start": "2026-01-01T09:00:00+03:00",
+        "end": "2026-01-01T13:00:00+03:00",
+        "metric_id": "synthetic_count",
+        "unit": "synthetic_units",
+        "additive": true,
+        "horizon": "day",
+        "resolution": "hour",
+        "spatial_level": "route",
+        "mode": "synthetic",
+        "direction_policy": "required"
+      }
+    ],
+    "limits": {
+      "retention_seconds": 0
+    },
+    "scenario_supported": true,
+    "scenario_rules": {
+      "minimum": 0.5,
+      "maximum": 1.5,
+      "step": 0.05,
+      "neutral": 1.0,
+      "product_minimum": 0.5,
+      "product_maximum": 2.0
+    },
+    "factors": [],
+    "warnings": [
+      {
+        "code": "synthetic_example",
+        "message": "Synthetic review fixture"
+      }
+    ]
+  },
+  "network": {
+    "network_version": "demo-network",
+    "features": [],
+    "warnings": [
+      {
+        "code": "geometry_unavailable",
+        "message": "No verified geometry"
+      }
+    ]
+  },
+  "quality": {
+    "forecast_run_id": "demo-run-1",
+    "model_version": "demo-model",
+    "dataset_version": "demo-data",
+    "status": "not_evaluated",
+    "metrics": [],
+    "evaluation_period": null,
+    "methodology": "Synthetic contract fixture; no evaluation performed",
+    "limitations": [
+      "Not a trained model"
+    ],
+    "factors": []
+  }
+}
