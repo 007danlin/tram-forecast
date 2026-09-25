@@ -208,7 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--chunksize", type=int, default=500_000)
     verify.set_defaults(func=command_verify_target)
 
-    backtest = subparsers.add_parser("backtest", help="Select a model, then evaluate the final holdout once")
+    backtest = subparsers.add_parser("backtest", help="Select on early folds, then evaluate the reused 61-day validation")
     backtest.add_argument("--dataset-dir", required=True)
     backtest.add_argument("--output", required=True)
     backtest.add_argument("--experiment-log", default="artifacts/experiments/experiment-log.csv")
