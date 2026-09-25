@@ -1,6 +1,7 @@
 # Нагрузка handoff
 
-Инструментарий реализован; результаты на реальном пакете пока не получены.
+Инструментарий реализован; фактические результаты и статус ступеней — в
+[протоколе](../../docs/verification-load.md).
 Версия: k6 **1.3.0**, Docker-образ `grafana/k6:1.3.0`. Один worker backend,
 2 vCPU, 4 GiB, swap выключен через `memswap_limit: 4g`. На Docker Desktop
 учитывать лимиты всей VM и расход нагрузки отдельно. Не запускать на публичном
@@ -24,10 +25,10 @@ docker inspect "$container" --format '{{json .HostConfig}}' > artifacts/load/run
 docker stats "$container" --format '{{json .}}' > artifacts/load/run-01/stats.jsonl &
 stats_pid=$!
 # Отдельный прогрев.
-k6 run -e RATE=50 -e DURATION=60s --summary-export artifacts/load/run-01/warmup.json tests/load/handoff.js
+k6 run -e RATE=50 -e DURATION=60s --summary-export artifacts/load/run-01/warmup.json tests/load/handoff.js || exit 1
 # Выполнять по очереди; код ошибки k6 запрещает повышение нагрузки.
 for rate in 50 100 200; do
-  k6 run -e RATE="$rate" -e DURATION=5m --summary-export "artifacts/load/run-01/summary-$rate.json" tests/load/handoff.js || break
+  k6 run -e RATE="$rate" -e DURATION=5m --summary-export "artifacts/load/run-01/summary-$rate.json" tests/load/handoff.js || { kill "$stats_pid"; exit 1; }
 done
 # Отдельный export 7 440 строк; не смешивается с query.
 k6 run -e MODE=export --summary-export artifacts/load/run-01/export.json tests/load/handoff.js
@@ -55,6 +56,25 @@ CPU/200 как долю двух CPU, RSS/пик памяти, OOM/restarts, CPU
 
 Контейнерный k6 требует общей сети и адреса `http://frontend:5173`, а также
 read-only mounts скрипта и REFERENCE. `127.0.0.1` внутри k6-контейнера
-не является хостом. Для первой проверки используйте хостовый k6.
-Сводка — `docs/verification-load.md`; исходные JSON остаются в `artifacts/`.
+не является хостом. Load-overlay явно разрешает этот hostname в Vite.
+Вместо хостового `k6 run` можно использовать pinned контейнер, сохранив те же
+порядок прогрева, длительности ступеней и условия остановки:
+
+```sh
+# Имя проекта должно совпадать с использованным в compose up.
+project=tramflow-load
+docker compose -p "$project" -f compose.yaml -f compose.handoff.yaml -f compose.load.yaml up --build -d --wait
+docker run --rm --network "${project}_default" \
+  -v "$PWD/tests/load:/scripts:ro" -v "$PWD/artifacts/load/run-01:/results" \
+  -e BASE_URL=http://frontend:5173 -e REFERENCE=/results/reference.json \
+  -e RATE=50 -e DURATION=60s grafana/k6:1.3.0 \
+  run --summary-export /results/warmup.json /scripts/handoff.js
+# Затем RATE=50/100/200, DURATION=5m, разные summary-N.json.
+# Для отдельного экспорта добавить -e MODE=export.
+```
+
+Не запускайте одновременно два Compose-проекта с одинаковыми опубликованными
+портами; для параллельного окружения нужен отдельный port-overlay.
+Сводка — [verification-load](../../docs/verification-load.md); исходные JSON
+остаются в `artifacts/`.
 [Семантика constant-arrival-rate](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/).

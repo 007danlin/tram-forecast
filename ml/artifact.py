@@ -5,6 +5,9 @@ from __future__ import annotations
 import hashlib
 import importlib.metadata
 import json
+import math
+import shutil
+import tempfile
 from datetime import date
 from pathlib import Path
 
@@ -14,6 +17,7 @@ import pandas as pd
 
 from ml.baselines import ComparableWeeksMedianBaseline
 from ml.data import load_organizer_labels
+from ml.experiment_config import normalize_config
 from ml.factors import HOLIDAY_MODEL_COLUMNS, WEATHER_MODEL_COLUMNS, load_weather_factors
 from ml.model import HGBT_FIXED_PARAMETERS, build_hgbt_model
 from ml.settings import (
@@ -39,20 +43,28 @@ def _versions() -> dict[str, str]:
     return {name: importlib.metadata.version(name) for name in ("numpy", "pandas", "scikit-learn", "joblib")}
 
 
-def create_artifact(
+def _write_artifact(
     dataset_dir: str | Path,
     artifact_dir: str | Path,
     *,
     model_name: str,
     interval_absolute_error_q90: float,
     factor_path: str | Path | None = None,
+    experiment_config: dict | None = None,
+    snapshot_manifest: dict | None = None,
 ) -> Path:
     root = Path(dataset_dir)
     destination = Path(artifact_dir)
     destination.mkdir(parents=True, exist_ok=True)
     history = load_organizer_labels(root, FINAL_TRAIN_START, FINAL_TRAIN_END)
-    model = build_hgbt_model(model_name)
-    factors = load_weather_factors(factor_path) if factor_path is not None else None
+    if not math.isfinite(interval_absolute_error_q90) or interval_absolute_error_q90 < 0:
+        raise ValueError("Selection q90 must be finite and nonnegative")
+    config = normalize_config(experiment_config) if experiment_config is not None else None
+    model = build_hgbt_model(model_name, config)
+    factors = load_weather_factors(factor_path, model.selected_weather_columns) if factor_path is not None and model.include_weather else None
+    if config and model.include_weather:
+        if snapshot_manifest is None or snapshot_manifest.get("alignment") != config["alignment"] or snapshot_manifest["normalized"]["sha256"] != sha256_file(factor_path):
+            raise ValueError("Training snapshot differs from selected preprocessing/data")
     if model.include_weather and factors is None:
         raise ValueError("Selected competition-weather model requires --weather-factors")
     model.fit(history, factors=factors)
@@ -65,6 +77,8 @@ def create_artifact(
         "reference": reference,
         "factors": factors if model.include_weather else None,
         "interval_absolute_error_q90": float(interval_absolute_error_q90),
+        "experiment_config": config,
+        "snapshot_manifest": snapshot_manifest if model.include_weather else None,
     }
     model_path = destination / "model.joblib"
     joblib.dump(payload, model_path, compress=3)
@@ -89,6 +103,9 @@ def create_artifact(
         "unit": "successful_boardings",
         "grain": list(KEY_COLUMNS),
         "model_name": model_name,
+        "experiment_config": config,
+        "preprocessing": config["alignment"] if config else "legacy_timestamp_v1",
+        "weather_columns": list(model.selected_weather_columns) if model.include_weather else [],
         "information_mode": model.information_mode,
         "factor_groups": [
             factor
@@ -130,7 +147,9 @@ def create_artifact(
         "keys": {"route": "int", "date": "YYYY-MM-DD", "hour": "int[0,23]"},
         "calendar_features": ["route", "hour", "weekday", "month", "is_weekend", "day_of_year_sin", "day_of_year_cos"],
         "official_calendar_features": list(HOLIDAY_MODEL_COLUMNS) if model.include_official_calendar else [],
-        "weather_features": list(WEATHER_MODEL_COLUMNS) if model.include_weather else [],
+        "weather_features": list(model.selected_weather_columns) if model.include_weather else [],
+        "experiment_config": config,
+        "preprocessing": config["alignment"] if config else "legacy_timestamp_v1",
         "information_mode": model.information_mode,
         "lag_features": ["lag_7d", "lag_14d", "lag_21d", "lag_28d", "lag_mean_4w", "lag_median_4w", "recent_trend"] if model.include_lags else [],
         "lag_policy": "training uses shifted actual history; multi-step inference recursively uses prior predictions once actual lags are unavailable",
@@ -167,15 +186,38 @@ def create_artifact(
         },
         "source_checksums": sources,
         "factor_checksums": factor_sources,
+        "snapshot_manifest": snapshot_manifest if model.include_weather else None,
     }
     manifest_path = destination / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return destination
 
 
+def create_artifact(dataset_dir, artifact_dir, *, model_name, interval_absolute_error_q90,
+                    factor_path=None, experiment_config=None, snapshot_manifest=None):
+    destination = Path(artifact_dir)
+    if destination.exists() or destination.is_symlink():
+        raise ValueError("Artifact exists; use a new release directory")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix=".ml-artifact-", dir=destination.parent))
+    try:
+        _write_artifact(dataset_dir, temporary, model_name=model_name,
+                        interval_absolute_error_q90=interval_absolute_error_q90, factor_path=factor_path,
+                        experiment_config=experiment_config, snapshot_manifest=snapshot_manifest)
+        load_artifact(temporary)
+        if destination.exists():
+            raise ValueError("Artifact appeared during training; refusing overwrite")
+        temporary.rename(destination)
+        return destination
+    finally:
+        if temporary.exists(): shutil.rmtree(temporary)
+
+
 def load_artifact(artifact_dir: str | Path) -> tuple[dict, dict]:
     root = Path(artifact_dir)
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("schema_version") != MODEL_SCHEMA_VERSION or set(manifest.get("files", {})) != {"model.joblib", "metadata.json", "feature-schema.json"}:
+        raise ValueError("Unexpected model manifest; handoff supports exactly three model files")
     for filename, expected in manifest["files"].items():
         actual = sha256_file(root / filename)
         if actual != expected:
@@ -184,6 +226,16 @@ def load_artifact(artifact_dir: str | Path) -> tuple[dict, dict]:
     payload = joblib.load(root / "model.joblib")
     if payload.get("schema_version") != MODEL_SCHEMA_VERSION or metadata.get("schema_version") != MODEL_SCHEMA_VERSION:
         raise ValueError("Unsupported model artifact schema")
+    features = json.loads((root / "feature-schema.json").read_text())
+    config = metadata.get("experiment_config")
+    if config is not None:
+        config = normalize_config(config)
+        if payload.get("experiment_config") != config or features.get("experiment_config") != config or features["weather_features"] != config["weather_columns"] or metadata["model_name"] != config["model_name"]:
+            raise ValueError("Artifact experiment configuration mismatch")
+        if list(payload["model"].selected_weather_columns) != config["weather_columns"]:
+            raise ValueError("Serialized model uses different weather columns")
+        if payload["interval_absolute_error_q90"] != metadata["interval"]["absolute_error_q90"]:
+            raise ValueError("Artifact interval differs from selection q90")
     return payload, metadata
 
 

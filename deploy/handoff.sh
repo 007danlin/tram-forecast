@@ -4,7 +4,9 @@ select_handoff() {
   compose=(docker compose -f compose.server.yaml)
   previous_handoff=''
   local current
-  current=$("${compose[@]}" ps -q backend)
+  # Include stopped/crashed containers: their mount is still the last selected
+  # release and must not disappear just because the service is currently down.
+  current=$("${compose[@]}" ps --all -q backend)
   if [[ -n "$current" ]]; then
     previous_handoff=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data/handoff"}}{{.Source}}{{end}}{{end}}' "$current")
   fi

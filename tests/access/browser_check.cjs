@@ -30,27 +30,21 @@ const { chromium } = require('playwright');
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(baseURL);
-    await page.getByRole('status').filter({ hasText: 'Backend подключён' }).waitFor();
-    await page.locator('tbody tr').nth(5).waitFor();
-    assert.deepEqual(await page.locator('tbody tr td:last-child').allTextContents(), ['12', '18', '15', '24', '21', '16']);
-    assert.equal(await page.getByText('Тестовые данные — не реальный прогноз', { exact: true }).count(), 1);
-    assert.equal((await authorized.request.get(baseURL + '/map-local/network.json')).status(), 200);
-    const failure = route => route.fulfill({ status: 503, contentType: 'application/json',
-      body: JSON.stringify({ detail: 'Forecast temporarily unavailable' }) });
-    await page.route('**/api/v1/forecast', failure);
-    await page.getByRole('button', { name: 'Повторить запрос' }).click();
-    await page.getByRole('alert').waitFor();
-    assert.equal(await page.locator('tbody tr').count(), 0);
-    await page.unroute('**/api/v1/forecast', failure);
-    await page.getByRole('button', { name: 'Повторить запрос' }).click();
-    await page.locator('tbody tr').nth(5).waitFor();
-    assert.equal(await page.getByRole('alert').count(), 0);
+    await page.getByRole('alert').filter({hasText:'Готовый пакет прогноза отсутствует'}).waitFor();
+    assert.equal(await page.locator('tbody tr').count(),0);
+    assert.equal(await page.getByRole('button',{name:'Скачать CSV'}).isDisabled(),true);
+    assert.equal((await authorized.request.get(baseURL + '/map-local/network.json')).status(),200);
+    // Authentication still protects v1, but the product screen uses real handoff.
+    const legacy = await (await authorized.request.get(baseURL+'/api/v1/forecast')).json();
+    assert.deepEqual(legacy.points.map(p => p.value),[12,18,15,24,21,16]);
+    await page.getByRole('button',{name:'Повторить запрос',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'Готовый пакет прогноза отсутствует'}).waitFor();
     assert.deepEqual(errors, []);
     if (screenshot) await page.screenshot({ path: screenshot, fullPage: true });
     await authorized.close();
     const fresh = await browser.newContext({ ignoreHTTPSErrors: true });
     assert.equal((await fresh.request.get(baseURL + '/api/v1/health')).status(), 401);
     await fresh.close();
-    console.log('PASS: fresh anonymous/wrong-password contexts blocked; authenticated UI/map/v1, six values, retry failure/recovery; fresh context requires login again.');
+    console.log('PASS: fresh anonymous/wrong-password contexts blocked; authenticated UI/map/v1; missing handoff stays explicit after retry; fresh context requires login again.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error.message); process.exitCode = 1; });

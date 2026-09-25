@@ -46,13 +46,14 @@ class DeliveryTests(unittest.TestCase):
         self.assertTrue(any("Documentation target not in Git" in e for e in check(self.root)))
 
     def test_forced_local_files_are_rejected(self):
-        for name in (".env.production", "frontend/model.joblib", "real-forecast.csv", "data/train.csv"):
+        for name in (".env.production", "frontend/model.joblib", "real-forecast.csv", "data/train.csv",
+                     "output/md/tramflow-team-specs.md", "output/pdf/tramflow-team-specs.pdf"):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"synthetic fixture")
             self.git("add", "-f", name)
         errors = check(self.root)
-        self.assertEqual(sum("must not be in source delivery" in e for e in errors), 4)
+        self.assertEqual(sum("must not be in source delivery" in e for e in errors), 6)
 
 
 if __name__ == "__main__":

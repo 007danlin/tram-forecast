@@ -10,8 +10,8 @@ import pandas as pd
 
 from ml.artifact import create_artifact, load_artifact, predict_artifact, submission_preflight, write_submission
 from ml.data import build_target_from_raw, load_organizer_labels
-from ml.evaluation import experiment_log_frame, run_full_evaluation
-from ml.factors import ALIGNMENTS, WEATHER_SOURCE_URL, load_weather_factors, normalize_open_meteo_snapshot
+from ml.evaluation import experiment_log_frame, run_full_evaluation, run_weather_selection, run_frozen_holdout
+from ml.factors import sha256_file, ALIGNMENTS, WEATHER_SOURCE_URL, load_weather_factors, normalize_open_meteo_snapshot
 from ml.weather import fetch_weather
 from ml.settings import FINAL_TRAIN_END, FINAL_TRAIN_START, FORECAST_END, FORECAST_START, KEY_COLUMNS, TARGET_COLUMN
 
@@ -48,8 +48,32 @@ def command_verify_target(args: argparse.Namespace) -> int:
 
 
 def command_backtest(args: argparse.Namespace) -> int:
+    destination, log_destination = Path(args.output), Path(args.experiment_log)
+    if destination.exists() or log_destination.exists():
+        raise ValueError("Evaluation report/log already exists; use new local paths to preserve experiment history")
     factors = load_weather_factors(args.weather_factors) if args.weather_factors else None
-    report, _ = run_full_evaluation(args.dataset_dir, factors=factors)
+    snapshot = None
+    if args.stage != "full":
+        if args.weather_factors:
+            manifest_path = Path(args.weather_manifest) if args.weather_manifest else Path(args.weather_factors).with_name("manifest.json")
+            snapshot = json.loads(manifest_path.read_text())
+            if snapshot["normalized"]["sha256"] != sha256_file(args.weather_factors):
+                raise ValueError("Weather snapshot checksum mismatch")
+        if args.stage == "selection":
+            if not args.experiment_config or factors is None or snapshot is None:
+                raise ValueError("Selection requires --experiment-config and a verified weather snapshot")
+            report, _ = run_weather_selection(args.dataset_dir, json.loads(Path(args.experiment_config).read_text()), factors, snapshot)
+        else:
+            if not args.selection_report:
+                raise ValueError("Holdout requires --selection-report")
+            frozen = json.loads(Path(args.selection_report).read_text())
+            if frozen["selected_config"]["weather_groups"] and snapshot != frozen["snapshot"]:
+                raise ValueError("Holdout snapshot differs from frozen selection")
+            report = run_frozen_holdout(args.dataset_dir, frozen, factors)
+    else:
+        if args.experiment_config:
+            raise ValueError("Weather experiments require --stage selection, then explicit frozen holdout")
+        report, _ = run_full_evaluation(args.dataset_dir, factors=factors)
     destination = Path(args.output)
     _write_json(destination, report)
     log_destination = Path(args.experiment_log)
@@ -76,6 +100,8 @@ def command_train(args: argparse.Namespace) -> int:
         model_name=report["selected_model"],
         interval_absolute_error_q90=report["interval"]["absolute_error_q90"],
         factor_path=args.weather_factors,
+        experiment_config=report.get("selected_config"),
+        snapshot_manifest=report.get("snapshot"),
     )
     print(json.dumps({"artifact_dir": str(destination), "model": report["selected_model"]}, ensure_ascii=False))
     return 0
@@ -185,8 +211,12 @@ def build_parser() -> argparse.ArgumentParser:
     backtest = subparsers.add_parser("backtest", help="Select a model, then evaluate the final holdout once")
     backtest.add_argument("--dataset-dir", required=True)
     backtest.add_argument("--output", required=True)
-    backtest.add_argument("--experiment-log", default="ml/reports/experiment-log.csv")
+    backtest.add_argument("--experiment-log", default="artifacts/experiments/experiment-log.csv")
     backtest.add_argument("--weather-factors")
+    backtest.add_argument("--weather-manifest")
+    backtest.add_argument("--stage", choices=("full", "selection", "holdout"), default="full")
+    backtest.add_argument("--experiment-config")
+    backtest.add_argument("--selection-report")
     backtest.set_defaults(func=command_backtest)
 
     train = subparsers.add_parser("train", help="Fit the selected model on January-October")

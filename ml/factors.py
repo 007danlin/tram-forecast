@@ -119,6 +119,7 @@ def normalize_open_meteo_snapshot(
 ) -> tuple[Path, Path]:
     """Validate one raw Open-Meteo JSON response and write a stable local table."""
     source = Path(snapshot_path)
+    receipt = json.loads(Path(receipt_path).read_text()) if receipt_path else None
     if source.stat().st_size > 32 * 1024 * 1024:
         raise ValueError("Weather response exceeds 32 MiB")
     payload = json.loads(source.read_text(encoding="utf-8"))
@@ -161,7 +162,13 @@ def normalize_open_meteo_snapshot(
         if first > last or first != first.normalize() or last != last.normalize():
             raise ValueError("Expected weather bounds must be ordered calendar dates")
         buffer_days = int(alignment == ALIGNMENTS[1])
-        expected_raw = pd.date_range(first, last + pd.Timedelta(days=buffer_days, hours=23), freq="h")
+        raw_last = last + pd.Timedelta(days=buffer_days)
+        if receipt is not None:
+            requested = receipt.get("parameters", {})
+            raw_last = pd.Timestamp(requested.get("end_date", raw_last))
+            if requested.get("start_date") != start or raw_last < last + pd.Timedelta(days=buffer_days) or raw_last > last + pd.Timedelta(days=1):
+                raise ValueError("Receipt bounds do not match target and optional buffer day")
+        expected_raw = pd.date_range(first, raw_last + pd.Timedelta(hours=23), freq="h")
         if not normalized["timestamp"].equals(pd.Series(expected_raw)):
             raise ValueError("Weather timestamps do not exactly match the requested grid")
     excluded_optional: dict[str, str] = {}
@@ -180,9 +187,9 @@ def normalize_open_meteo_snapshot(
     if alignment == ALIGNMENTS[1]:
         for column in ("precipitation", "snowfall"):
             normalized[column] = normalized[column].shift(-1)
+    if end is not None:
         normalized = normalized[normalized["timestamp"] < pd.Timestamp(end) + pd.Timedelta(days=1)].copy()
         validate_weather_values(normalized, WEATHER_REQUIRED_COLUMNS)
-    receipt = json.loads(Path(receipt_path).read_text()) if receipt_path else None
     fetched_at = None
     if receipt is not None:
         if receipt.get("raw_sha256") != sha256_file(source) or receipt.get("http_status") != 200:
@@ -205,6 +212,7 @@ def normalize_open_meteo_snapshot(
         "issued_at": None,
         "available_at": None,
         "license_url": "https://open-meteo.com/en/terms",
+        "terms_reviewed_on": "2026-09-25",
         "attribution": "Weather data by Open-Meteo, CC BY 4.0; ERA5 reanalysis",
         "source_url": source_url,
         "information_mode": "competition_retro",

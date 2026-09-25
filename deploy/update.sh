@@ -15,7 +15,8 @@ git ls-files --error-unmatch "$map" >/dev/null || {
   echo 'Готовая карта ещё не добавлена в Git. Деплой остановлен.' >&2
   exit 1
 }
-if ! git diff --quiet HEAD -- frontend backend ml deploy compose.server.yaml compose.handoff.yaml; then
+if ! git diff --quiet HEAD -- frontend backend ml deploy scripts .dockerignore compose.server.yaml compose.handoff.yaml ||
+   [[ -n $(git ls-files --others --exclude-standard -- frontend backend ml deploy scripts .dockerignore compose.server.yaml compose.handoff.yaml) ]]; then
   echo 'Есть локальные изменения приложения. Сначала сохраните и согласуйте их.' >&2
   exit 1
 fi

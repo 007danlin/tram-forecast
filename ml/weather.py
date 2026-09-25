@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 import http.client
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -54,6 +55,8 @@ def retry_delay(headers, attempt):
         seconds = float(value)
     except ValueError:
         seconds = (parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds()
+    if not math.isfinite(seconds):
+        raise ValueError("Invalid provider Retry-After")
     if seconds > MAX_RETRY_WAIT:
         raise ValueError('Provider Retry-After exceeds 30s; try a new snapshot later, without bypassing the quota')
     return max(0, seconds)

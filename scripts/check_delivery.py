@@ -21,7 +21,7 @@ REQUIRED = (
     "frontend/Dockerfile", "frontend/src/main.tsx", "frontend/src/handoff.ts",
     "frontend/public/map-local/network.json", "frontend/scripts/check-map.mjs",
     "deploy/README.md", "deploy/Caddyfile.https", "deploy/frontend.Dockerfile",
-    "deploy/update.sh", "deploy/handoff.sh", "scripts/package_ml_handoff.py",
+    "deploy/update.sh", "deploy/handoff.sh", "deploy/sync-source.sh", "scripts/package_ml_handoff.py",
     "scripts/check_delivery.py",
 )
 LOCAL_DIRECTORIES = {".venv", "venv", "node_modules", "dist", "__pycache__", "tmp", "output", "artifacts", "models"}
