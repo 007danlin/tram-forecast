@@ -8,12 +8,16 @@
 - target: число строк с `validation_result == 1`;
 - зерно: `route × calendar date × hour(tran_date_time)`;
 - единица: успешные посадки/валидации, не заполненность вагона;
-- маршруты submission: `1, 5, 7, 11, 12, 17, 25, 26, 28, 50`;
+- область обучаемой модели: `1, 7, 11, 12, 17, 25, 26, 28, 50`;
+- локальный organizer sample: `1, 5, 7, 11, 12, 17, 25, 26, 28, 50`;
 - прогноз: 2025-11-01…2025-12-31, 14 640 строк;
 - метрика: глобальный WAPE-score организаторов.
 
-Маршрут 5 не имеет успешных наблюдений за январь–октябрь. Он получает нулевой
-cold-start baseline и явный статус. Неизвестные маршруты не поддерживаются.
+Маршрут 5 исключён из обучения, target-отчёта и области применения по позднему
+QA-дополнению. Однако фактический sample всё ещё содержит его: 14 640 строк,
+SHA-256 `71c8126bb51068c936462a170da885bad860fc91a58b3d2ac731876d324d7ec3`.
+Поэтому адаптер готовит отдельные 10- и 9-маршрутные кандидаты; финальный формат
+не выбирается без согласования. Неизвестные маршруты не поддерживаются.
 
 ## Установка
 
@@ -38,6 +42,33 @@ export DATASET_DIR="/absolute/path/to/unpacked/dataset"
 ```sh
 python -m ml verify-target --dataset-dir "$DATASET_DIR" --chunksize 500000
 ```
+
+Регистрация резких суточных провалов без удаления и импутации:
+
+```sh
+python -m ml audit-history --dataset-dir "$DATASET_DIR" \
+  --output artifacts/qa-addendum/history-drops.json
+```
+
+Детектор не назначает причину. Маршрут 50 за 14.09.2025 имеет 15 успешных
+валидаций против reference 7 676,5; причина не подтверждена, восстановление не
+применено.
+
+Сравнение исходного и очищенного обучения запускается только после получения
+версионированной подтверждённой маски Игоря:
+
+```sh
+python -m ml compare-training-mask \
+  --dataset-dir "$DATASET_DIR" \
+  --training-mask /absolute/path/training-mask-v1.json \
+  --output artifacts/qa-addendum/mask-comparison.json \
+  --experiment-log artifacts/qa-addendum/mask-comparison.csv
+```
+
+Схема `tramflow-training-mask-v1` требует source, reason, timezone/status зоны и
+`verification_status=verified` для каждого route-интервала `[start,end)`.
+Неподтверждённые и пересекающиеся правила отклоняются. Частичные часы
+блокируются: из готовых labels нельзя честно вычесть условные 30 минут.
 
 Подготовка локального погодного snapshot для отдельного
 `competition_retro`-эксперимента (сырой JSON остаётся неизменным вне Git):
@@ -84,24 +115,46 @@ python -m ml train \
   --artifact-dir artifacts/calendar-holiday-hgbt
 ```
 
-Формирование submission строго по шаблону:
+Формирование sample-совместимого кандидата на 10 маршрутов:
 
 ```sh
 python -m ml submission \
   --artifact-dir artifacts/calendar-holiday-hgbt \
   --template "$DATASET_DIR/test_submission.csv" \
+  --scope sample \
   --output artifacts/submission-calendar-holiday-hgbt.csv \
   --preflight-output artifacts/submission-calendar-holiday-hgbt.preflight.json
 ```
 
-Preflight проверяет точные колонки и порядок ключей шаблона, 14 640 строк,
+Отдельный девятимаршрутный кандидат для согласования:
+
+```sh
+python -m ml submission \
+  --artifact-dir artifacts/calendar-holiday-hgbt \
+  --template "$DATASET_DIR/test_submission.csv" \
+  --scope modeled_routes \
+  --output artifacts/submission-calendar-holiday-hgbt-9-routes.csv \
+  --preflight-output artifacts/submission-calendar-holiday-hgbt-9-routes.preflight.json
+```
+
+Preflight проверяет точные колонки и порядок ключей выбранного scope,
 дубли, пропуски, даты, часы, маршруты, конечность/неотрицательность/целочисленность
-экспортных значений и записывает checksum. Он не отправляет файл на платформу.
+экспортных значений и записывает checksum. Для `sample` ожидаются 14 640 строк,
+для `modeled_routes` — 13 176. В отчёте есть явный `contract_status`; успешная
+структурная проверка не разрешает отправку спорного варианта.
 
 Внутренний прогноз хранит неокруглённые значения, reference, 90% интервал,
 priority score и status. Backtest публикует raw-метрики и метрики после
 `floor(x + 0.5)`; модель выбирается по rounded score. Тот же общий helper
 применяется адаптером submission.
+
+Синтетический пример формата маски находится в
+[`examples/training-mask.synthetic.json`](examples/training-mask.synthetic.json).
+Его интервалы нельзя использовать как реальные. `compare-training-mask` создаёт
+сравнение на неизменных оценочных строках и оставляет
+`adoption_decision` неподтверждённым. Команда `train --training-mask` принимает
+только тот же checksum маски и отчёт, где владельцы явно установили
+`adoption_decision: adopted`; до согласования очищенный артефакт не создаётся.
 
 ```sh
 python -m ml forecast --artifact-dir artifacts/calendar-holiday-hgbt \
@@ -134,19 +187,21 @@ python -m unittest discover -s tests/integration -v
 срезами по маршрутам, часам, типу дня, пику, величине потока, горизонту и статусу,
 а также решение по эксперименту.
 Выбран `calendar_holiday_hgbt`: rounded selection WAPE-score 0,8400868
-(raw 0,8400881). На повторно использованном 61-дневном validation-окне rounded
+(raw 0,8400881). Девятимаршрутная оценка содержит 26 568 selection-строк.
+На повторно использованном 61-дневном validation-окне из 13 176 строк rounded
 score 0,8216978 (raw 0,8217020) против 0,8231869 у previous-weekday. Сентябрь–октябрь
 уже оценивался в PR #2 (`calendar_hgbt`, опубликованный raw score 0,8287), поэтому
 это не pristine holdout; в текущем run период не использовался для выбора.
 Погодный кандидат получил rounded 0,8332729 и отклонён.
+Score не изменился после исключения маршрута 5, потому что его target и prediction
+были нулевыми. Подробности: [QA-отчёт](reports/qa-addendum-2026-09-26.md).
 
 Результаты автора повторены локально 25.09.2026; новые группы, повторный holdout
 и качество после DS-округления — в [отчёте](reports/weather-groups-2026-09-25.md).
 Для модели, прогнозов и submission предусмотрен `artifacts/`, для данных —
-локальный датасет; они исключены из Git. Полный реальный sample прошёл preflight;
-независимая сверка train-маски и исходных оплат остаётся открытой.
-[Письменный ответ](../docs/integration/qa-2026-09-25/submission-clarification.md)
-требует сохранять sample целиком, включая № 5 и все таймстемпы.
+локальный датасет; они исключены из Git. Оба локальных кандидата прошли свой
+структурный preflight, но конфликт области маршрутов не разрешён. Подтверждённая
+train-маска Игоря отсутствует, поэтому cleaned-model score не заявляется.
 
 ## Реализация приоритетов 25.09.2026
 

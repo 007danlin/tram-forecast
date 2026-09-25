@@ -21,13 +21,16 @@ from ml.experiment_config import normalize_config
 from ml.factors import HOLIDAY_MODEL_COLUMNS, WEATHER_MODEL_COLUMNS, load_weather_factors
 from ml.metrics import round_submission_predictions
 from ml.model import HGBT_FIXED_PARAMETERS, build_hgbt_model
+from ml.qa import apply_training_mask, load_training_mask, training_mask_summary
 from ml.settings import (
     FINAL_TRAIN_END,
     FINAL_TRAIN_START,
     KEY_COLUMNS,
+    MODELED_ROUTES,
     MODEL_SCHEMA_VERSION,
     RANDOM_SEED,
     ROUTES,
+    SAMPLE_ROUTES,
     TARGET_COLUMN,
 )
 
@@ -53,15 +56,29 @@ def _write_artifact(
     factor_path: str | Path | None = None,
     experiment_config: dict | None = None,
     snapshot_manifest: dict | None = None,
+    training_mask_path: str | Path | None = None,
 ) -> Path:
     root = Path(dataset_dir)
     destination = Path(artifact_dir)
     destination.mkdir(parents=True, exist_ok=True)
-    history = load_organizer_labels(root, FINAL_TRAIN_START, FINAL_TRAIN_END)
+    history = load_organizer_labels(
+        root,
+        FINAL_TRAIN_START,
+        FINAL_TRAIN_END,
+        routes=MODELED_ROUTES,
+    )
     if not math.isfinite(interval_absolute_error_q90) or interval_absolute_error_q90 < 0:
         raise ValueError("Selection q90 must be finite and nonnegative")
     config = normalize_config(experiment_config) if experiment_config is not None else None
     model = build_hgbt_model(model_name, config)
+    training_mask = load_training_mask(training_mask_path) if training_mask_path is not None else None
+    mask_summary = None
+    if training_mask is not None:
+        if model.include_lags:
+            raise ValueError("Masked training for lagged models requires an explicit gap-recovery policy")
+        mask_summary = training_mask_summary(history, training_mask)
+        marked = apply_training_mask(history, training_mask)
+        history = marked[marked["training_included"]].copy()
     factors = load_weather_factors(factor_path, model.selected_weather_columns) if factor_path is not None and model.include_weather else None
     if config and model.include_weather:
         if snapshot_manifest is None or snapshot_manifest.get("alignment") != config["alignment"] or snapshot_manifest["normalized"]["sha256"] != sha256_file(factor_path):
@@ -87,7 +104,7 @@ def _write_artifact(
     limitations = [
         "Target measures successful boardings, not onboard occupancy.",
         "No direction or stop-level target is available.",
-        "Route 5 has no successful target observations in January-October 2025.",
+        "Route 5 is excluded from the nine-route trained-model scope by the later Q&A addendum; the local organizer sample still contains it.",
         "Events, closures and traffic are not used because comparable versioned archives were not supplied.",
         "Annual numeric forecasting is unsupported with ten months of history.",
     ]
@@ -126,10 +143,27 @@ def _write_artifact(
             "max_leaf_nodes": model.max_leaf_nodes,
         },
         "training_period": {"start": str(FINAL_TRAIN_START), "end": str(FINAL_TRAIN_END)},
+        "model_scope_routes": list(MODELED_ROUTES),
+        "organizer_sample_routes_observed": list(SAMPLE_ROUTES),
+        "route_5_contract_status": "unresolved: later Q&A says exclude; local sample still contains route 5",
         "supported_routes": supported_routes,
+        "excluded_model_routes": sorted(set(SAMPLE_ROUTES) - set(MODELED_ROUTES)),
+        "submission_fallback_routes": sorted(set(SAMPLE_ROUTES) - set(MODELED_ROUTES)),
         "cold_start_routes": cold_start_routes,
-        "cold_start_policy": "known organizer route with no successful history: zero baseline and explicit status",
+        "cold_start_policy": (
+            "sample-compatibility transport fallback only: zero with explicit status; "
+            "route is outside the trained-model scope"
+        ),
         "unknown_route_policy": "unsupported",
+        "training_mask": (
+            {
+                "mask_id": training_mask["mask_id"],
+                "sha256": training_mask["sha256"],
+                "summary": mask_summary,
+            }
+            if training_mask is not None
+            else None
+        ),
         "raw_timezone": "unconfirmed; naive organizer calendar timestamps",
         "product_timezone_contract": "Europe/Moscow",
         "prediction": {"nonnegative": True, "rounded": False, "clipping": "max(raw_prediction, 0)"},
@@ -178,6 +212,10 @@ def _write_artifact(
     if model.include_weather and factor_path is not None:
         factor_source_path = Path(factor_path)
         factor_sources[factor_source_path.name] = sha256_file(factor_source_path)
+    training_mask_sources = {}
+    if training_mask_path is not None:
+        mask_source_path = Path(training_mask_path)
+        training_mask_sources[mask_source_path.name] = sha256_file(mask_source_path)
     manifest = {
         "schema_version": MODEL_SCHEMA_VERSION,
         "files": {
@@ -187,6 +225,7 @@ def _write_artifact(
         },
         "source_checksums": sources,
         "factor_checksums": factor_sources,
+        "training_mask_checksums": training_mask_sources,
         "snapshot_manifest": snapshot_manifest if model.include_weather else None,
     }
     manifest_path = destination / "manifest.json"
@@ -195,7 +234,8 @@ def _write_artifact(
 
 
 def create_artifact(dataset_dir, artifact_dir, *, model_name, interval_absolute_error_q90,
-                    factor_path=None, experiment_config=None, snapshot_manifest=None):
+                    factor_path=None, experiment_config=None, snapshot_manifest=None,
+                    training_mask_path=None):
     destination = Path(artifact_dir)
     if destination.exists() or destination.is_symlink():
         raise ValueError("Artifact exists; use a new release directory")
@@ -204,7 +244,8 @@ def create_artifact(dataset_dir, artifact_dir, *, model_name, interval_absolute_
     try:
         _write_artifact(dataset_dir, temporary, model_name=model_name,
                         interval_absolute_error_q90=interval_absolute_error_q90, factor_path=factor_path,
-                        experiment_config=experiment_config, snapshot_manifest=snapshot_manifest)
+                        experiment_config=experiment_config, snapshot_manifest=snapshot_manifest,
+                        training_mask_path=training_mask_path)
         load_artifact(temporary)
         if destination.exists():
             raise ValueError("Artifact appeared during training; refusing overwrite")
@@ -252,13 +293,28 @@ def predict_artifact(artifact_dir: str | Path, start: date | str, end: date | st
     return result[[*KEY_COLUMNS, "prediction", "reference_value", "lower_90", "upper_90", "priority_score", "status"]]
 
 
-def write_submission(prediction: pd.DataFrame, template_path: str | Path, output_path: str | Path) -> Path:
+def _submission_template_scope(template: pd.DataFrame, scope: str) -> pd.DataFrame:
+    if scope == "sample":
+        return template.copy().reset_index(drop=True)
+    if scope == "modeled_routes":
+        return template[template["route"].isin(MODELED_ROUTES)].copy().reset_index(drop=True)
+    raise ValueError(f"Unknown submission scope: {scope}")
+
+
+def write_submission(
+    prediction: pd.DataFrame,
+    template_path: str | Path,
+    output_path: str | Path,
+    *,
+    scope: str = "sample",
+) -> Path:
     template = pd.read_csv(template_path, sep=";")
     expected_columns = ["route", "date", "hour", "prediction"]
     if list(template.columns) != expected_columns:
         raise ValueError(f"Unexpected submission columns: {list(template.columns)}")
     if template.duplicated(list(KEY_COLUMNS)).any():
         raise ValueError("Submission template contains duplicate keys")
+    template = _submission_template_scope(template, scope)
     template["date"] = pd.to_datetime(template["date"], format="%Y-%m-%d", errors="raise")
     data = prediction.copy()
     data["date"] = pd.to_datetime(data["date"]).dt.normalize()
@@ -275,10 +331,16 @@ def write_submission(prediction: pd.DataFrame, template_path: str | Path, output
     return destination
 
 
-def submission_preflight(output_path: str | Path, template_path: str | Path) -> dict[str, object]:
+def submission_preflight(
+    output_path: str | Path,
+    template_path: str | Path,
+    *,
+    scope: str = "sample",
+) -> dict[str, object]:
     output = Path(output_path)
     submission = pd.read_csv(output, sep=";")
-    template = pd.read_csv(template_path, sep=";")
+    original_template = pd.read_csv(template_path, sep=";")
+    template = _submission_template_scope(original_template, scope)
     keys = list(KEY_COLUMNS)
     expected_columns = [*keys, "prediction"]
     prediction_source = submission["prediction"] if "prediction" in submission else pd.Series(np.nan, index=submission.index)
@@ -296,8 +358,14 @@ def submission_preflight(output_path: str | Path, template_path: str | Path) -> 
     )
     checks = {
         "columns_exact": list(submission.columns) == expected_columns,
-        "row_count_exact": len(submission) == 14_640,
+        "row_count_exact": len(submission) == len(template),
+        "expected_row_count": int(len(template)),
         "template_keys_and_order_exact": exact_keys,
+        "original_template_keys_and_order_exact": (
+            len(submission) == len(original_template)
+            and all(column in submission and column in original_template for column in keys)
+            and submission[keys].equals(original_template[keys])
+        ),
         "duplicate_keys": int(submission.duplicated(keys).sum()) if all(column in submission for column in keys) else None,
         "null_cells": int(submission.isna().sum().sum()),
         "finite_predictions": bool(np.isfinite(numeric_prediction).all()),
@@ -324,12 +392,20 @@ def submission_preflight(output_path: str | Path, template_path: str | Path) -> 
         and checks["date_max"] == "2025-12-31"
         and checks["hours_valid"]
         and checks["routes_valid"]
-        and checks["routes"] == list(ROUTES)
+        and checks["routes"] == sorted(template["route"].astype(int).unique().tolist())
     )
     return {
         "passed": bool(passed),
         "file": output.name,
         "sha256": sha256_file(output),
         "rounding_policy": "floor(x + 0.5) at submission export only",
+        "submission_scope": scope,
+        "contract_status": (
+            "matches_local_organizer_sample_but_route_5_conflicts_with_later_QA"
+            if scope == "sample" and 5 in checks["routes"]
+            else "nine_route_candidate_pending_organizer_sample_reconciliation"
+        ),
+        "model_scope_routes": list(MODELED_ROUTES),
+        "local_sample_routes": sorted(original_template["route"].astype(int).unique().tolist()),
         "checks": checks,
     }
