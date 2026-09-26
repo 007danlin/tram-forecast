@@ -114,8 +114,8 @@ release. SHA-256 подтверждает целостность, а не кач
 QA-обработка 26.09.2026 не меняет HTTP v1/handoff. Модель и отчёт качества
 ограничены маршрутами `1,7,11,12,17,25,26,28,50`; нулевой № 5 остаётся только
 transport fallback для 10-маршрутного candidate. Backtest на девяти маршрутах
-сохранил rounded selection score 0.8400868 и повторный validation score 0.8216978,
-но пересчитал число строк/MAE. Реализована строгая схема маски
+после следующего quality-run выбрал `calendar_interaction_ensemble`: rounded
+selection score 0.8505524, повторный validation score 0.8290094. Реализована строгая схема маски
 `tramflow-training-mask-v1` и сравнение на одинаковых evaluation rows. Маски
 Игоря нет, поэтому очистка не применена и score до/после не заявлен.
 
@@ -447,12 +447,13 @@ HTTP API v1 по-прежнему использует только эту те�
   затем проверяет версии payload/metadata. Backend использует отдельный CSV-загрузчик.
 
 Batch-команды, зависимости, temporal folds и ограничения описаны в
-[ml/README.md](ml/README.md). Текущий выбранный метод — calendar
-HistGradientBoosting с официальным производственным календарём F01. На ранних
-selection folds его rounded score — 0.8400868 против 0.8020439 без F01.
+[ml/README.md](ml/README.md). Текущий выбранный метод — фиксированный operational
+ансамбль F01 HGBT с absolute loss и recency-weighted interaction HGBT со squared
+loss. На ранних selection folds его rounded score — 0.8505524 против 0.8400868
+у прежнего F01-кандидата.
 На повторно использованном 61-дневном validation-окне сентября–октября 2025
 для девятимаршрутной model scope (13 176 строк)
-rounded score — 0.8216978 против 0.8231869 у previous-weekday baseline. Этот
+rounded score — 0.8290094 против 0.8231869 у previous-weekday baseline. Этот
 период уже оценивался в PR #2 (`calendar_hgbt`, опубликованный raw score 0.8287),
 поэтому pristine holdout не заявляется; текущий addendum-run не выбирал модель
 по этому окну. Это оценка автора, не независимый повтор и не результат платформы.
@@ -535,7 +536,7 @@ README и листы справочника из `/Users/daniellineckij/Download
 
 `.github/workflows/ci.yml` запускается на каждый push в любую ветку, на открытие/обновление PR и вручную (`workflow_dispatch`). На Ubuntu 24.04 независимо выполняются:
 
-- backend/ML: Python 3.12, установка `backend/requirements.txt` и `ml/requirements.txt`, `pip check`, 37 backend-тестов (контракт и handoff), сверка OpenAPI, 9 интеграционных, 38 ML и 24 tooling-теста; проверки включают отказ до inference при несовместимой/отсутствующей версии, raw/rounded-метрики, календарные переносы, нормализацию погоды, реестр F01–F16, 61-дневные срезы, QA-маску, submission preflight и инструменты подготовки сдачи;
+- backend/ML: Python 3.12, установка `backend/requirements.txt` и `ml/requirements.txt`, `pip check`, 37 backend-тестов (контракт и handoff), сверка OpenAPI, 9 интеграционных, 40 ML и 24 tooling-теста; проверки включают отказ до inference при несовместимой/отсутствующей версии, raw/rounded-метрики, календарные переносы, нормализацию погоды, реестр F01–F16, 61-дневные срезы, ансамбль, QA-маску, submission preflight и инструменты подготовки сдачи;
 - frontend: Node.js 22.16.0, `npm ci --prefix frontend`, `npm run build --prefix frontend`;
 - Compose: проверка конфигурации, сборка и запуск контейнеров, HTTP-проверка страницы и API через прокси на порту 5173. Результат контейнерного API сравнивается с ML-модулем из текущего checkout.
 
@@ -967,6 +968,14 @@ Feature order, alignment и config записываются в metadata/feature-
 0.82170203 до DS-округления, 0.82169780 после, фактическое покрытие интервала 82.802%.
 Полный реальный sample проходит preflight 14 640 строк; отправка на платформу не выполнена.
 Очистка target и ночная маска не менялись в погодном сравнении и остаются отдельной задачей.
+
+Следующий operational quality-run не меняет HTTP/handoff schema. Фиксированный
+`calendar_interaction_ensemble` сочетает прежний F01 HGBT (вес 0,425) и
+recency-weighted interaction HGBT (вес 0,575), затем применяет scale 0,96 к raw
+прогнозу до округления. Веса выбраны только на ранних folds: rounded score
+0,8505524. Повторное окно дало 0,8290094. Локальные 10-/9-маршрутные CSV прошли
+preflight; новый handoff-пакет не публиковался. Детали и отклонённые варианты:
+[quality-improvement-2026-09-26.md](ml/reports/quality-improvement-2026-09-26.md).
 
 **LOAD/FIN.** Добавлены k6 1.3.0, контрольные значения из исходного batch,
 ступени constant-arrival-rate, отдельный export и лимиты backend 2 CPU/4 GiB/1 worker.

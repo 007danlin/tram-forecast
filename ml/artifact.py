@@ -134,14 +134,18 @@ def _write_artifact(
             if enabled
         ],
         "random_seed": RANDOM_SEED,
-        "model_parameters": {
-            "include_lags": model.include_lags,
-            "include_official_calendar": model.include_official_calendar,
-            "include_weather": model.include_weather,
-            **HGBT_FIXED_PARAMETERS,
-            "max_iter": model.max_iter,
-            "max_leaf_nodes": model.max_leaf_nodes,
-        },
+        "model_parameters": getattr(
+            model,
+            "parameter_manifest",
+            {
+                "include_lags": model.include_lags,
+                "include_official_calendar": model.include_official_calendar,
+                "include_weather": model.include_weather,
+                **HGBT_FIXED_PARAMETERS,
+                "max_iter": model.max_iter,
+                "max_leaf_nodes": model.max_leaf_nodes,
+            },
+        ),
         "training_period": {"start": str(FINAL_TRAIN_START), "end": str(FINAL_TRAIN_END)},
         "model_scope_routes": list(MODELED_ROUTES),
         "organizer_sample_routes_observed": list(SAMPLE_ROUTES),
@@ -186,6 +190,7 @@ def _write_artifact(
         "experiment_config": config,
         "preprocessing": config["alignment"] if config else "legacy_timestamp_v1",
         "information_mode": model.information_mode,
+        "model_feature_manifest": getattr(model, "feature_manifest", None),
         "lag_features": ["lag_7d", "lag_14d", "lag_21d", "lag_28d", "lag_mean_4w", "lag_median_4w", "recent_trend"] if model.include_lags else [],
         "lag_policy": "training uses shifted actual history; multi-step inference recursively uses prior predictions once actual lags are unavailable",
         "unavailable_inputs": [
