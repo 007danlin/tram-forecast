@@ -142,3 +142,27 @@
 
 .workspace-card > .filter-bar { background: transparent; }
 .workspace--map-only .workspace-card { overflow: visible; background: transparent; }
+
+/* Keep the desktop map in the viewport; only the forecast column scrolls. */
+@media (min-width: 1024px) {
+  .app-shell--map {
+    height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .app-shell--map > div:first-child { flex: none; }
+  .app-shell--map .app-shell__body { flex: 1; min-height: 0; overflow: hidden; }
+  .app-shell--map .workspace { height: 100%; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .app-shell--map .workspace-card {
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+  }
+  .app-shell--map .map-shell { height: 100%; min-height: 0; }
+  .app-shell--map .map-shell--expanded { height: auto; }
+  .app-shell--map .workspace--map-only .workspace-card { overflow: visible; }
+}

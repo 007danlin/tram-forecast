@@ -18,7 +18,7 @@ export function App() {
   const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
   return (
     <ForecastContext.Provider value={forecast}>
-      <div className="app-shell">
+      <div className={`app-shell${view === "map" ? " app-shell--map" : ""}`}>
         <div inert={mapExpanded || settingsOpen}>
           <AppHeader
             view={view}

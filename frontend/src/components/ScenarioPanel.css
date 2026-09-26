@@ -1,7 +1,7 @@
 .scenario-panel { margin-block: 12px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 12px; min-width: 0; }
 .scenario-panel summary { cursor: pointer; font-weight: 600; }
 .scenario-panel p { font-size: 12px; line-height: 1.5; color: var(--text-secondary); margin-block: 10px; }
-.scenario-panel__factors { display: grid; gap: 12px; }
+.scenario-panel__factors { display: grid; gap: 12px; margin-block: 12px; }
 .scenario-panel label { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 13px; }
 .scenario-panel input { grid-column: 1 / -1; width: 100%; min-width: 0; accent-color: var(--chart-line); }
 .scenario-panel output { font-variant-numeric: tabular-nums; }
