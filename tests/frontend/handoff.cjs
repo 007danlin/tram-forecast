@@ -26,6 +26,34 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByRole('button',{name:'Таблица',exact:true}).click();
     await page.locator('.tram-map__viewport svg').waitFor();
     await page.locator('.tram-map__viewport').evaluate(el => el.qaIdentity = 'persistent');
+    const mapViewport = page.locator('.tram-map__viewport');
+    const mapSvg = mapViewport.locator('svg');
+    const initialView = await mapSvg.getAttribute('viewBox');
+    await mapViewport.focus();
+    await mapViewport.press('ArrowRight');
+    await page.waitForFunction(initial => document.querySelector('.tram-map__viewport svg').getAttribute('viewBox') !== initial, initialView);
+    await mapViewport.press('+');
+    await mapViewport.press('0');
+    await page.waitForFunction(initial => document.querySelector('.tram-map__viewport svg').getAttribute('viewBox') === initial, initialView);
+    // Select a visible real line away from controls. A DOM hit corridor may overlap
+    // its neighbour: selection must match the clicked geometry, not paint order.
+    const lineTarget = await mapSvg.evaluate(svg => {
+      const box = svg.viewBox.baseVal, rect = svg.getBoundingClientRect();
+      const lines = [...svg.querySelectorAll('polyline[data-lane]')];
+      for (const line of lines) {
+        for (const point of line.points) {
+          const x = (point.x - box.x) / box.width * rect.width;
+          const y = (point.y - box.y) / box.height * rect.height;
+          if (x < 50 || x > rect.width - 100 || y < 50 || y > rect.height - 60) continue;
+          // Avoid a junction where two lanes legitimately have the same point.
+          const shared = lines.some(other => other !== line && [...other.points].some(p => Math.hypot(p.x-point.x,p.y-point.y) < .5));
+          if (!shared) return {x:rect.x+x,y:rect.y+y,points:line.getAttribute('points')};
+        }
+      }
+      throw new Error('No visible route geometry available for acceptance');
+    });
+    await page.mouse.click(lineTarget.x,lineTarget.y);
+    await page.waitForFunction(points => document.querySelector('.tram-map__viewport polyline[stroke-width="5"]')?.getAttribute('points') === points, lineTarget.points);
     async function checkRows(count) {
       const selectedRoute=await page.getByLabel('Маршрут',{exact:true}).inputValue();
       const selectedDay=await page.getByLabel('Дата (МСК)').inputValue();
@@ -54,6 +82,7 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
       }
       close(Number(await page.getByTestId('total').getAttribute('data-raw-value')),total);
       assert.equal(await page.locator('.tram-map__viewport').evaluate(el => el.qaIdentity),'persistent');
+      assert.equal(await mapSvg.locator('polyline[stroke-width="5"]').getAttribute('points'),lineTarget.points);
     }
     await checkRows(24);
     await page.getByLabel('Период',{exact:true}).selectOption('week'); await checkRows(7);

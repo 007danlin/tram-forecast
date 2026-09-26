@@ -1,5 +1,5 @@
 {
-  "registry_version": "2026-09-26-qa-addendum-v1",
+  "registry_version": "2026-09-26-quality-085-v1",
   "checked_at": "2026-09-26",
   "scope": "Internal ML registry; it does not change the HTTP API contract.",
   "status_definitions": {
@@ -22,7 +22,7 @@
       "information_modes": ["operational", "competition_retro"],
       "sources": [{"source_id": "S1", "url": "https://government.ru/docs/all/155500/", "access": "public_official_document", "needs_key": false}],
       "coverage": {"train_2025_01_01_08_31": 1.0, "validation_2025_09_01_10_31": 1.0, "forecast_2025_11_01_12_31": 1.0, "routes": "9/9 modeled routes; route 5 excluded from model scope"},
-      "implementation": "Verified 2025 days off, transfers, working weekend, adjacent-day flags and day-off streak; date join is many-to-one.",
+      "implementation": "Verified 2025 days off, transfers, working weekend, adjacent-day flags and day-off streak; date join is many-to-one. F01 is retained in both components of the selected calendar_interaction_ensemble.",
       "experiment_id": "selection_2025_*__calendar_holiday_hgbt",
       "effect": {"reference": "calendar_hgbt", "metric_basis": "submission_rounded_floor_x_plus_0_5", "effect_scope": "nine modeled routes; WAPE delta unchanged after removing zero route 5", "wape_score_delta": 0.0380429065653219, "mae_delta": -31.89366907557965, "raw_wape_score_delta": 0.0380472082145768},
       "decision": "included_in_selected_model", "blocker": null

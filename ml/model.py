@@ -19,7 +19,7 @@ from ml.factors import (
     WEATHER_MODEL_COLUMNS,
     add_official_calendar_features,
 )
-from ml.settings import RANDOM_SEED, ROUTES, TARGET_COLUMN
+from ml.settings import MODELED_ROUTES, RANDOM_SEED, ROUTES, TARGET_COLUMN
 
 
 LAG_DAYS = (7, 14, 21, 28)
@@ -34,8 +34,32 @@ HGBT_FIXED_PARAMETERS = {
     "l2_regularization": 1.0,
 }
 
+INTERACTION_CATEGORICAL_COLUMNS = (
+    "route_code",
+    "hour",
+    "dow",
+    "month",
+    "route_hour",
+    "route_dow",
+    "hour_dow",
+    "week",
+)
+INTERACTION_NUMERIC_COLUMNS = (*HOLIDAY_MODEL_COLUMNS, "day_of_year_sin", "day_of_year_cos")
+INTERACTION_HALF_LIFE_DAYS = 90.0
+ENSEMBLE_CALENDAR_WEIGHT = 0.425
+ENSEMBLE_INTERACTION_WEIGHT = 0.575
+ENSEMBLE_SCALE = 0.96
+
 
 def build_hgbt_model(model_name: str, experiment_config: dict | None = None) -> "HourlyGradientBoostingModel":
+    if model_name == "calendar_interaction_squared_hgbt":
+        if experiment_config is not None:
+            raise ValueError("Interaction model does not accept a weather experiment config")
+        return NativeInteractionGradientBoostingModel()
+    if model_name == "calendar_interaction_ensemble":
+        if experiment_config is not None:
+            raise ValueError("Interaction ensemble does not accept a weather experiment config")
+        return CalendarInteractionEnsembleModel()
     variants = {
         "calendar_hgbt": dict(include_lags=False),
         "lagged_hgbt": dict(include_lags=True),
@@ -73,6 +97,26 @@ def _calendar_features(frame: pd.DataFrame, *, include_official_calendar: bool =
     if include_official_calendar:
         result = add_official_calendar_features(result)
     return result
+
+
+def _interaction_features(frame: pd.DataFrame) -> pd.DataFrame:
+    """Calendar interactions with bounded native-categorical codes."""
+    result = add_official_calendar_features(frame[["route", "date", "hour"]].copy())
+    route_codes = {route: index for index, route in enumerate(MODELED_ROUTES)}
+    if not result["route"].isin(route_codes).all():
+        unsupported = sorted(result.loc[~result["route"].isin(route_codes), "route"].unique().tolist())
+        raise ValueError(f"Interaction features received unsupported routes: {unsupported}")
+    result["route_code"] = result["route"].map(route_codes).astype("int16")
+    result["dow"] = result["date"].dt.dayofweek.astype("int8")
+    result["month"] = (result["date"].dt.month - 1).astype("int8")
+    result["week"] = (result["date"].dt.isocalendar().week.astype(int) - 1).astype("int16")
+    result["route_hour"] = (result["route_code"] * 24 + result["hour"]).astype("int16")
+    result["route_dow"] = (result["route_code"] * 7 + result["dow"]).astype("int16")
+    result["hour_dow"] = (result["dow"] * 24 + result["hour"]).astype("int16")
+    day_of_year = result["date"].dt.dayofyear.to_numpy(dtype=float)
+    result["day_of_year_sin"] = np.sin(2.0 * np.pi * day_of_year / 365.25)
+    result["day_of_year_cos"] = np.cos(2.0 * np.pi * day_of_year / 365.25)
+    return result[[*INTERACTION_CATEGORICAL_COLUMNS, *INTERACTION_NUMERIC_COLUMNS]]
 
 
 def _attach_weather(frame: pd.DataFrame, factors: pd.DataFrame | None, weather_columns=WEATHER_MODEL_COLUMNS) -> pd.DataFrame:
@@ -249,4 +293,188 @@ class HourlyGradientBoostingModel:
         result = grid.merge(predicted[["route", "date", "hour", "prediction"]], on=["route", "date", "hour"], how="left")
         result["status"] = np.where(result["route"].isin(self.supported_routes_), "ok", "cold_start_zero_baseline")
         result["prediction"] = result["prediction"].fillna(0.0).clip(lower=0.0)
+        return result
+
+
+@dataclass
+class NativeInteractionGradientBoostingModel(HourlyGradientBoostingModel):
+    """Recency-weighted squared-loss model used only as an ensemble component."""
+
+    include_lags: bool = False
+    include_official_calendar: bool = True
+    include_weather: bool = False
+    information_mode: str = "operational"
+    max_iter: int = 300
+    max_leaf_nodes: int = 31
+    half_life_days: float = INTERACTION_HALF_LIFE_DAYS
+
+    @property
+    def name(self) -> str:
+        return "calendar_interaction_squared_hgbt"
+
+    @property
+    def parameter_manifest(self) -> dict[str, object]:
+        return {
+            "algorithm": "HistGradientBoostingRegressor",
+            "loss": "squared_error",
+            "learning_rate": 0.05,
+            "max_iter": self.max_iter,
+            "max_leaf_nodes": self.max_leaf_nodes,
+            "min_samples_leaf": 24,
+            "l2_regularization": 1.0,
+            "recency_half_life_days": self.half_life_days,
+            "categorical_features": list(INTERACTION_CATEGORICAL_COLUMNS),
+        }
+
+    @property
+    def feature_manifest(self) -> dict[str, object]:
+        return {
+            "categorical": list(INTERACTION_CATEGORICAL_COLUMNS),
+            "numeric": list(INTERACTION_NUMERIC_COLUMNS),
+            "route_code_order": list(MODELED_ROUTES),
+        }
+
+    def fit(
+        self,
+        history: pd.DataFrame,
+        factors: pd.DataFrame | None = None,
+    ) -> "NativeInteractionGradientBoostingModel":
+        if factors is not None:
+            raise ValueError("Interaction model does not use weather factors")
+        ordered = history.sort_values(["route", "timestamp"], ignore_index=True).copy()
+        route_totals = ordered.groupby("route")[TARGET_COLUMN].sum()
+        self.supported_routes_ = tuple(sorted(route_totals[route_totals > 0].index.astype(int)))
+        training = ordered[ordered["route"].isin(self.supported_routes_)].copy()
+        self.history_end_ = ordered["date"].max()
+        age_days = (self.history_end_ - training["date"]).dt.days.to_numpy(dtype=float)
+        sample_weight = np.exp(-np.log(2.0) * age_days / self.half_life_days)
+        self.pipeline_ = HistGradientBoostingRegressor(
+            loss="squared_error",
+            learning_rate=0.05,
+            max_iter=self.max_iter,
+            max_leaf_nodes=self.max_leaf_nodes,
+            min_samples_leaf=24,
+            l2_regularization=1.0,
+            categorical_features=list(INTERACTION_CATEGORICAL_COLUMNS),
+            random_state=RANDOM_SEED,
+        )
+        self.pipeline_.fit(
+            _interaction_features(training),
+            training[TARGET_COLUMN].to_numpy(dtype=float),
+            sample_weight=sample_weight,
+        )
+        return self
+
+    def predict(
+        self,
+        start: date | str,
+        end: date | str,
+        factors: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
+        if factors is not None:
+            raise ValueError("Interaction model does not use weather factors")
+        start_ts = pd.Timestamp(start).normalize()
+        end_ts = pd.Timestamp(end).normalize()
+        if start_ts <= self.history_end_:
+            raise ValueError("Prediction start must be after the fitted history")
+        grid = full_hourly_grid(start_ts, end_ts, ROUTES)
+        supported = grid[grid["route"].isin(self.supported_routes_)].copy()
+        supported["prediction"] = np.maximum(
+            self.pipeline_.predict(_interaction_features(supported)),
+            0.0,
+        )
+        result = grid.merge(
+            supported[["route", "date", "hour", "prediction"]],
+            on=["route", "date", "hour"],
+            how="left",
+            validate="one_to_one",
+        )
+        result["status"] = np.where(
+            result["route"].isin(self.supported_routes_),
+            "ok",
+            "cold_start_zero_baseline",
+        )
+        result["prediction"] = result["prediction"].fillna(0.0).clip(lower=0.0)
+        return result
+
+
+@dataclass
+class CalendarInteractionEnsembleModel(HourlyGradientBoostingModel):
+    """Fixed selection-fold ensemble; weights are never fitted on final validation."""
+
+    include_lags: bool = False
+    include_official_calendar: bool = True
+    include_weather: bool = False
+    information_mode: str = "operational"
+    max_iter: int = 300
+    max_leaf_nodes: int = 31
+    calendar_weight: float = ENSEMBLE_CALENDAR_WEIGHT
+    interaction_weight: float = ENSEMBLE_INTERACTION_WEIGHT
+    output_scale: float = ENSEMBLE_SCALE
+
+    @property
+    def name(self) -> str:
+        return "calendar_interaction_ensemble"
+
+    @property
+    def parameter_manifest(self) -> dict[str, object]:
+        return {
+            "combination": "scaled convex blend before submission rounding",
+            "calendar_holiday_hgbt_weight": self.calendar_weight,
+            "calendar_interaction_squared_hgbt_weight": self.interaction_weight,
+            "output_scale": self.output_scale,
+            "interaction_component": self.interaction_model_.parameter_manifest
+            if hasattr(self, "interaction_model_")
+            else NativeInteractionGradientBoostingModel().parameter_manifest,
+        }
+
+    @property
+    def feature_manifest(self) -> dict[str, object]:
+        return {
+            "calendar_component": "calendar_holiday_hgbt",
+            "interaction_component": NativeInteractionGradientBoostingModel().feature_manifest,
+        }
+
+    def fit(
+        self,
+        history: pd.DataFrame,
+        factors: pd.DataFrame | None = None,
+    ) -> "CalendarInteractionEnsembleModel":
+        if factors is not None:
+            raise ValueError("Operational ensemble does not use weather factors")
+        self.calendar_model_ = HourlyGradientBoostingModel(
+            include_lags=False,
+            include_official_calendar=True,
+            include_weather=False,
+            information_mode="operational",
+        ).fit(history)
+        self.interaction_model_ = NativeInteractionGradientBoostingModel().fit(history)
+        self.supported_routes_ = tuple(
+            sorted(set(self.calendar_model_.supported_routes_) & set(self.interaction_model_.supported_routes_))
+        )
+        self.history_end_ = self.calendar_model_.history_end_
+        return self
+
+    def predict(
+        self,
+        start: date | str,
+        end: date | str,
+        factors: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
+        if factors is not None:
+            raise ValueError("Operational ensemble does not use weather factors")
+        calendar = self.calendar_model_.predict(start, end)
+        interaction = self.interaction_model_.predict(start, end)
+        keys = ["route", "date", "hour"]
+        if not calendar[keys].equals(interaction[keys]):
+            raise ValueError("Ensemble components produced different prediction grids")
+        result = calendar.copy()
+        result["prediction"] = np.maximum(
+            self.output_scale
+            * (
+                self.calendar_weight * calendar["prediction"].to_numpy(dtype=float)
+                + self.interaction_weight * interaction["prediction"].to_numpy(dtype=float)
+            ),
+            0.0,
+        )
         return result

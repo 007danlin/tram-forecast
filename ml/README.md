@@ -102,7 +102,7 @@ python -m ml backtest \
 не используется ни в одном режиме.
 Без `--weather-factors` backtest работает с календарными кандидатами, а F02
 отмечается как blocked. Журнал по умолчанию сохраняется в
-`artifacts/experiment-log.csv`; для каждого опыта задавайте новый
+`artifacts/experiments/experiment-log.csv`; для каждого опыта задавайте новый
 `--experiment-log`. Существующие отчёты и журналы не перезаписываются,
 отслеживаемая история в `ml/reports/` не меняется автоматически.
 
@@ -111,30 +111,30 @@ python -m ml backtest \
 ```sh
 python -m ml train \
   --dataset-dir "$DATASET_DIR" \
-  --evaluation-report artifacts/evaluation-addendum.json \
-  --artifact-dir artifacts/calendar-holiday-hgbt
+  --evaluation-report artifacts/quality-085/evaluation.json \
+  --artifact-dir artifacts/quality-085/calendar-interaction-ensemble
 ```
 
 Формирование sample-совместимого кандидата на 10 маршрутов:
 
 ```sh
 python -m ml submission \
-  --artifact-dir artifacts/calendar-holiday-hgbt \
+  --artifact-dir artifacts/quality-085/calendar-interaction-ensemble \
   --template "$DATASET_DIR/test_submission.csv" \
   --scope sample \
-  --output artifacts/submission-calendar-holiday-hgbt.csv \
-  --preflight-output artifacts/submission-calendar-holiday-hgbt.preflight.json
+  --output artifacts/quality-085/submission-calendar-interaction-ensemble-10-routes.csv \
+  --preflight-output artifacts/quality-085/submission-calendar-interaction-ensemble-10-routes.preflight.json
 ```
 
 Отдельный девятимаршрутный кандидат для согласования:
 
 ```sh
 python -m ml submission \
-  --artifact-dir artifacts/calendar-holiday-hgbt \
+  --artifact-dir artifacts/quality-085/calendar-interaction-ensemble \
   --template "$DATASET_DIR/test_submission.csv" \
   --scope modeled_routes \
-  --output artifacts/submission-calendar-holiday-hgbt-9-routes.csv \
-  --preflight-output artifacts/submission-calendar-holiday-hgbt-9-routes.preflight.json
+  --output artifacts/quality-085/submission-calendar-interaction-ensemble-9-routes.csv \
+  --preflight-output artifacts/quality-085/submission-calendar-interaction-ensemble-9-routes.preflight.json
 ```
 
 Preflight проверяет точные колонки и порядок ключей выбранного scope,
@@ -157,9 +157,9 @@ priority score и status. Backtest публикует raw-метрики и ме
 `adoption_decision: adopted`; до согласования очищенный артефакт не создаётся.
 
 ```sh
-python -m ml forecast --artifact-dir artifacts/calendar-holiday-hgbt \
+python -m ml forecast --artifact-dir artifacts/quality-085/calendar-interaction-ensemble \
   --start 2025-11-01 --end 2025-11-01 --output artifacts/day.csv
-python -m ml month --artifact-dir artifacts/calendar-holiday-hgbt \
+python -m ml month --artifact-dir artifacts/quality-085/calendar-interaction-ensemble \
   --start 2025-11-01 --end 2025-11-30 --output artifacts/month.csv
 python -m ml year-scenario --output artifacts/year-scenario.json
 ```
@@ -186,15 +186,18 @@ python -m unittest discover -s tests/integration -v
 Журнал содержит гипотезу, версию схемы, seed, параметры, одинаковые временные границы, общие метрики, JSON со
 срезами по маршрутам, часам, типу дня, пику, величине потока, горизонту и статусу,
 а также решение по эксперименту.
-Выбран `calendar_holiday_hgbt`: rounded selection WAPE-score 0,8400868
-(raw 0,8400881). Девятимаршрутная оценка содержит 26 568 selection-строк.
+Выбран `calendar_interaction_ensemble`: rounded selection WAPE-score 0,8505524
+(raw 0,8505436) против 0,8400868 у прежнего F01 HGBT. Девятимаршрутная оценка
+содержит 26 568 selection-строк.
 На повторно использованном 61-дневном validation-окне из 13 176 строк rounded
-score 0,8216978 (raw 0,8217020) против 0,8231869 у previous-weekday. Сентябрь–октябрь
+score 0,8290094 (raw 0,8290147) против 0,8231869 у previous-weekday. Сентябрь–октябрь
 уже оценивался в PR #2 (`calendar_hgbt`, опубликованный raw score 0,8287), поэтому
 это не pristine holdout; в текущем run период не использовался для выбора.
 Погодный кандидат получил rounded 0,8332729 и отклонён.
 Score не изменился после исключения маршрута 5, потому что его target и prediction
-были нулевыми. Подробности: [QA-отчёт](reports/qa-addendum-2026-09-26.md).
+были нулевыми. Полный журнал улучшения и отклонённых гипотез:
+[отчёт quality 0,85](reports/quality-improvement-2026-09-26.md). QA-ограничения:
+[QA-отчёт](reports/qa-addendum-2026-09-26.md).
 
 Результаты автора повторены локально 25.09.2026; новые группы, повторный holdout
 и качество после DS-округления — в [отчёте](reports/weather-groups-2026-09-25.md).
@@ -280,9 +283,9 @@ python -m ml fetch-weather --start 2025-01-01 --end 2025-12-31 \
 Совместимая упаковка готового артефакта и полного forecast:
 
 ```sh
-python -m scripts.package_ml_handoff --artifact-dir artifacts/calendar-holiday-hgbt \
+python -m scripts.package_ml_handoff --artifact-dir artifacts/quality-085/calendar-interaction-ensemble \
   --forecast artifacts/forecast-for-backend.csv \
-  --output artifacts/releases/calendar-holiday-hgbt-handoff.zip
+  --output artifacts/releases/calendar-interaction-ensemble-handoff.zip
 ```
 
 Четыре model-файла копируются без изменения байтов в legacy transport paths.

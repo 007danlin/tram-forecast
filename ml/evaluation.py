@@ -40,6 +40,8 @@ MODEL_FACTORIES: dict[str, ModelFactory] = {
     "calendar_hgbt": lambda: build_hgbt_model("calendar_hgbt"),
     "lagged_hgbt": lambda: build_hgbt_model("lagged_hgbt"),
     "calendar_holiday_hgbt": lambda: build_hgbt_model("calendar_holiday_hgbt"),
+    "calendar_interaction_squared_hgbt": lambda: build_hgbt_model("calendar_interaction_squared_hgbt"),
+    "calendar_interaction_ensemble": lambda: build_hgbt_model("calendar_interaction_ensemble"),
     "competition_weather_hgbt": lambda: build_hgbt_model("competition_weather_hgbt"),
 }
 
@@ -71,6 +73,23 @@ MODEL_PARAMETERS: dict[str, dict[str, object]] = {
         "max_iter": 220,
         "max_leaf_nodes": 31,
     },
+    "calendar_interaction_squared_hgbt": {
+        "algorithm": "HistGradientBoostingRegressor",
+        "loss": "squared_error",
+        "recency_half_life_days": 90,
+        "interaction_categories": ["route_hour", "route_dow", "hour_dow", "week"],
+        "learning_rate": 0.05,
+        "max_iter": 300,
+        "max_leaf_nodes": 31,
+        "min_samples_leaf": 24,
+        "l2_regularization": 1.0,
+    },
+    "calendar_interaction_ensemble": {
+        "components": ["calendar_holiday_hgbt", "calendar_interaction_squared_hgbt"],
+        "weights": [0.425, 0.575],
+        "output_scale": 0.96,
+        "selection_grid": {"weight_step": 0.025, "scale_step": 0.01},
+    },
     "competition_weather_hgbt": {
         "algorithm": "HistGradientBoostingRegressor",
         "include_lags": False,
@@ -90,6 +109,13 @@ MODEL_HYPOTHESES = {
     "calendar_hgbt": "A compact nonlinear calendar model captures route and seasonal interactions.",
     "lagged_hgbt": "Leakage-safe recursive weekly lags improve the calendar model.",
     "calendar_holiday_hgbt": "Verified 2025 days off improve over weekend-only calendar features.",
+    "calendar_interaction_squared_hgbt": (
+        "Recency weighting and explicit route-hour/day interactions capture changing demand levels."
+    ),
+    "calendar_interaction_ensemble": (
+        "A fixed blend of robust absolute-loss calendar predictions and interaction-sensitive squared-loss "
+        "predictions reduces complementary errors."
+    ),
     "competition_weather_hgbt": "ERA5 reanalysis improves the calendar-holiday model in competition-retrospective mode.",
 }
 

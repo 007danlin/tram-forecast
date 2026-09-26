@@ -135,6 +135,7 @@ def main():
         "Исходники — текущие байты файлов, включённых в индекс Git; untracked-файлы не включены.\n"
         "Незакоммиченные изменения отслеживаемых файлов также попадают в архив; проверьте MANIFEST.sha256.\n"
         "Начать с README.md и docs/integration/qa-2026-09-25/jury-guide.md.\n"
+        "Повтор упаковки и tooling/delivery тесты требуют Git checkout; для них используйте репозиторий.\n"
         "Импорт: python -m backend.handoff.install /absolute/path/package.zip --output artifacts/release.\n"
         "После установки backend-зависимостей и импорта: export TRAMFLOW_HANDOFF_HOST_DIR=\"$PWD/artifacts/release\";\n"
         "docker compose -f compose.yaml -f compose.handoff.yaml up --build. Первая сборка требует сети/кэша.\n"
