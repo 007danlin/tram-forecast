@@ -1,5 +1,14 @@
 {
   "registry_version": "2026-09-26-local-b2-accepted",
+  "champion_passport": {
+    "model": "calendar_interaction_ensemble",
+    "model_sha256": "39edd75e265102f5973d14acd94bd4ae75a0473f12b7d07e47e2dc8b32eb9942",
+    "report": "ml/reports/champion-b2-g2-2026-09-26.md",
+    "included_categories": ["calendar"],
+    "exact_b2_calendar_off_ablation": "not_run; F01 delta below is historical, not a B2 ablation",
+    "calendar_access": "government.ru timeout; cbr.ru official 2025 list obtained and matched; receipts/snapshot in local G0/G2 bundle",
+    "other_source_T01": "v3 negative: 0.80200576 to 0.79754509 versus same regime-direct baseline; not in B2"
+  },
   "checked_at": "2026-09-26",
   "scope": "Internal ML registry; it does not change the HTTP API contract.",
   "status_definitions": {
