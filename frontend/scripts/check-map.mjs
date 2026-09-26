@@ -46,6 +46,19 @@ try {
     throw new Error(
       "Векторная схема не должна содержать растр, скрипты или внешние ресурсы",
     );
+  const svg = vector.toString();
+  if (reference.station_label_count !== map.labels.length)
+    throw new Error("Несовпадение числа подписей SVG");
+  for (const label of map.labels) {
+    if (
+      !label.originalGlyphs?.length ||
+      !svg.includes(`id="station-label-${label.id}"`)
+    )
+      throw new Error(`Нет оригинальной подписи ${label.id}`);
+    for (const id of label.originalGlyphs)
+      if (!svg.includes(`id="glyph-${id}"`))
+        throw new Error(`Нет контура подписи ${id}`);
+  }
   console.log(
     "Карта присутствует: " +
       ["lanes", "stops", "labels", "landmarks", "metro"]

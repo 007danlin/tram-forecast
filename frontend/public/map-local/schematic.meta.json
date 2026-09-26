@@ -8,8 +8,9 @@
     1178
   ],
   "paths": 11993,
-  "sha256": "96c2e6fb979c09c7651f4e58aa743a3906c8c8bbc74617fc7129076c5a240eef",
+  "sha256": "e1c81f4e4596300fd840652b171fb4641032c70ca99c5a013c137f587cd39a55",
   "raster_images": 0,
+  "station_label_count": 424,
   "optimizer": "svgo 4.0.0 --multipass",
   "note": "Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json."
 }

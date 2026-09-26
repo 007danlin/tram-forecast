@@ -17,6 +17,7 @@ export type MapLabel = {
   lines: LabelLine[];
   fs: number;
   bold: boolean;
+  originalGlyphs?: number[];
   lanes: string[];
 };
 export type Shape = { d: string; f: string; o?: number; eo?: number };

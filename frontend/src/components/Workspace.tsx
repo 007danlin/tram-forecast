@@ -1,14 +1,23 @@
 import { useEffect, useRef, useState } from "react";
+import type { Network } from "../map/loadMap";
 import { TramMap } from "./TramMap";
 import { ForecastCard } from "./ForecastCard";
 import { TimelinePanel } from "./TimelinePanel";
 import { Button, Icon } from "./ui";
 import "./Workspace.css";
 export function Workspace({
+  network,
+  mapProblem,
+  selectedRoute,
+  onRouteChange,
   hidden,
   expanded,
   onExpandedChange,
 }: {
+  network: Network | null;
+  mapProblem: string;
+  selectedRoute: string;
+  onRouteChange: (route: string) => void;
   hidden: boolean;
   expanded: boolean;
   onExpandedChange: (v: boolean) => void;
@@ -92,7 +101,12 @@ export function Workspace({
           <Icon name={expanded ? "close" : "expand"} />
           <span>{expanded ? "Закрыть схему" : "Схема · увеличить"}</span>
         </Button>
-        <TramMap />
+        <TramMap
+          map={network}
+          mapProblem={mapProblem}
+          selectedRoute={selectedRoute}
+          onRouteChange={onRouteChange}
+        />
       </div>
       <div className="workspace-timeline" inert={expanded}>
         <TimelinePanel />

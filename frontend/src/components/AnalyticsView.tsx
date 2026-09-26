@@ -28,6 +28,7 @@ export function AnalyticsView() {
         вагона.
       </p>
       {f.busy && <p role="status">Загружаем прогноз…</p>}
+      {f.emptyReason && <p role="status">{f.emptyReason}</p>}
       {f.error && (
         <div className="forecast-message--error">
           <p role="alert">{f.error}</p>

@@ -5,10 +5,12 @@ import { Workspace } from "./components/Workspace";
 import { AnalyticsView } from "./components/AnalyticsView";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ForecastContext, useForecast } from "./useForecast";
+import { useNetwork } from "./map/useNetwork";
 import { useTheme } from "./theme/useTheme";
 
 export function App() {
   const forecast = useForecast();
+  const { network, problem: mapProblem } = useNetwork();
   const { theme, changeTheme } = useTheme();
   const [view, setView] = useState<ViewName>("map");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -27,10 +29,14 @@ export function App() {
             theme={theme}
             onThemeChange={changeTheme}
           />
-          <FilterBar />
+          <FilterBar network={network} />
         </div>
         <main className="app-shell__body" inert={settingsOpen}>
           <Workspace
+            network={network}
+            mapProblem={mapProblem}
+            selectedRoute={forecast.route}
+            onRouteChange={forecast.changeRoute}
             hidden={view !== "map"}
             expanded={mapExpanded}
             onExpandedChange={setMapExpanded}

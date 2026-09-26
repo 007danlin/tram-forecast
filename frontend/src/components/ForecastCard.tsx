@@ -80,6 +80,11 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
             Загружаем прогноз…
           </p>
         )}
+        {forecast.emptyReason && (
+          <p className="forecast-message" role="status">
+            {forecast.emptyReason}
+          </p>
+        )}
         {error && (
           <p className="forecast-message forecast-message--error" role="alert">
             {error}
@@ -160,7 +165,7 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
         <Button
           variant="ghost"
           onClick={forecast.retry}
-          disabled={busy || forecast.exporting}
+          disabled={busy || forecast.exporting || !!forecast.emptyReason}
           aria-label={
             forecast.errorStatus === 410
               ? "Обновить доступные данные"

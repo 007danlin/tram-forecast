@@ -56,6 +56,10 @@ def main():
     if digest != EXPECTED: raise SystemExit('Unexpected PDF checksum; do not substitute another edition.')
     page = pymupdf.open(args.pdf)[0]
     bounds = pymupdf.Rect(BOUNDS[0], BOUNDS[1], BOUNDS[0]+BOUNDS[2], BOUNDS[1]+BOUNDS[3])
+    network=json.loads((ROOT/'frontend/public/map-local/network.json').read_text())
+    labels=[label for label in network['labels'] if label.get('originalGlyphs')]
+    glyphs={seq for label in labels for seq in label['originalGlyphs']}
+    label_defs=''.join('<g id="station-label-'+label['id']+'">'+''.join(f'<use href="#glyph-{seq}"/>' for seq in label['originalGlyphs'])+'</g>' for label in labels)
     elements = []
     for d in page.get_drawings():
         if d['seqno'] == 0 or not d['rect'].intersects(bounds): continue
@@ -63,14 +67,15 @@ def main():
         color = '#' + ''.join(f'{round(c*255):02x}' for c in d['fill'])
         rule = ' fill-rule="evenodd"' if d['even_odd'] else ''
         opacity = f' opacity="{number(d["fill_opacity"])}"' if d['fill_opacity'] != 1 else ''
-        elements.append(f'<path fill="{color}"{rule}{opacity} d="{path(d["items"])}"/>')
+        identifier=f' id="glyph-{d["seqno"]}"' if d['seqno'] in glyphs else ''
+        elements.append(f'<path{identifier} fill="{color}"{rule}{opacity} d="{path(d["items"])}"/>')
     width,height=number(page.rect.width),number(page.rect.height)
-    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}"><title>Трамваи Москвы — векторная схема</title><defs><clipPath id="map"><rect x="62" y="112" width="1065" height="1178"/></clipPath></defs><g clip-path="url(#map)">' + ''.join(elements) + '</g></svg>'
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}"><title>Трамваи Москвы — векторная схема</title><defs><clipPath id="map"><rect x="62" y="112" width="1065" height="1178"/></clipPath>{label_defs}</defs><g clip-path="url(#map)">' + ''.join(elements) + '</g></svg>'
     out=ROOT/'frontend/public/map-local/schematic.svg'
     out.write_text(svg)
-    subprocess.run(['npx', '--yes', '--package=svgo@4.0.0', '--', 'svgo', str(out), '-o', str(out), '--multipass'], check=True)
+    subprocess.run(['npx', '--yes', '--package=svgo@4.0.0', '--', 'svgo', str(out), '-o', str(out), '--multipass', '--config', str(ROOT/'scripts/map/svgo-reference.mjs')], check=True)
     svg = out.read_text()
-    metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'optimizer':'svgo 4.0.0 --multipass','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
+    metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'station_label_count':len(labels),'optimizer':'svgo 4.0.0 --multipass','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
     (out.parent/'schematic.meta.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
     print(f'{len(elements)} vector paths; {out.stat().st_size} bytes; no images/scripts/external links')
 

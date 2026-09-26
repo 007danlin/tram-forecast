@@ -20,10 +20,6 @@ const { chromium, webkit } = require("playwright");
     const network = await (
       await page.request.get(base + "/map-local/network.json")
     ).json();
-    await page
-      .getByRole("button", { name: "Увеличить область схемы", exact: true })
-      .click();
-    await page.getByRole("button", { name: "Вся схема", exact: true }).click();
     const selected = () =>
       page
         .locator("[data-selected-lane]")
@@ -37,33 +33,59 @@ const { chromium, webkit } = require("playwright");
         )
         .map((l) => l.id)
         .sort();
-    await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
-      .click();
-    const options = await page
-      .getByLabel("Выбрать линию", { exact: true })
-      .locator("option")
-      .evaluateAll((es) =>
-        es
-          .filter((e) => e.value)
-          .map((e) => ({ id: e.value, name: e.textContent })),
-      );
-    assert.equal(options.length, 35);
-    for (const option of options) {
+    const dropdown = page.getByLabel("Маршрут", { exact: true });
+    assert.equal(
       await page
-        .getByLabel("Выбрать линию", { exact: true })
-        .selectOption(option.id);
+        .getByRole("button", { name: "Линии схемы", exact: true })
+        .count(),
+      0,
+    );
+    const options = [
+      ...new Map(
+        network.lanes.map((lane) => [
+          JSON.stringify([...lane.routes].sort()),
+          lane,
+        ]),
+      ).values(),
+    ];
+    assert.equal(options.length, 35);
+    for (const lane of options) {
+      await dropdown.selectOption(lane.routes[0]);
+      assert.deepEqual(await selected(), expected(lane), lane.routes.join("/"));
+      const ids = new Set(expected(lane));
       assert.deepEqual(
-        await selected(),
-        expected(network.lanes.find((l) => l.id === option.id)),
-        option.name,
+        await page
+          .locator("[data-selected-stop]")
+          .evaluateAll((es) => es.map((e) => e.dataset.selectedStop).sort()),
+        network.stops
+          .filter((s) => ids.has(s.lane))
+          .map((s) => s.id)
+          .sort(),
+      );
+      assert.deepEqual(
+        await page
+          .locator("[data-selected-label]")
+          .evaluateAll((es) => es.map((e) => e.dataset.selectedLabel).sort()),
+        network.labels
+          .filter((l) => l.lanes.some((id) => ids.has(id)))
+          .map((l) => l.id)
+          .sort(),
+      );
+      assert.equal(
+        await page
+          .locator(".map-layer--reference")
+          .evaluate((e) => getComputedStyle(e).opacity),
+        "0.4",
       );
     }
     await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
+      .getByRole("button", { name: "Увеличить область схемы", exact: true })
       .click();
     // Every original fragment is still hittable and selects all of its route, not its colour.
     for (const lane of network.lanes) {
+      await page
+        .getByRole("button", { name: "Вся схема", exact: true })
+        .click();
       const segment = lane.points
         .slice(1)
         .map((p, i) => ({
@@ -97,10 +119,18 @@ const { chromium, webkit } = require("playwright");
       if (await candidates.isVisible()) {
         const option = options.find((o) => expected(lane).includes(o.id));
         await candidates
-          .getByRole("button", { name: option.name, exact: true })
+          .getByRole("button", {
+            name: option.routes.map((n) => "№ " + n).join(", "),
+            exact: true,
+          })
           .click();
       }
       assert.deepEqual(await selected(), expected(lane), `Click ${lane.id}`);
+      assert.equal(
+        await dropdown.inputValue(),
+        lane.routes[0],
+        `Shared map/dropdown selection ${lane.id}`,
+      );
     }
     // High-zoom screenshots at every repaired crossing and terminal loop.
     for (const [name, id, x, y, scale] of [
@@ -113,19 +143,16 @@ const { chromium, webkit } = require("playwright");
       ["50-terminal", "teal-2", 450, 589, 14],
     ]) {
       await page
-        .getByRole("button", { name: "Вся схема", exact: true })
+        .getByRole("button", { name: "Закрыть увеличенную схему", exact: true })
         .click();
-      await page
-        .getByRole("button", { name: "Линии схемы", exact: true })
-        .click();
-      const representative = options.find((o) =>
-        expected(network.lanes.find((l) => l.id === id)).includes(o.id),
+      await dropdown.selectOption(
+        network.lanes.find((l) => l.id === id).routes[0],
       );
       await page
-        .getByLabel("Выбрать линию", { exact: true })
-        .selectOption(representative.id);
+        .getByRole("button", { name: "Увеличить область схемы", exact: true })
+        .click();
       await page
-        .getByRole("button", { name: "Линии схемы", exact: true })
+        .getByRole("button", { name: "Вся схема", exact: true })
         .click();
       const bounds = await page.locator(".tram-map__viewport svg").evaluate(
         (svg, p) => {

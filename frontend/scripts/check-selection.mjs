@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { groupRouteLanes } from "../src/map/routeSelection.ts";
+import { groupRouteLanes, routeFeatures } from "../src/map/routeSelection.ts";
 const network = JSON.parse(
   readFileSync(new URL("../public/map-local/network.json", import.meta.url)),
 );
@@ -67,4 +67,32 @@ assert.ok(fifty.find((l) => l.id === "teal-7").points.some((p) => p[0] < 445));
 assert.ok(fifty.find((l) => l.id === "teal-3").points.at(-1)[1] < 582);
 console.log(
   `PASS ${groups.length} map choices / ${Object.keys(network.legend).length} route numbers / ${network.lanes.length} stable lanes: connected selections, isolated same-colour routes, complete terminal loop.`,
+);
+
+for (const group of groups)
+  for (const number of group.routes) {
+    const features = routeFeatures(network, number),
+      ids = new Set(group.lanes.map((l) => l.id));
+    assert.deepEqual(features.selection, group);
+    assert.ok(features.stops.length > 0, `No stops for ${number}`);
+    assert.ok(features.labels.length > 0, `No labels for ${number}`);
+    assert.deepEqual(
+      features.stops.map((s) => s.id),
+      network.stops.filter((s) => ids.has(s.lane)).map((s) => s.id),
+    );
+    assert.deepEqual(
+      features.labels.map((l) => l.id),
+      network.labels
+        .filter((l) => l.lanes.some((id) => ids.has(id)))
+        .map((l) => l.id),
+    );
+  }
+for (const number of ["", "not-on-map"]) {
+  const features = routeFeatures(network, number);
+  assert.equal(features.selection, undefined);
+  assert.deepEqual(features.stops, []);
+  assert.deepEqual(features.labels, []);
+}
+console.log(
+  "PASS every route selects its stops and labels; clear/unknown routes select nothing.",
 );

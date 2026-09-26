@@ -32,6 +32,9 @@
 .map-layer--reference {
   pointer-events: none;
 }
+.map-layer--reference[data-focused="true"] {
+  opacity: 0.4;
+}
 .tram-map__controls {
   position: absolute;
   right: 12px;
@@ -58,8 +61,7 @@
 }
 .tram-map__btn:focus-visible,
 .tram-map__viewport:focus-visible,
-.tram-map select:focus-visible,
-.map-list-toggle:focus-visible {
+.tram-map__selected button:focus-visible {
   outline: 3px solid #e4000d;
 }
 .tram-map__state {
@@ -73,55 +75,6 @@
   text-align: center;
   font-size: 13px;
 }
-.tram-map__selection-tools {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  max-width: calc(100% - 24px);
-}
-.map-list-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #fff;
-  color: #19252d;
-  border: 1px solid #a3afb7;
-  border-radius: 8px;
-  font-size: 12px;
-}
-.map-list-toggle .icon {
-  width: 14px;
-}
-.tram-map__list {
-  position: absolute;
-  bottom: 52px;
-  left: 0;
-  background: #fff;
-  border: 1px solid #a3afb7;
-  border-radius: 8px;
-  padding: 14px;
-  width: min(320px, calc(100vw - 48px));
-  box-shadow: 0 4px 20px #0002;
-  font-size: 12px;
-}
-.tram-map__list label {
-  display: block;
-}
-.tram-map__list select {
-  display: block;
-  width: 100%;
-  margin: 6px 0 12px;
-  border: 1px solid #75838e;
-  border-radius: 6px;
-  background: #fff;
-  padding: 8px;
-  color: #19252d;
-  font-size: 12px;
-}
-.tram-map__list p {
-  color: #596773;
-}
 .tram-map__selected {
   position: absolute;
   bottom: 12px;
@@ -129,7 +82,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: calc(100% - 175px);
+  max-width: calc(100% - 24px);
   background: #fff;
   border-radius: 8px;
   padding: 0 4px 0 12px;
