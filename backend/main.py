@@ -16,6 +16,7 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from ml import adapter
 from backend.handoff.api import HandoffError, error_handler, router
+from backend.handoff.scenarios import router as scenario_router
 from backend.handoff.store import load_snapshot
 
 logger = logging.getLogger(__name__)
@@ -41,12 +42,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="TramFlow API", version="0.2.0", lifespan=lifespan)
 app.include_router(router)
+app.include_router(scenario_router)
 app.add_exception_handler(HandoffError, error_handler)
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, exc: RequestValidationError):
-    if request.url.path.startswith("/api/v2/handoff/"):
+    if request.url.path.startswith(("/api/v2/handoff/", "/api/v2/scenarios/")):
         return JSONResponse(
             status_code=422,
             content={
@@ -63,7 +65,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
 
 @app.middleware("http")
 async def handoff_diagnostics(request: Request, call_next):
-    if not request.url.path.startswith("/api/v2/handoff/"):
+    if not request.url.path.startswith(("/api/v2/handoff/", "/api/v2/scenarios/")):
         return await call_next(request)
     request.state.request_id = str(uuid4())
     start = perf_counter()

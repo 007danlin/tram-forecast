@@ -1,9 +1,12 @@
 import { ForecastLineChart, ForecastTable } from "./ForecastData";
 import { useForecastData } from "../useForecast";
 import { Button } from "./ui";
+import { OverviewButton, RouteOverview, ScenarioPanel, ForecastLayers, YearView, DemandIndicator } from "./DispatchTools";
 import "./AnalyticsView.css";
 export function AnalyticsView() {
   const f = useForecastData();
+  if (f.horizon === 'year') return <YearView />;
+  if (f.overview) return <RouteOverview />;
   const onSelect = (i: number) => {
     f.setPlaying(false);
     f.setSelected(i);
@@ -12,7 +15,6 @@ export function AnalyticsView() {
     <section className="analytics-view" aria-labelledby="analytics-title">
       <div className="analytics-heading">
         <div>
-          <p className="eyebrow">Тот же прогноз · расширенный вид</p>
           <h1 id="analytics-title">Аналитика маршрута {f.route}</h1>
         </div>
         <Button
@@ -23,10 +25,9 @@ export function AnalyticsView() {
           Скачать CSV
         </Button>
       </div>
-      <p className="analytics-view__notice">
-        Исторический прогноз · МСК. Успешные посадки не равны заполненности
-        вагона.
-      </p>
+      <OverviewButton />
+      <ForecastLayers /><ScenarioPanel />
+      <DemandIndicator />
       {f.busy && <p role="status">Загружаем прогноз…</p>}
       {f.emptyReason && <p role="status">{f.emptyReason}</p>}
       {f.error && (

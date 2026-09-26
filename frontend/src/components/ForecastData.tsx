@@ -20,7 +20,8 @@ export function ForecastLineChart({
   selectedIndex: number | null;
   onSelectIndex: (i: number) => void;
 }) {
-  const max = Math.max(1, ...points.map((p) => p.value ?? 0));
+  const scenario = points.some(p => p.base_value !== undefined);
+  const max = Math.max(1, ...points.flatMap((p) => [p.value ?? 0, p.base_value ?? 0]));
   const x = (i: number) => 40 + (i * 520) / Math.max(1, points.length - 1);
   const y = (v: number) => 190 - (v / max) * 160;
   const line = smoothChartPath(points.map((p, i) =>
@@ -28,6 +29,7 @@ export function ForecastLineChart({
   ));
   return (
     <div className="forecast-chart">
+      {scenario && <div className="forecast-chart__legend"><span>━ Сценарий</span><span>┄ База</span></div>}
       <svg
         viewBox="0 0 600 230"
         role="img"
@@ -46,6 +48,8 @@ export function ForecastLineChart({
         <text x="8" y="30">
           {format(max)}
         </text>
+        {scenario && <path d={smoothChartPath(points.map((p, i) => p.base_value == null ? null : {x: x(i), y: y(p.base_value)}))}
+          fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeDasharray="5 4" />}
         <path
           d={line}
           fill="none"
@@ -97,6 +101,7 @@ export function ForecastTable({
   selectedIndex: number | null;
   onSelectIndex: (i: number) => void;
 }) {
+  const scenario = points.some(p => p.base_value !== undefined);
   return (
     <div
       className="forecast-table-wrap"
@@ -112,6 +117,7 @@ export function ForecastTable({
           <tr>
             <th scope="col">Время (ISO 8601)</th>
             <th scope="col">Значение, {unit}</th>
+            {scenario && <><th scope="col">База</th><th scope="col">Разница</th></>}
             <th scope="col">Покрытие</th>
           </tr>
         </thead>
@@ -143,6 +149,7 @@ export function ForecastTable({
                   </details>
                 )}
               </td>
+              {scenario && <><td>{format(p.base_value ?? null)}</td><td>{format(p.delta ?? null)}</td></>}
               <td>
                 {p.available_hours}/{p.expected_hours} ·{" "}
                 {statusLabels[p.status]}

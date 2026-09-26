@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { Network } from "../map/loadMap";
 import { groupRouteLanes } from "../map/routeSelection";
 import { useForecastData } from "../useForecast";
-import { Button, Icon } from "./ui";
+import { Button } from "./ui";
+import { OVERVIEW } from "../handoff";
 import "./FilterBar.css";
 export function FilterBar({ network }: { network: Network | null }) {
   const forecast = useForecastData();
@@ -31,32 +32,11 @@ export function FilterBar({ network }: { network: Network | null }) {
       a.value.localeCompare(b.value, "ru", { numeric: true }),
     );
   }, [network, forecast.caps]);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!moreOpen) return;
-    const close = (e: PointerEvent) => {
-      if (
-        !popoverRef.current?.contains(e.target as Node) &&
-        !trigger.current?.contains(e.target as Node)
-      )
-        setMoreOpen(false);
-    };
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, [moreOpen]);
   return (
     <div
       className="filter-bar"
       role="search"
       aria-label="Фильтры прогноза"
-      onKeyDown={(e) => {
-        if (e.key === "Escape" && moreOpen) {
-          setMoreOpen(false);
-          trigger.current?.focus();
-        }
-      }}
     >
       <label className="filter-field route-field">
         <span className="sr-only">Маршрут</span>
@@ -66,7 +46,8 @@ export function FilterBar({ network }: { network: Network | null }) {
           value={forecast.route}
           onChange={(e) => forecast.changeRoute(e.target.value)}
         >
-          <option value="">Все маршруты</option>
+          <option value="">Снять выбор</option>
+          {forecast.caps && <option value={OVERVIEW}>Обзор маршрутов</option>}
           {options.map((route) => (
             <option
               key={route.value}
@@ -74,7 +55,7 @@ export function FilterBar({ network }: { network: Network | null }) {
               data-forecast={route.forecast}
             >
               № {route.label}
-              {route.method === "baseline" ? " · baseline" : ""}
+              {route.method === "baseline" ? " · нет истории" : ""}
               {forecast.caps && !route.forecast ? " · только схема" : ""}
             </option>
           ))}
@@ -92,29 +73,7 @@ export function FilterBar({ network }: { network: Network | null }) {
           onChange={(e) => forecast.changeDay(e.target.value)}
         />
       </label>
-      <button
-        ref={trigger}
-        type="button"
-        className="button more-filters"
-        aria-expanded={moreOpen}
-        aria-controls="extra-filters"
-        onClick={() => setMoreOpen((v) => !v)}
-      >
-        <span>Ещё</span>
-        <span className="more-period">
-          {forecast.horizon === "day"
-            ? "День"
-            : forecast.horizon === "week"
-              ? "Неделя"
-              : "Месяц"}
-        </span>
-        <Icon name="chevron" />
-      </button>
-      <div
-        ref={popoverRef}
-        id="extra-filters"
-        className={`filter-extras${moreOpen ? " is-open" : ""}`}
-      >
+      <div className="filter-extras">
         <div
           className="filter-bar__horizon"
           role="group"
@@ -125,6 +84,7 @@ export function FilterBar({ network }: { network: Network | null }) {
               ["day", "День", "1 день"],
               ["week", "Неделя", "1 нед"],
               ["month", "Месяц", "1 мес"],
+              ["year", "Год", "Год"],
             ] as const
           ).map(([value, label, accessible]) => (
             <Button
@@ -133,7 +93,7 @@ export function FilterBar({ network }: { network: Network | null }) {
               aria-label={accessible}
               aria-pressed={forecast.horizon === value}
               disabled={
-                !forecast.caps?.resolutions.includes(
+                value === "year" ? !forecast.caps?.year?.qualitative_available : !forecast.caps?.resolutions.includes(
                   value === "day" ? "hour" : "day",
                 )
               }
@@ -143,38 +103,8 @@ export function FilterBar({ network }: { network: Network | null }) {
             </Button>
           ))}
         </div>
-        <Button
-          variant="ghost"
-          className="reset-filters"
-          disabled={!forecast.caps}
-          onClick={forecast.reset}
-        >
-          Сбросить
-        </Button>
       </div>
-      <div className="filter-status">
-        <span>
-          Исторический прогноз{" "}
-          <span className="mobile-period">
-            ·{" "}
-            {forecast.horizon === "day"
-              ? "День"
-              : forecast.horizon === "week"
-                ? "Неделя"
-                : "Месяц"}
-          </span>
-        </span>
-        <span
-          className={`connection-status app-shell__badge--${forecast.connection}`}
-          role="status"
-        >
-          {forecast.connection === "checking"
-            ? "Проверяем пакет…"
-            : forecast.connection === "ok"
-              ? "Пакет подключён"
-              : "Пакет недоступен"}
-        </span>
-      </div>
+      <span className={`filter-status app-shell__badge--${forecast.connection}${forecast.connection === 'ok' ? ' sr-only' : ''}`}  role="status">{forecast.connection === 'checking' ? 'Загружаем данные…' : forecast.connection === 'ok' ? 'Данные загружены' : 'Данные недоступны'}</span>
     </div>
   );
 }
