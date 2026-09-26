@@ -11,7 +11,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import Field
 
 from backend.contracts.v2 import ContractModel, Identifier
-from backend.handoff.api import HandoffError, Query, Result, Row, calculate, get_snapshot
+from backend.handoff.api import (HandoffError, HandoffErrorResponse, QUERY_RESPONSES,
+                                 Query, Result, Row, calculate, get_snapshot)
 from backend.handoff.store import Snapshot
 
 router = APIRouter(prefix="/api/v2/scenarios", tags=["Manual scenarios v1"])
@@ -67,12 +68,19 @@ def calculate_scenario(snapshot: Snapshot, body: ScenarioQuery, request_id: str)
         rows=rows, total=total, delta_total=None if total is None else total - base.total)
 
 
-@router.post("/query", response_model=ScenarioResult)
+@router.post("/query", response_model=ScenarioResult, responses=QUERY_RESPONSES)
 def query(body: ScenarioQuery, request: Request):
     return calculate_scenario(get_snapshot(request), body, request.state.request_id)
 
 
-@router.post("/export", response_class=StreamingResponse)
+@router.post("/export", response_class=StreamingResponse, responses={
+    **QUERY_RESPONSES,
+    409: {"model": HandoffErrorResponse, "description": "Export does not match the viewed scenario"},
+    200: {"content": {"text/csv": {"schema": {"type": "string"}}},
+          "description": "Pinned manual scenario with base values and coefficients",
+          "headers": {"X-Result-Id": {"schema": {"type": "string"}},
+                      "Content-Disposition": {"schema": {"type": "string"}}}},
+})
 def export(body: ScenarioExport, request: Request):
     result = calculate_scenario(get_snapshot(request), ScenarioQuery.model_validate(
         body.model_dump(exclude={"expected_result_id"})), request.state.request_id)

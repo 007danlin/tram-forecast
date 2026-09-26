@@ -15,7 +15,6 @@ export function AnalyticsView() {
     <section className="analytics-view" aria-labelledby="analytics-title">
       <div className="analytics-heading">
         <div>
-          <p className="eyebrow">Тот же прогноз · расширенный вид</p>
           <h1 id="analytics-title">Аналитика маршрута {f.route}</h1>
         </div>
         <Button
@@ -26,10 +25,6 @@ export function AnalyticsView() {
           Скачать CSV
         </Button>
       </div>
-      <p className="analytics-view__notice">
-        Исторический прогноз · МСК. Успешные посадки не равны заполненности
-        вагона.
-      </p>
       <OverviewButton />
       <DemandIndicator />
       {f.busy && <p role="status">Загружаем прогноз…</p>}

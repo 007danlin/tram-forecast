@@ -29,7 +29,7 @@ export function ForecastLineChart({
   ));
   return (
     <div className="forecast-chart">
-      {scenario && <p>Сплошная линия — сценарий; пунктир — база. Интервал сценария не оценён.</p>}
+      {scenario && <div className="forecast-chart__legend"><span>━ Сценарий</span><span>┄ База</span></div>}
       <svg
         viewBox="0 0 600 230"
         role="img"

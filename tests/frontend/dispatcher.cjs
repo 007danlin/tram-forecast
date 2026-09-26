@@ -38,7 +38,7 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     await page.getByRole('button',{name:'1 мес',exact:true}).click(); await page.getByTestId('total').waitFor();
     const monthTotal=Number(await page.getByTestId('total').getAttribute('data-raw-value'));
     const beforeYear=requests.length;
-    await page.getByRole('button',{name:'Год · качественно',exact:true}).click();
+    await page.getByRole('button',{name:'Год',exact:true}).click();
     await page.getByRole('region',{name:'Качественный год'}).waitFor();
     assert.equal(await page.getByLabel('Маршрут',{exact:true}).inputValue(),'1');
     assert.match(await page.getByTestId('year-period').textContent(),/2025.*2026/);
@@ -46,7 +46,7 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     assert.equal(await page.getByRole('button',{name:'Скачать CSV',exact:true}).isDisabled(),true);
     assert.equal(requests.length,beforeYear);
     await page.screenshot({path:path.join(output,'year.png'),fullPage:true});
-    await page.getByLabel('Маршрут',{exact:true}).selectOption('5'); assert.match(await page.getByRole('region',{name:'Качественный год'}).textContent(),/baseline/);
+    await page.getByLabel('Маршрут',{exact:true}).selectOption('5'); assert.match(await page.getByRole('region',{name:'Качественный год'}).textContent(),/Нет истории обучения/);
     await page.getByLabel('Маршрут',{exact:true}).selectOption('2'); assert.match(await page.getByRole('region',{name:'Качественный год'}).textContent(),/только на схеме/);
     await page.getByLabel('Маршрут',{exact:true}).selectOption('1');
     await page.getByRole('button',{name:'1 мес',exact:true}).click(); await page.getByTestId('total').waitFor();
@@ -78,7 +78,7 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
     await page.locator('[data-overview-route="1"] button').click();await page.getByTestId('total').waitFor();
-    await page.getByRole('button',{name:'График, таблица и сведения'}).click();
+    assert.equal(await page.getByLabel('Точка временного ряда').isVisible(),true);
     await page.screenshot({path:path.join(output,'mobile.png'),fullPage:true});
     assert.equal(errors.length,0,errors.join('\n'));
     assert.equal(requests.filter(r=>r.url.includes('/scenarios/')).length,0);

@@ -14,6 +14,7 @@ export function TimelinePanel() {
         f.current?.filters.resolution === "day",
       )
     : "";
+  const peak = f.points.reduce((best, p, i) => p.value !== null && (best < 0 || p.value > f.points[best].value!) ? i : best, -1);
   return (
     <section className="timeline-panel" aria-label="Временная панель">
       <Button
@@ -30,20 +31,6 @@ export function TimelinePanel() {
         <Icon name={f.playing ? "pause" : "play"} />
       </Button>
       <div className="timeline-panel__mid">
-        <div className="timeline-panel__label">
-          {current ? (
-            <>
-              <strong>{label} · МСК</strong>
-              <span>
-                {current.value === null
-                  ? "Нет данных"
-                  : `${format(current.value)} посадок`}
-              </span>
-            </>
-          ) : (
-            "Нет доступных точек"
-          )}
-        </div>
         <input
           style={
             {
@@ -67,6 +54,7 @@ export function TimelinePanel() {
           }}
         />
       </div>
+      <Button variant="ghost" disabled={!hasData || peak < 0} onClick={() => { f.setPlaying(false); f.setSelected(peak); }}>Пик</Button>
     </section>
   );
 }

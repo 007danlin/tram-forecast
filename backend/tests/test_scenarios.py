@@ -13,7 +13,7 @@ from test_handoff import make_archive, day_query
 from backend.handoff.install import install
 from backend.handoff.store import load_snapshot, Cell
 from backend.handoff.api import HandoffError, calculate
-from backend.handoff.features import YEAR
+from backend.handoff.features import SCENARIO, YEAR, ScenarioCapabilities, YearCapabilities
 from backend.handoff.scenarios import Coefficients, ScenarioQuery, ScenarioExport, calculate_scenario, export
 
 
@@ -83,3 +83,18 @@ class ScenarioTests(unittest.TestCase):
         self.assertFalse(YEAR['numeric_supported'])
         self.assertIsNone(YEAR['value'])
         self.assertEqual([s['name'] for s in YEAR['scenarios']], ['recent_level', 'lower_service', 'higher_demand'])
+
+    def test_capabilities_and_openapi_include_the_ui_contract(self):
+        from backend.main import app
+        from backend.handoff.api import HandoffCapabilities, capabilities
+        request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(handoff_snapshot=self.snapshot)), state=SimpleNamespace(request_id='x'))
+        result = HandoffCapabilities.model_validate(capabilities(request))
+        self.assertTrue(result.scenario_supported)
+        self.assertEqual(result.scenario, ScenarioCapabilities.model_validate(SCENARIO))
+        self.assertEqual(result.year, YearCapabilities.model_validate(YEAR))
+        schema = app.openapi()
+        for path in ['/query', '/export']:
+            responses = schema['paths']['/api/v2/scenarios' + path]['post']['responses']
+            for status in ['404', '410', '413', '422', '503']:
+                self.assertIn(status, responses)
+        self.assertIn('409', schema['paths']['/api/v2/scenarios/export']['post']['responses'])

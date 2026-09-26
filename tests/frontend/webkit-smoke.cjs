@@ -47,15 +47,9 @@ const { webkit } = require("playwright");
         true,
       );
     }
-    await page.getByRole("button", { name: "Ещё", exact: false }).click();
     await page.getByRole("button", { name: "1 нед", exact: true }).click();
     await page.getByTestId("total").waitFor();
-    await page
-      .getByRole("button", { name: "Ещё", exact: false })
-      .press("Escape");
-    await page
-      .getByRole("button", { name: "График, таблица и сведения", exact: true })
-      .click();
+    assert.equal(await page.getByLabel("Точка временного ряда").isVisible(), true);
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     assert.equal(await page.locator(".forecast-card tbody tr").count(), 7);
     const download = page.waitForEvent("download");

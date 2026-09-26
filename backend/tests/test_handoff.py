@@ -297,8 +297,9 @@ class HandoffHttpTests(unittest.TestCase):
         schema = app.openapi()["components"]["schemas"]
         required = schema["HandoffCapabilities"]["required"]
         self.assertTrue({"scenario_supported", "scenario", "year"}.issubset(required))
+        year_schema = schema["HandoffCapabilities"]["properties"]["year"]["$ref"].rsplit("/", 1)[-1]
         self.assertEqual(
-            schema["HandoffYearCapabilities"]["properties"]["numeric_supported"]["const"],
+            schema[year_schema]["properties"]["numeric_supported"]["const"],
             False,
         )
 

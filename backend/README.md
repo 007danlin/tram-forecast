@@ -9,6 +9,15 @@ query/export, качественный год, multi-route обзор и B2 со
 FastAPI предоставляет сохранённый синтетический v1 и новый API готового ML-пакета.
 Запускать из корня репозитория. Общие договорённости: [INTEGRATION.md](../INTEGRATION.md).
 
+## Сценарии и качественный год
+
+Добавлены совместимые `/api/v2/scenarios/query` и `/api/v2/scenarios/export`:
+ручные поправки к неизменной базе с собственным result_id. Capabilities
+возвращает типизированные `scenario` и `year`, `scenario_supported=true`.
+Численный год не поддержан. Формула, пределы, null/coverage и экспорт описаны
+в [протоколе интерфейса](../docs/ui/variant-a.md). Старый handoff query/export
+по-прежнему выдаёт базу; `ml-handoff-v1` и общий draft v2 не переопределены.
+
 ## Что работает сейчас
 
 | Часть | Состояние |

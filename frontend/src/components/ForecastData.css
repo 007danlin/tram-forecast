@@ -77,3 +77,6 @@
   max-width: 200px;
   overflow-wrap: anywhere;
 }
+
+.forecast-chart__legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-secondary); margin: 8px 0; }
+.forecast-chart__legend span:first-child { color: var(--accent-text); }
