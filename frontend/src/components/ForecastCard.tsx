@@ -65,6 +65,7 @@ export function ForecastCard({
           </div>
         </dl>
 
+        {error && <p className="forecast-card__error" role="alert">{error}</p>}
         <div className="forecast-card__tabs" role="tablist" aria-label="Разделы карточки">
           <button type="button" role="tab" className="forecast-card__tab" aria-selected={tab === 'forecast'} onClick={() => setTab('forecast')}>Прогноз</button>
           <button type="button" role="tab" className="forecast-card__tab" aria-selected={tab === 'segments'} onClick={() => setTab('segments')}>По участкам</button>
@@ -73,7 +74,6 @@ export function ForecastCard({
 
         {tab === 'forecast' && <div role="tabpanel">
           {loading && <p className="forecast-card__empty">Загружаем прогноз…</p>}
-          {error && <p className="forecast-card__error" role="alert">{error}</p>}
           {!loading && !error && hasData && <>
             <div className="forecast-card__view-toggle" role="group" aria-label="Вид данных">
               <button type="button" className="forecast-card__view-btn" aria-pressed={chartMode === 'chart'} onClick={() => setChartMode('chart')}>График</button>

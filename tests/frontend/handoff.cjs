@@ -114,11 +114,16 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByLabel('Маршрут',{exact:true}).selectOption('7');
     await page.waitForFunction(() => document.querySelector('tbody tr')?.dataset.route === '7'); await checkRows(31);
     await page.unroute('**/handoff/query');
-    // Out-of-range weeks are explained and cannot be exported.
+    // Out-of-range weeks remain explained on every card tab and cannot be exported.
+    await page.getByRole('tab',{name:'О маршруте',exact:true}).click();
     await setHorizon('week');
     await page.getByLabel('Дата (МСК)').fill('2025-12-29');
     await page.getByRole('alert').waitFor(); assert.equal(await page.getByRole('button',{name:'Скачать CSV'}).isDisabled(),true);
     assert.equal(await page.locator('.app-shell__badge--ok').textContent(),'Пакет подключён');
+    await page.getByRole('tab',{name:'По участкам',exact:true}).click();
+    await page.getByRole('alert').waitFor();
+    await page.getByRole('tab',{name:'Прогноз',exact:true}).click();
+    await page.getByRole('alert').waitFor();
     await page.getByLabel('Дата (МСК)').fill('2025-11-01');
     await setHorizon('day'); await checkRows(24);
     for (const status of [503,410]) {
