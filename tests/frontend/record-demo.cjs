@@ -35,7 +35,7 @@ const path = require('node:path');
     await caption('CSV закреплён за показанным сценарием: база, значение, разница и коэффициенты.',52);
     await page.getByRole('button',{name:'Сбросить сценарий',exact:true}).click();await page.getByRole('button',{name:'1 мес',exact:true}).click();await page.getByTestId('total').waitFor();await page.evaluate(()=>scrollTo(0,0));
     await caption('Сброс возвращает базу. Месяц показывает суммы по дням.',62);
-    await page.getByRole('button',{name:'Год · качественно',exact:true}).click();await page.getByRole('region',{name:'Качественный год'}).waitFor();
+    await page.getByRole('button',{name:'Год',exact:true}).click();await page.getByRole('region',{name:'Качественный год'}).waitFor();
     await caption('Год — три качественных сценария. Численная сумма и интервал не оценены.',75);
     const video=page.video();await context.close();await video.saveAs(path.join(output,'demo.webm'));
     fs.writeFileSync(path.join(output,'recording.json'),JSON.stringify({run:caps.forecast_run_id,duration_seconds:(Date.now()-start)/1000,blocked_external_requests:blocked,external_requests_allowed:false,type:'silent_labelled_technical_demo',human_rehearsal:false},null,2));

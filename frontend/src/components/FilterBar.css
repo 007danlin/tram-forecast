@@ -1,159 +1,25 @@
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 15px 16px;
-  min-height: 74px;
-  position: relative;
-  z-index: 5;
-  background: var(--header-bg);
-  flex-wrap: wrap;
-}
-.filter-field {
-  min-width: 0;
-}
-.filter-field select,
-.filter-field input {
-  width: 100%;
-  min-height: 44px;
-  height: auto;
-  padding: 9px 12px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: var(--control-bg);
-  font-size: 14px;
-}
-.filter-field select:hover,
-.filter-field input:hover {
-  border-color: var(--control-border);
-}
-.route-field {
-  width: 190px;
-}
-.date-field {
-  width: 190px;
-}
-.filter-extras {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.filter-bar__horizon {
-  display: flex;
-  gap: 8px;
-}
-.filter-status {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  margin-left: 6px;
-  display: flex;
-  flex-direction: column;
-}
-.connection-status {
-  font-size: 11px;
-}
-.app-shell__badge--error {
-  color: var(--danger-text);
-}
-.connection-status::before {
-  content: "";
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  margin-right: 6px;
-}
-.app-shell__badge--ok {
-  color: var(--success-text);
-}
-.more-filters,
-.mobile-period {
-  display: none;
-}
-.reset-filters {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-@media (max-width: 1023px) {
-  .filter-bar {
-    min-height: 66px;
-    padding: 11px 12px;
-    flex-wrap: nowrap;
-    gap: 8px;
-  }
-  .route-field {
-    width: 88px;
-    flex-shrink: 0;
-  }
-  .date-field {
-    width: auto;
-    flex: 1;
-  }
-  .filter-field select,
-  .filter-field input {
-    padding: 9px 10px;
-    font-size: 13px;
-    min-width: 0;
-  }
-  .more-filters {
-    display: inline-flex;
-    padding: 10px;
-    gap: 4px;
-  }
-  .more-filters .icon {
-    width: 14px;
-  }
-  .filter-status {
-    display: none;
-  }
-  .filter-extras {
-    display: none;
-    position: absolute;
-    right: 12px;
-    top: 61px;
-    background: var(--panel-bg);
-    padding: 16px;
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    max-width: calc(100vw - 24px);
-  }
-  .filter-extras.is-open {
-    display: flex;
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .filter-bar__horizon {
-    flex-wrap: wrap;
-  }
-  .reset-filters {
-    align-self: flex-start;
-  }
-}
-
-.more-period {
-  display: none;
-}
-@media (max-width: 1023px) {
-  .more-filters {
-    position: relative;
-    display: grid;
-    gap: 0;
-    justify-items: start;
-    padding: 3px 25px 3px 10px;
-    min-width: 74px;
-  }
-  .more-filters .icon {
-    position: absolute;
-    right: 8px;
-    top: 12px;
-  }
-  .more-period {
-    display: block;
-    font-size: 9px;
-    line-height: 1.333;
-    color: var(--text-secondary);
-  }
+.filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 15px 20px; background: var(--header-bg); }
+.filter-field { min-width: 0; }
+.filter-field select, .filter-field input { width: 100%; min-width: 0; min-height: 44px; padding: 9px 10px; border: 1px solid transparent; border-radius: 8px; background: var(--control-bg); font-size: 13px; }
+.filter-field select:hover, .filter-field input:hover { border-color: var(--control-border); }
+.route-field { width: 190px; }
+.date-field { width: 170px; }
+.filter-extras { display: flex; }
+.filter-bar__horizon { display: flex; gap: 4px; width: 100%; }
+.filter-bar__horizon .button { font-size: 12px; }
+.filter-status { font-size: 12px; color: var(--text-secondary); }
+.app-shell__badge--error { color: var(--danger-text); }
+.workspace-card .filter-bar { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); padding: 20px 22px 12px; background: transparent; }
+.workspace-card .route-field, .workspace-card .date-field { width: auto; }
+.workspace-card .filter-extras, .workspace-card .filter-status { grid-column: 1 / -1; }
+.workspace-card .filter-bar__horizon .button { flex: 1; padding: 8px 4px; }
+.workspace--text-mode .filter-bar { display: flex; }
+.workspace--text-mode .route-field { width: 200px; }
+.workspace--text-mode .date-field { width: 180px; }
+@media(max-width: 1023px) {
+ .workspace-card .filter-bar { padding: 16px 18px 12px; }
+ .filter-extras { width: 100%; }
+ .filter-bar__horizon .button { flex: 1; padding: 8px; }
+ .workspace--text-mode .filter-bar { display: grid; }
+ .workspace--text-mode .route-field, .workspace--text-mode .date-field { width: auto; }
 }

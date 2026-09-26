@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Network } from "../map/loadMap";
 import { TramMap } from "./TramMap";
 import { ForecastCard } from "./ForecastCard";
-import { TimelinePanel } from "./TimelinePanel";
+import { FilterBar } from "./FilterBar";
 import { Button, Icon } from "./ui";
-import { DemandIndicator } from "./DispatchTools";
 import { useForecastData } from "../useForecast";
 import "./Workspace.css";
 export function Workspace({
@@ -53,7 +52,10 @@ export function Workspace({
     >
       <div className="workspace-card" inert={expanded}>
         {cardOpen ? (
-          <ForecastCard onClose={() => setCardOpen(false)} />
+          <>
+            {!hidden && <FilterBar network={network} />}
+            <ForecastCard onClose={() => setCardOpen(false)} />
+          </>
         ) : (
           <button
             ref={reopen}
@@ -113,10 +115,6 @@ export function Workspace({
           selectedRoute={selectedRoute}
           onRouteChange={onRouteChange}
         />
-      </div>
-      <div className="workspace-timeline" inert={expanded}>
-        <TimelinePanel />
-        <DemandIndicator />
       </div>
     </div>
   );

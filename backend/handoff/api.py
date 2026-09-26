@@ -24,7 +24,7 @@ from backend.contracts.v2 import (
     validate_boundary,
 )
 from backend.handoff.store import Snapshot
-from backend.handoff.features import SCENARIO, YEAR
+from backend.handoff.features import SCENARIO, YEAR, ScenarioCapabilities, YearCapabilities
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/handoff", tags=["ML handoff v1"])
@@ -104,36 +104,6 @@ class HandoffLimits(ContractModel):
     retained_runs: int
 
 
-class HandoffScenarioCapabilities(ContractModel):
-    schema_version: Literal["manual-scenario-v1"]
-    min: float
-    max: float
-    step: float
-    source: Literal["dispatcher_assumption"]
-    query: str
-    export: str
-
-
-class HandoffYearScenario(ContractModel):
-    name: str
-    title: str
-    assumption: str
-    change: str
-    needed: str
-
-
-class HandoffYearCapabilities(ContractModel):
-    version: Literal["qualitative-year-v1"]
-    source: str
-    qualitative_available: Literal[True]
-    numeric_supported: Literal[False]
-    value: None
-    history_end: str
-    history_months: int
-    reason: str
-    scenarios: list[HandoffYearScenario]
-
-
 class HandoffCapabilities(Period):
     schema_version: Literal["ml-handoff-v1"]
     forecast_run_id: str
@@ -145,8 +115,8 @@ class HandoffCapabilities(Period):
     directions_supported: Literal[False]
     resolutions: list[Literal["hour", "day"]]
     scenario_supported: Literal[True]
-    scenario: HandoffScenarioCapabilities
-    year: HandoffYearCapabilities
+    scenario: ScenarioCapabilities
+    year: YearCapabilities
     limits: HandoffLimits
     warnings: list[str]
     limitations: list[str]
