@@ -52,14 +52,16 @@ export function SourceMonitor() {
     return ()=>{active=false;clearTimeout(timer);controller?.abort();};
   },[]);
   return <section className="source-monitor" aria-labelledby="monitor-title" data-testid="source-monitor">
-    <div className="source-monitor__heading"><div><p className="eyebrow">Город сейчас</p><h3 id="monitor-title">Источники под наблюдением</h3></div><span className="source-monitor__auto">{error ? 'Нет связи' : data ? data.automatic ? 'Автоматически' : 'Остановлен' : 'Проверяем'}</span></div>
-    <p className="source-monitor__intro">Сервис сам проверяет погоду, ограничения и городские события. Время указано по Москве.</p>
+    <div className="source-monitor__heading"><h3 id="monitor-title">Город сейчас</h3><span className="source-monitor__auto">{error ? 'Нет связи' : data ? data.automatic ? 'Автоматически' : 'Остановлен' : 'Проверяем'}</span></div>
+    <p className="source-monitor__intro">Онлайн-данные не меняют исторический прогноз. Время — МСК.</p>
     {error && <p role="alert" className="source-monitor__error">{error}</p>}
     {!data && !error && <p role="status">Проверяем состояние источников…</p>}
     <div className="source-grid">
-      {data?.sources.map(source=> <article className="source-card" key={source.id} data-source={source.id} data-status={error ? 'error' : source.status}>
-        <header><SourceIcon kind={source.id}/><div><h4>{source.title}</h4><a href={safeLink(source.url)} target="_blank" rel="noopener noreferrer">{source.provider} <span aria-hidden="true">↗</span></a></div></header>
+      {data?.sources.map(source=> <details className="source-card" key={source.id} data-source={source.id} data-status={error ? 'error' : source.status}>
+        <summary><span className="source-card__identity"><SourceIcon kind={source.id}/><div><h4>{source.title}</h4><a href={safeLink(source.url)} target="_blank" rel="noopener noreferrer">{source.provider} <span aria-hidden="true">↗</span></a></div></span>
         <span className="source-status"><i aria-hidden="true"/>{error ? 'Нет связи' : labels[source.status]}</span>
+        <time className="source-card__updated">{source.last_success_at ? date(source.last_success_at) : "Нет снимка"}</time></summary>
+        <div className="source-card__body">
         <p className="source-card__description">{source.description}</p>
         {source.id==='weather' && source.preview[0] && <div className="source-weather"><strong>{number(source.preview[0].values.temperature_c)}°</strong><span>Прогноз на {date(source.preview[0].valid_start)}<br/>{number(source.preview[0].values.precipitation_mm)} мм · ветер {number(source.preview[0].values.wind_ms)} м/с</span></div>}
         {source.id!=='weather' && source.status!=='blocked' && <p className="source-card__count">{source.record_count.toLocaleString('ru-RU')} записей <span>в последнем снимке</span></p>}
@@ -82,9 +84,9 @@ export function SourceMonitor() {
           </>}
           {source.attribution && <p>{source.attribution}{source.license_url && <> · <a href={source.license_url} target="_blank" rel="noopener noreferrer">Лицензия</a></>}</p>}
         </details>
-      </article>)}
+        </div>
+      </details>)}
     </div>
-    <p className="source-card__description"><a href="https://yandex.ru/maps/213/moscow/probki/" target="_blank" rel="noopener noreferrer">Посмотреть пробки в Яндекс Картах ↗</a><br/>Автоматическое получение данных о пробках пока не подключено.</p>
-    <div className="source-monitor__boundary"><span aria-hidden="true">◷</span><p><b>Прогноз и мониторинг — разные периоды.</b><br/>Модель B2 прогнозирует ноябрь–декабрь 2025. Новые онлайн-данные сохраняются отдельно; их влияние на числа ещё не подтверждено проверкой.</p></div>
+
   </section>;
 }

@@ -1,16 +1,26 @@
 .forecast-chart {
   width: 100%;
   min-width: 0;
+  height: 190px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.forecast-chart__plot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }
 .forecast-chart svg {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: auto;
-  overflow: visible;
+  height: 100%;
 }
 .forecast-chart text {
   font:
-    18px Manrope,
+    11px Manrope,
     system-ui,
     sans-serif;
   fill: var(--text-secondary);
@@ -46,7 +56,7 @@
 }
 .forecast-table th,
 .forecast-table td {
-  padding: 8px;
+  padding: 4px 8px;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--border-subtle);
@@ -78,5 +88,10 @@
   overflow-wrap: anywhere;
 }
 
-.forecast-chart__legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-secondary); margin: 8px 0; }
+.forecast-chart__legend { display: flex; flex-shrink:0; gap:16px; font-size:12px; color:var(--text-secondary); margin:0 0 12px; }
 .forecast-chart__legend span:first-child { color: var(--accent-text); }
+
+.forecast-table caption { caption-side:bottom; }
+.forecast-table th { z-index:1; }
+.forecast-table th:first-child, .forecast-table td:first-child { padding-left:0; }
+.forecast-table th:last-child, .forecast-table td:last-child { padding-right:0; }

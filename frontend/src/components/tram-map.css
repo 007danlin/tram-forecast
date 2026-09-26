@@ -125,3 +125,16 @@
   margin-top: 4px;
   color: #19252d;
 }
+
+.tram-map__fit-label, .tram-map__mobile-title { display:none; }
+@media (max-width:699px) {
+  .map-layer--reference[data-focused="true"] { opacity:.75; }
+  .workspace .map-shell .tram-map__controls { top:auto; bottom:12px; right:12px; gap:4px; }
+  .tram-map__controls .tram-map__btn { background:var(--panel-bg); color:var(--text-primary); border-color:transparent; font-size:20px; box-shadow:none; }
+  .tram-map__controls .tram-map__btn:hover { background:var(--control-hover); }
+  .tram-map__controls .tram-map__home, .tram-map__fit .icon { display:none; }
+  .tram-map__fit-label { display:block; font-size:14px; }
+  .tram-map__selected { top:8px; left:8px; right:auto; bottom:auto; margin:0; gap:4px; max-width:calc(100% - 64px); padding:12px 10px; font-size:13px; border-radius:6px; }
+  .tram-map__mobile-title { display:inline; }
+  .tram-map__selected button { display:none; }
+}

@@ -1,3 +1,4 @@
+const {visible, openScenario, closeDialog} = require("./ui.cjs");
 // Current product acceptance: unchanged base, qualitative year, overview; neutral manual controls.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -23,9 +24,11 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     const filters={route_ids:['1'],start:caps.start,end:'2025-11-02T00:00:00+03:00',resolution:'hour',forecast_run_id:caps.forecast_run_id};
     const base=await (await post('/api/v2/handoff/query',filters)).json();
     near(Number(await page.getByTestId('total').getAttribute('data-raw-value')),base.total);
-    assert.equal(await page.getByLabel('Коэффициент: Погода').count(),1);
-    assert.equal(await page.getByLabel('Коэффициент: Мероприятия').count(),1);
+    await openScenario(page);
+    assert.equal(await page.getByLabel('Поправка: Погода').count(),1);
+    assert.equal(await page.getByLabel('Поправка: Мероприятия').count(),1);
     assert.equal(await page.locator('.scenario-panel').count(),1);
+    await closeDialog(page);
     await page.getByRole('button',{name:'Таблица',exact:true}).click();
     const displayed=await page.locator('.forecast-table tbody tr td[data-raw-value]').evaluateAll(cells=>cells.map(c=>Number(c.dataset.rawValue)));
     displayed.forEach((v,i)=>near(v,base.rows[i].value));
@@ -38,16 +41,21 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     await page.getByRole('button',{name:'1 мес',exact:true}).click(); await page.getByTestId('total').waitFor();
     const monthTotal=Number(await page.getByTestId('total').getAttribute('data-raw-value'));
     const beforeYear=requests.length;
-    await page.getByRole('button',{name:'Год',exact:true}).click();
+    await page.getByRole('button',{name:'На год',exact:true}).click();
     await page.getByRole('region',{name:'Качественный год'}).waitFor();
     assert.equal(await page.getByLabel('Маршрут',{exact:true}).inputValue(),'1');
     assert.match(await page.getByTestId('year-period').textContent(),/2025.*2026/);
-    assert.equal(await page.getByTestId('total').count(),0);
-    assert.equal(await page.getByRole('button',{name:'Скачать CSV',exact:true}).isDisabled(),true);
+    near(Number(await page.getByTestId('total').getAttribute('data-raw-value')),monthTotal);
+    assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Скачать CSV',exact:true}).count(),0);
     assert.equal(requests.length,beforeYear);
     await page.screenshot({path:path.join(output,'year.png'),fullPage:true});
-    await page.getByLabel('Маршрут',{exact:true}).selectOption('5'); assert.match(await page.getByRole('region',{name:'Качественный год'}).textContent(),/Нет истории обучения/);
-    await page.getByLabel('Маршрут',{exact:true}).selectOption('2'); assert.match(await page.getByRole('region',{name:'Качественный год'}).textContent(),/только на схеме/);
+    await closeDialog(page);
+    for (const [route, message] of [['5', /Нет истории обучения/], ['2', /только на схеме/]]) {
+      await page.getByLabel('Маршрут',{exact:true}).selectOption(route);
+      await page.getByRole('button',{name:'На год',exact:true}).click();
+      assert.match(await page.getByRole('region',{name:'Качественный год'}).textContent(),message);
+      await closeDialog(page);
+    }
     await page.getByLabel('Маршрут',{exact:true}).selectOption('1');
     await page.getByRole('button',{name:'1 мес',exact:true}).click(); await page.getByTestId('total').waitFor();
     near(Number(await page.getByTestId('total').getAttribute('data-raw-value')),monthTotal);
@@ -64,10 +72,10 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     await page.screenshot({path:path.join(output,'overview.png'),fullPage:true});
     await page.getByRole('button',{name:'№ 1',exact:true}).click(); await page.getByTestId('map-demand').waitFor();
     near(Number(await page.getByTestId('map-demand').getAttribute('data-raw-value')),selected);
-    assert.equal(await page.getByLabel('Точка временного ряда').inputValue(),'5');
+    assert.equal(await visible(page.getByLabel('Точка временного ряда')).inputValue(),'5');
     await page.getByRole('button',{name:'1 день',exact:true}).click();await page.getByTestId('total').waitFor();
     const noTickNetwork=requests.length;
-    await page.getByLabel('Точка временного ряда').focus();await page.keyboard.press('ArrowRight');
+    await visible(page.getByLabel('Точка временного ряда')).focus();await page.keyboard.press('ArrowRight');
     near(Number(await page.getByTestId('map-demand').getAttribute('data-raw-value')),base.rows[1].value);
     assert.equal(requests.length,noTickNetwork);
     await page.getByLabel('Маршрут',{exact:true}).selectOption('5');await page.getByTestId('total').waitFor();
@@ -78,7 +86,7 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
     await page.locator('[data-overview-route="1"] button').click();await page.getByTestId('total').waitFor();
-    assert.equal(await page.getByLabel('Точка временного ряда').isVisible(),true);
+    assert.equal(await visible(page.getByLabel('Точка временного ряда')).isVisible(),true);
     await page.screenshot({path:path.join(output,'mobile.png'),fullPage:true});
     assert.equal(errors.length,0,errors.join('\n'));
     assert.equal(requests.filter(r=>r.url.includes('/scenarios/')).length,0);

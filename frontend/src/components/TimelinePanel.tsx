@@ -31,6 +31,7 @@ export function TimelinePanel() {
         <Icon name={f.playing ? "pause" : "play"} />
       </Button>
       <div className="timeline-panel__mid">
+        <span className="timeline-panel__time">{label || "Нет данных"}</span>
         <input
           style={
             {
@@ -54,7 +55,7 @@ export function TimelinePanel() {
           }}
         />
       </div>
-      <Button variant="ghost" disabled={!hasData || peak < 0} onClick={() => { f.setPlaying(false); f.setSelected(peak); }}>Пик</Button>
+      <Button variant="ghost" disabled={!hasData || peak < 0} onClick={() => { f.setPlaying(false); f.setSelected(peak); }}>Час пик</Button>
     </section>
   );
 }

@@ -1,3 +1,4 @@
+const {visible, setTheme, openData, closeDialog, refreshForecast, readRun, mobilePane} = require("./ui.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const { chromium } = require("playwright");
@@ -56,7 +57,6 @@ const close = (a, b) =>
       .click();
     await page.getByTestId("total").waitFor();
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
-    await page.getByRole("button", { name: "Свернуть карточку" }).click();
     await page.locator(".tram-map__viewport svg").waitFor();
     await page.locator(".tram-map__state").waitFor({ state: "hidden" });
     await page
@@ -88,7 +88,6 @@ const close = (a, b) =>
       initialView,
     );
     // All 45 map hit targets are exercised by map-continuity.cjs.
-    await page.getByRole("button", { name: "Открыть прогноз" }).click();
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     const horizonLabels = { day: "1 день", week: "1 нед", month: "1 мес" };
     async function setHorizon(value) {
@@ -209,6 +208,7 @@ const close = (a, b) =>
       .split(/\r?\n/);
     const fields = csv[0].split(",");
     assert.equal(csv.length, 32);
+    const exportedRun = await readRun(page);
     for (const line of csv.slice(1)) {
       const cells = line.split(",");
       const get = (key) => cells[fields.indexOf(key)];
@@ -221,7 +221,7 @@ const close = (a, b) =>
       close(Number(get("value")), expected);
       assert.equal(
         get("forecast_run_id"),
-        await page.getByTestId("run").textContent(),
+        exportedRun,
       );
     }
     await page.getByLabel("Маршрут", { exact: true }).selectOption("5");
@@ -273,7 +273,8 @@ const close = (a, b) =>
     );
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     await page.getByRole("alert").waitFor();
-    await page.locator(".forecast-card__details summary").click();
+    await openData(page, "Прогноз");
+    await closeDialog(page);
     await page.getByRole("alert").waitFor();
     await page.getByLabel("Дата (МСК)").fill("2025-11-01");
     await setHorizon("day");
@@ -286,9 +287,7 @@ const close = (a, b) =>
           body: '{"error":{"code":"fixture"}}',
         }),
       );
-      await page
-        .getByRole("button", { name: "Обновить прогноз", exact: true })
-        .click();
+      await refreshForecast(page);
       await page.getByRole("alert").waitFor();
       assert.equal(
         await page.getByRole("button", { name: "Скачать CSV" }).isDisabled(),
@@ -351,9 +350,7 @@ const close = (a, b) =>
         data.total_scope = empty ? "no_data" : "available_only";
         await route.fulfill({ response, json: data });
       });
-      await page
-        .getByRole("button", { name: "Обновить прогноз", exact: true })
-        .click();
+      await refreshForecast(page);
       await page
         .getByText(
           empty ? "Нет данных за период." : "Есть пропуски · покрытие",
@@ -368,29 +365,24 @@ const close = (a, b) =>
           .getAttribute("data-raw-value"),
         "",
       );
-      const timeControl = page.getByLabel("Точка временного ряда");
+      const timeControl = visible(page.getByLabel("Точка временного ряда"));
       await timeControl.focus();
       await timeControl.press("Home");
       for (let i = 0; i < 12; i++) await timeControl.press("ArrowRight");
       assert.equal(await page.getByTestId("map-demand").textContent(), "Нет данных");
       assert.equal(await page.getByTestId("map-demand").getAttribute("data-raw-value"), "");
-      if (empty) assert.equal(await page.getByRole("button", {name:"Пик", exact:true}).isDisabled(), true);
+      if (empty) assert.equal(await visible(page.getByRole("button", {name:"Час пик", exact:true})).isDisabled(), true);
       await page.unroute("**/handoff/query");
     }
-    await page
-      .getByRole("button", { name: "Обновить прогноз", exact: true })
-      .click();
+    await refreshForecast(page);
     await checkRows(24);
     await page.getByRole("button", { name: "График", exact: true }).click();
-    await page
-      .locator(".forecast-card__details")
-      .evaluate((el) => (el.open = false));
     await page.screenshot({ path: output + "/desktop.png", fullPage: true });
     const retainedView = await mapSvg.getAttribute("viewBox");
     await page.getByRole("button", { name: "Аналитика", exact: true }).click();
     assert.equal(await page.locator(".analytics-view tbody tr").count(), 24);
     await page
-      .getByRole("button", { name: "Карта и прогноз", exact: true })
+      .getByRole("button", { name: "Карта", exact: true })
       .click();
     // ResizeObserver restores the viewport asynchronously after display:none.
     await page.waitForFunction(
@@ -410,19 +402,8 @@ const close = (a, b) =>
     await page
       .getByRole("dialog", { name: "О данных", exact: true })
       .press("Escape");
-    assert.equal(
-      await page
-        .getByRole("button", { name: "О данных", exact: true })
-        .getAttribute("aria-expanded"),
-      "false",
-    );
-    await page.getByRole("button", { name: "Свернуть карточку" }).click();
-    await page.getByRole("button", { name: "Открыть прогноз" }).click();
-    await page.locator(".forecast-card").press("Escape");
-    await page.waitForFunction(
-      () => document.activeElement?.textContent === "Открыть прогноз",
-    );
-    await page.getByRole("button", { name: "Открыть прогноз" }).click();
+    assert.equal(await page.getByRole("dialog", {name:"О данных"}).count(), 0);
+    assert.equal(await page.getByRole("button", {name:"О данных",exact:true}).evaluate(el => el === document.activeElement), true);
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(
       await page.evaluate(
@@ -431,6 +412,7 @@ const close = (a, b) =>
       true,
     );
     await page.screenshot({ path: output + "/mobile.png", fullPage: true });
+    await mobilePane(page, "Карта");
     const mobileView = await mapSvg.getAttribute("viewBox");
     await page.getByRole("button", { name: "Увеличить", exact: true }).click();
     await page.waitForFunction(
@@ -442,9 +424,7 @@ const close = (a, b) =>
     );
     // Theme changes retain context, camera, point selection and result without network.
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page
-      .getByRole("button", { name: "Включить тёмную тему", exact: true })
-      .click();
+    await setTheme(page, "dark");
     const totalBefore = await page
       .getByTestId("total")
       .getAttribute("data-raw-value");
@@ -457,9 +437,7 @@ const close = (a, b) =>
       if (request.url().endsWith("/handoff/query")) queries++;
     };
     page.on("request", countQuery);
-    await page
-      .getByRole("button", { name: "Включить светлую тему", exact: true })
-      .click();
+    await setTheme(page, "light");
     assert.equal(
       await page.locator("html").getAttribute("data-theme"),
       "light",
@@ -502,13 +480,7 @@ const close = (a, b) =>
     // Every acceptance viewport, both themes, no page-level horizontal overflow.
     for (const theme of ["dark", "light"]) {
       await page.setViewportSize({ width: 1280, height: 800 });
-      await page
-        .getByRole("button", {
-          name:
-            theme === "dark" ? "Включить тёмную тему" : "Включить светлую тему",
-          exact: true,
-        })
-        .click();
+      await setTheme(page, theme);
       for (const [width, height] of [
         [360, 800],
         [390, 844],
@@ -534,7 +506,8 @@ const close = (a, b) =>
       }
     }
     await page.setViewportSize({ width: 390, height: 844 });
-    assert.equal(await page.getByLabel("Точка временного ряда").isVisible(), true);
+    await mobilePane(page, "Прогноз");
+    assert.equal(await visible(page.getByLabel("Точка временного ряда")).isVisible(), true);
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     assert.equal(await page.locator(".forecast-card tbody tr").count(), 24);
     await setHorizon("week");
@@ -580,9 +553,7 @@ const close = (a, b) =>
     await page
       .getByRole("button", { name: "Скачать CSV", exact: true })
       .click();
-    await page
-      .getByRole("button", { name: "Включить тёмную тему", exact: true })
-      .click();
+    await setTheme(page, "dark");
     assert.ok((await exported).suggestedFilename().endsWith(".csv"));
     await page.unroute("**/handoff/export");
     // Existing selection survives a drag returning to its origin and a two-finger pinch.

@@ -1,14 +1,21 @@
+import { Button } from "./ui";
 import { useForecastData } from "../useForecast";
 
-export function DataDetails() {
-  const { current: result } = useForecastData();
+export function DataDetails({passport = false}: {passport?: boolean}) {
+  const f = useForecastData();
+  const result = f.current;
   return (
     <div className="data-details">
+      {!passport && <>
       <p>Посадка — успешная валидация билета. Это не число уникальных пассажиров и не заполненность вагона.</p>
       <p>Схема: 2026. Прогноз: {result?.filters.start.slice(0, 4) || 'год выбранной даты'}, по номеру маршрута. Данных по остановкам и направлениям нет.</p>
       <p>Онлайн-мониторинг отделён от исторического прогноза 2025. Влияние новых факторов на модель пока не подтверждено. Годовой сценарий — без чисел.</p>
       <p>CSV: выбранный маршрут и период, без округления. При активных поправках выгружается ручной сценарий с базой и коэффициентами. Конкурсный файл готовится отдельно.</p>
-      {result && (
+      <details className="service-check"><summary>Перед изменением выпуска</summary><p>Данных о фактических рейсах, интервалах движения, вместимости и высадках нет. Сверьте прогноз с расписанием и отчётом о рейсах.</p></details>
+      <Button onClick={f.retry} disabled={f.busy || f.exporting || !!f.emptyReason}>Обновить прогноз</Button>
+      </>}
+      {passport && !result && <p>Паспорт появится после загрузки прогноза.</p>}
+      {passport && result && (
         <>
           <dl>
             <div>

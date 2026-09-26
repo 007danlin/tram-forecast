@@ -5,7 +5,7 @@ import { useForecastData } from "../useForecast";
 import { Button } from "./ui";
 import { OVERVIEW } from "../handoff";
 import "./FilterBar.css";
-export function FilterBar({ network }: { network: Network | null }) {
+export function FilterBar({ network, onOpenScenario, onOpenYear }: { network: Network | null; onOpenScenario: () => void; onOpenYear: () => void }) {
   const forecast = useForecastData();
   const options = useMemo(() => {
     const routes = new Map(
@@ -47,7 +47,7 @@ export function FilterBar({ network }: { network: Network | null }) {
           onChange={(e) => forecast.changeRoute(e.target.value)}
         >
           <option value="">Снять выбор</option>
-          {forecast.caps && <option value={OVERVIEW}>Обзор маршрутов</option>}
+          {forecast.caps && <option value={OVERVIEW}>Сравнить маршруты</option>}
           {options.map((route) => (
             <option
               key={route.value}
@@ -84,7 +84,6 @@ export function FilterBar({ network }: { network: Network | null }) {
               ["day", "День", "1 день"],
               ["week", "Неделя", "1 нед"],
               ["month", "Месяц", "1 мес"],
-              ["year", "Год", "Год"],
             ] as const
           ).map(([value, label, accessible]) => (
             <Button
@@ -93,7 +92,7 @@ export function FilterBar({ network }: { network: Network | null }) {
               aria-label={accessible}
               aria-pressed={forecast.horizon === value}
               disabled={
-                value === "year" ? !forecast.caps?.year?.qualitative_available : !forecast.caps?.resolutions.includes(
+                !forecast.caps?.resolutions.includes(
                   value === "day" ? "hour" : "day",
                 )
               }
@@ -103,6 +102,10 @@ export function FilterBar({ network }: { network: Network | null }) {
             </Button>
           ))}
         </div>
+      </div>
+      <div className="filter-actions">
+        <Button variant="ghost" onClick={onOpenYear} disabled={!forecast.caps?.year?.qualitative_available} aria-haspopup="dialog">На год</Button>
+        <Button onClick={onOpenScenario} disabled={!forecast.caps?.scenario_supported || !forecast.route || forecast.routeUnavailable} aria-haspopup="dialog">Поправки{forecast.scenarioActive ? ' •' : ''}</Button>
       </div>
       <span className={`filter-status app-shell__badge--${forecast.connection}${forecast.connection === 'ok' ? ' sr-only' : ''}`}  role="status">{forecast.connection === 'checking' ? 'Загружаем данные…' : forecast.connection === 'ok' ? 'Данные загружены' : 'Данные недоступны'}</span>
     </div>

@@ -1,3 +1,4 @@
+const {visible, setTheme, openData, mobilePane} = require("./ui.cjs");
 // Cross-engine smoke for the agreed redesign. Run only against a local handoff stack.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -28,10 +29,7 @@ const { webkit } = require("playwright");
       .getByTestId("total")
       .getAttribute("data-raw-value");
     for (const theme of ["dark", "light"]) {
-      if (theme === "light")
-        await page
-          .getByRole("button", { name: "Включить светлую тему", exact: true })
-          .click();
+      await setTheme(page, theme);
       assert.equal(
         await page.getByTestId("total").getAttribute("data-raw-value"),
         total,
@@ -47,9 +45,10 @@ const { webkit } = require("playwright");
         true,
       );
     }
+    await mobilePane(page, "Прогноз");
     await page.getByRole("button", { name: "1 нед", exact: true }).click();
     await page.getByTestId("total").waitFor();
-    assert.equal(await page.getByLabel("Точка временного ряда").isVisible(), true);
+    assert.equal(await visible(page.getByLabel("Точка временного ряда")).isVisible(), true);
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     assert.equal(await page.locator(".forecast-card tbody tr").count(), 7);
     const download = page.waitForEvent("download");
@@ -57,20 +56,18 @@ const { webkit } = require("playwright");
       .getByRole("button", { name: "Скачать CSV", exact: true })
       .click();
     assert.ok((await download).suggestedFilename().endsWith(".csv"));
-    await page
-      .getByRole("button", { name: "Открыть меню", exact: true })
-      .click();
-    await page.getByRole("button", { name: "О данных", exact: true }).click();
+    await openData(page);
     await page.getByRole("dialog", { name: "О данных", exact: true }).waitFor();
     await page
-      .getByRole("button", { name: "Закрыть сведения", exact: true })
+      .getByRole("button", { name: "Закрыть окно", exact: true })
       .press("Escape");
     await page.waitForFunction(
       () =>
-        document.activeElement.getAttribute("aria-label") === "Открыть меню",
+        document.activeElement.textContent === "Данные",
     );
     await page.getByLabel("Маршрут", { exact: true }).selectOption("11");
     await page.getByTestId("total").waitFor();
+    await mobilePane(page, "Карта");
     await page
       .getByRole("button", { name: "Увеличить схему", exact: true })
       .click();

@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { Network } from "../map/loadMap";
 import { TramMap } from "./TramMap";
 import { ForecastCard } from "./ForecastCard";
-import { FilterBar } from "./FilterBar";
+import { TimelinePanel } from "./TimelinePanel";
 import { Button, Icon } from "./ui";
-import { useForecastData } from "../useForecast";
 import "./Workspace.css";
 export function Workspace({
   network,
@@ -14,6 +13,9 @@ export function Workspace({
   hidden,
   expanded,
   onExpandedChange,
+  mobilePane,
+  onOpenForecast,
+  onOpenScenario,
 }: {
   network: Network | null;
   mapProblem: string;
@@ -22,18 +24,12 @@ export function Workspace({
   hidden: boolean;
   expanded: boolean;
   onExpandedChange: (v: boolean) => void;
+  mobilePane: "map" | "forecast";
+  onOpenForecast: () => void;
+  onOpenScenario: () => void;
 }) {
-  const forecast = useForecastData();
-  const [cardOpen, setCardOpen] = useState(true);
-  const reopen = useRef<HTMLButtonElement>(null);
   const expandTrigger = useRef<HTMLButtonElement>(null);
   const mapShell = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (forecast.overview || forecast.horizon === 'year') setCardOpen(true);
-  }, [forecast.overview, forecast.horizon]);
-  useEffect(() => {
-    if (!cardOpen) reopen.current?.focus();
-  }, [cardOpen]);
   useEffect(() => {
     if (!expanded) return;
     const prior = document.activeElement as HTMLElement;
@@ -47,25 +43,13 @@ export function Workspace({
   }, [expanded]);
   return (
     <div
-      className={`workspace${!cardOpen ? " workspace--map-only" : ""}${forecast.overview || forecast.horizon === 'year' ? ' workspace--text-mode' : ''}`}
+      className={`workspace workspace--mobile-${mobilePane}`}
       hidden={hidden}
     >
       <div className="workspace-card" inert={expanded}>
-        {cardOpen ? (
-          <>
-            {!hidden && <FilterBar network={network} />}
-            <ForecastCard onClose={() => setCardOpen(false)} />
-          </>
-        ) : (
-          <button
-            ref={reopen}
-            className="button forecast-card-reopen"
-            onClick={() => setCardOpen(true)}
-          >
-            Открыть прогноз
-          </button>
-        )}
+        <ForecastCard onOpenScenario={onOpenScenario} compact={mobilePane === 'map'} onOpenForecast={onOpenForecast} />
       </div>
+      <div className="workspace-map-column">
       <div
         ref={mapShell}
         className={`map-shell${expanded ? " map-shell--expanded" : ""}`}
@@ -115,6 +99,8 @@ export function Workspace({
           selectedRoute={selectedRoute}
           onRouteChange={onRouteChange}
         />
+      </div>
+      <div className="workspace-timeline" inert={expanded}><TimelinePanel /></div>
       </div>
     </div>
   );

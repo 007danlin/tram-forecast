@@ -1,168 +1,23 @@
-.workspace {
-  padding: 20px;
-  display: grid;
-  grid-template-columns: 392px minmax(0, 1fr);
-  grid-template-rows: auto;
-  gap: 16px 20px;
-  align-items: start;
-}
-.workspace-card {
-  grid-column: 1;
-  grid-row: 1;
-  border-radius: 16px;
-  background: var(--panel-bg);
-  overflow: clip;
-  min-width: 0;
-}
-.workspace.workspace--text-mode { grid-template-columns: minmax(0, 1fr); }
-.workspace--text-mode .map-shell { display: none; }
-.workspace--text-mode .workspace-card { width: 100%; }
-.map-shell {
-  grid-column: 2;
-  grid-row: 1;
-  position: relative;
-  isolation: isolate;
-  min-width: 0;
-  height: clamp(560px, calc(100dvh - 128px), 900px);
-  border-radius: 12px;
-  background: var(--map-paper);
-}
-.map-expand {
-  position: absolute;
-  z-index: 3;
-  left: 16px;
-  top: 16px;
-  min-height: 44px;
-  background: #fff;
-  color: #19252d;
-  box-shadow: 0 1px 8px #0001;
-  font-size: 12px;
-  padding: 8px 12px;
-  max-width: calc(100% - 92px);
-}
-.map-expand:hover:not(:disabled) {
-  background: #f0f2f4;
-}
-.map-expand .icon {
-  width: 16px;
-}
-.workspace.workspace--map-only {
-  grid-template-columns: minmax(0, 1fr);
-}
-.workspace--map-only .map-shell {
-  grid-column: 1;
-}
-.workspace--map-only .workspace-card {
-  grid-column: 1;
-  grid-row: 1;
-  z-index: 4;
-  justify-self: start;
-  margin: 74px 16px 0;
-  pointer-events: none;
-}
-.forecast-card-reopen {
-  pointer-events: auto;
-  box-shadow: var(--shadow);
-}
-.map-shell--expanded {
-  position: fixed;
-  inset: 12px;
-  z-index: 50;
-  height: auto !important;
-  grid-area: auto;
-  box-shadow: 0 0 0 24px var(--app-bg);
-  border-radius: 12px;
-}
-.map-shell--expanded .tram-map__stage {
-  height: 100%;
-}
-@media (min-width: 1024px) and (max-width: 1199px) {
-  .workspace {
-    grid-template-columns: 350px minmax(0, 1fr);
-    gap: 16px;
-    padding: 16px;
-  }
-}
-@media (max-width: 1023px) {
-  .workspace {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 12px;
-  }
-  .workspace-card {
-    order: 1;
-    width: 100%;
-  }
-  .map-shell {
-    order: 2;
-    width: 100%;
-    height: clamp(240px, 34dvh, 380px);
-    border-radius: 0;
-  }
-  .map-expand {
-    left: 16px;
-    top: 16px;
-    background: var(--panel-bg);
-    color: var(--text-primary);
-  }
-  .map-expand:hover:not(:disabled) {
-    background: var(--control-hover);
-  }
-  .map-shell--expanded {
-    width: auto;
-    border-radius: 0;
-    inset: 0;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .workspace--map-only .workspace-card {
-    margin: 0;
-    padding: 12px;
-    order: 2;
-  }
-  .workspace--map-only .map-shell {
-    height: calc(100dvh - 300px);
-    min-height: 286px;
-  }
-}
-@media (min-width: 768px) and (max-width: 1023px) {
-  .workspace {
-    padding: 0 16px 16px;
-    gap: 16px;
-  }
-  .map-shell {
-    height: 42dvh;
-    border-radius: 12px;
-  }
-  .workspace-card .forecast-card {
-    border-radius: 12px;
-  }
-}
-
-.workspace-card > .filter-bar { background: transparent; }
-.workspace--map-only .workspace-card { overflow: visible; background: transparent; }
-
-/* Keep the desktop map in the viewport; only the forecast column scrolls. */
-@media (min-width: 1024px) {
-  .app-shell--map {
-    height: 100dvh;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .app-shell--map > div:first-child { flex: none; }
-  .app-shell--map .app-shell__body { flex: 1; min-height: 0; overflow: hidden; }
-  .app-shell--map .workspace { height: 100%; min-height: 0; grid-template-rows: minmax(0, 1fr); }
-  .app-shell--map .workspace-card {
-    min-height: 0;
-    max-height: 100%;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    scrollbar-width: thin;
-  }
-  .app-shell--map .map-shell { height: 100%; min-height: 0; }
-  .app-shell--map .map-shell--expanded { height: auto; }
-  .app-shell--map .workspace--map-only .workspace-card { overflow: visible; }
+.workspace { display:grid; grid-template-columns:320px minmax(0,1fr); gap:16px; height:100%; min-height:0; }
+.workspace-card { background:var(--panel-bg); border-radius:8px; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.workspace-map-column { display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
+.map-shell { position:relative; flex:1; min-height:360px; overflow:hidden; border-radius:8px; background:var(--map-paper); isolation:isolate; }
+.map-shell .tram-map__controls { top:68px; }
+.map-expand { position:absolute; right:12px; top:12px; z-index:12; display:flex; align-items:center; gap:8px; background:var(--panel-bg); color:var(--text-primary); box-shadow:0 2px 10px #0002; }
+.workspace-timeline { padding:4px 12px; border-radius:8px; background:var(--panel-bg); }
+.map-shell--expanded { position:fixed; inset:16px; z-index:100; min-height:0; box-shadow:0 0 0 30px #0008; }
+@media (min-width:700px) { .forecast-card__timeline { display:none; } }
+@media (min-width:1000px) and (min-height:650px) { .map-shell { min-height:0; } }
+@media (max-width:999px) and (min-width:700px) { .workspace { grid-template-columns:310px minmax(0,1fr); min-height:600px; } .map-expand span { display:none; } }
+@media (max-width:699px) {
+  .workspace { display:block; height:auto; }
+  .workspace--mobile-forecast .workspace-map-column { display:none; }
+  .workspace--mobile-map { display:flex; flex-direction:column; gap:12px; height:calc(100dvh - 252px); min-height:460px; }
+  .workspace--mobile-map .workspace-card { order:1; flex-shrink:0; overflow:visible; }
+  .workspace-map-column { order:0; flex:1; min-height:200px; height:auto; gap:0; }
+  .map-shell { min-height:0; }
+  .workspace-timeline { display:none; }
+  .map-expand { right:8px; top:8px; }
+  .map-expand span { display:none; }
+  .map-shell--expanded { inset:8px; }
 }

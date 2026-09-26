@@ -1,50 +1,15 @@
-import { useEffect, useRef } from "react";
-import { SourceMonitor } from "./SourceMonitor";
-import { DataDetails } from "./DataDetails";
-import { Button, Icon } from "./ui";
-import "./SettingsPanel.css";
-export function SettingsPanel({ onClose }: { onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      className="settings-panel"
-      aria-labelledby="data-title"
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          const r = e.currentTarget.getBoundingClientRect();
-          if (
-            e.clientX < r.left ||
-            e.clientX > r.right ||
-            e.clientY < r.top ||
-            e.clientY > r.bottom
-          )
-            onClose();
-        }
-      }}
-    >
-      <div className="settings-panel__head">
-        <h2 id="data-title">О данных</h2>
-        <Button
-          className="icon-button"
-          aria-label="Закрыть сведения"
-          onClick={onClose}
-          autoFocus
-        >
-          <Icon name="close" />
-        </Button>
-      </div>
-      <SourceMonitor />
-      <details className="data-passport"><summary>Прогноз: данные и ограничения</summary>
-      <DataDetails />
-      </details>
-    </dialog>
-  );
+import { useState } from 'react';
+import { SourceMonitor } from './SourceMonitor';
+import { DataDetails } from './DataDetails';
+import { Dialog } from './Dialog';
+import { Button } from './ui';
+export function SettingsPanel({onClose}: {onClose: () => void}) {
+  const [tab, setTab] = useState<'forecast' | 'sources' | 'passport'>('sources');
+  return <Dialog title="О данных" onClose={onClose}>
+    <div className="data-tabs" role="group" aria-label="Сведения о данных">
+      {([['forecast', 'Прогноз'], ['sources', 'Источники'], ['passport', 'Паспорт']] as const).map(([value, label]) => <Button key={value} variant="ghost" aria-pressed={tab === value} onClick={() => setTab(value)}>{label}</Button>)}
+    </div>
+    <div hidden={tab !== 'sources'}><SourceMonitor /></div>
+    {tab !== 'sources' && <DataDetails passport={tab === 'passport'} />}
+  </Dialog>;
 }

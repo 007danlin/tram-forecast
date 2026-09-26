@@ -177,13 +177,18 @@ export const TramMap = memo(function TramMap({
     );
   }, [selection, features, size, constrain, fit]);
   const lastFocused = useRef<string | null>(null);
+  const initialSelection = useRef(true);
   useEffect(() => {
     if (!map || !size.w || !size.h || lastFocused.current === selectedRoute)
       return;
+    const showMobileNetwork = initialSelection.current && window.matchMedia('(max-width:699px)').matches;
+    if (selectedRoute) initialSelection.current = false;
     lastFocused.current = selectedRoute;
     setCandidates([]);
-    focusRoute();
-  }, [map, size, selectedRoute, focusRoute]);
+    if (showMobileNetwork) {
+      setView({cx:BOUNDS.x + BOUNDS.w / 2, cy:BOUNDS.y + BOUNDS.h / 2, zoom:minimum});
+    } else focusRoute();
+  }, [map, size, selectedRoute, focusRoute, minimum]);
   const reset = () =>
     selection
       ? focusRoute()
@@ -465,14 +470,14 @@ export const TramMap = memo(function TramMap({
                 −
               </button>
               <button
-                className="tram-map__btn"
+                className="tram-map__btn tram-map__home"
                 aria-label="Восстановить исходный вид"
                 onClick={reset}
               >
                 <Icon name="home" />
               </button>
               <button
-                className="tram-map__btn"
+                className="tram-map__btn tram-map__fit"
                 aria-label="Вся схема"
                 onClick={() =>
                   setView({
@@ -483,6 +488,7 @@ export const TramMap = memo(function TramMap({
                 }
               >
                 <Icon name="expand" />
+                <span className="tram-map__fit-label" aria-hidden="true">Вся</span>
               </button>
             </div>
             {!!candidates.length && (
@@ -515,6 +521,7 @@ export const TramMap = memo(function TramMap({
             )}
             {selection && (
               <p className="tram-map__selected" role="status">
+                <span className="tram-map__mobile-title">Схема трамваев · </span>
                 {routeSelectionName(selection)}
                 <button
                   aria-label="Снять выделение линии"

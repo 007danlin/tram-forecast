@@ -1,3 +1,4 @@
+const {setTheme, mobilePane} = require("./ui.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const { chromium, webkit } = require("playwright");
@@ -188,17 +189,9 @@ const { chromium, webkit } = require("playwright");
     assert.ok(d.includes("C"));
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 844 });
+      await mobilePane(page, "Карта");
       for (const theme of ["dark", "light"]) {
-        if ((await page.locator("html").getAttribute("data-theme")) !== theme)
-          await page
-            .getByRole("button", {
-              name:
-                theme === "light"
-                  ? "Включить светлую тему"
-                  : "Включить тёмную тему",
-              exact: true,
-            })
-            .click();
+        await setTheme(page, theme);
         await page.getByLabel("Маршрут", { exact: true }).selectOption("");
         await page
           .getByRole("button", { name: "Вся схема", exact: true })

@@ -1,3 +1,4 @@
+const {setTheme, mobilePane} = require("./ui.cjs");
 // Unified map/dropdown selection, unsupported routes, and stale-result protection.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -124,16 +125,7 @@ const { chromium, webkit } = require("playwright");
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 844 });
       for (const theme of ["light", "dark"]) {
-        if ((await page.locator("html").getAttribute("data-theme")) !== theme)
-          await page
-            .getByRole("button", {
-              name:
-                theme === "light"
-                  ? "Включить светлую тему"
-                  : "Включить тёмную тему",
-              exact: true,
-            })
-            .click();
+        await setTheme(page, theme);
         for (const route of ["36", "11"]) {
           await dropdown.selectOption(route);
           if (route === "11") await page.getByTestId("total").waitFor();

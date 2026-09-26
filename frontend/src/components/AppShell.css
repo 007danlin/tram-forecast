@@ -1,170 +1,47 @@
-.app-shell {
-  min-height: 100vh;
-  min-height: 100dvh;
+.app-shell { min-height:100dvh; display:flex; flex-direction:column; }
+.app-shell__header { min-height:72px; padding:12px 24px; flex-wrap:wrap; display:flex; align-items:center; justify-content:space-between; gap:24px; }
+.app-shell__brand { display:inline-flex; align-items:center; gap:10px; text-decoration:none; color:var(--text-primary); flex-shrink:0; }
+.brand-dot { width:18px; height:18px; border-radius:50%; background:var(--brand-primary); }
+.brand-name { font-size:22px; font-weight:750; letter-spacing:-.6px; }
+.header-actions, .app-shell__nav { min-width:0; max-width:100%; flex-wrap:wrap; display:flex; align-items:center; gap:8px; }
+.app-shell__nav button { border-radius:8px; background:transparent; border-color:transparent; padding:10px 20px; }
+.app-shell__nav button[aria-current="page"] { background:var(--control-bg); }
+.theme-toggle { display:flex; align-items:center; gap:8px; margin-left:12px; }
+.app-shell__body { padding:16px 16px 0; flex:1; min-height:0; }
+.mobile-navigation, .mobile-data, .nav-toggle, .nav-year { display:none; }
+.app-shell__badge--error { color:var(--danger-text); }
+@media (min-width:1000px) and (min-height:650px) {
+  .app-shell { height:100dvh; min-height:0; }
+  .app-shell__body { overflow:hidden; }
 }
-.app-shell__header {
-  height: 72px;
-  padding: 0 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  background: var(--header-bg);
+@media (max-width:999px) {
+  .app-shell__header { padding:0 16px; gap:12px; }
+  .app-shell__nav button { padding:10px 12px; }
+  .theme-toggle { margin-left:0; }
+  .theme-toggle span { display:none; }
 }
-.app-shell__brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  flex: none;
-}
-.brand-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--brand-primary);
-  flex: none;
-}
-.brand-name {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.6px;
-}
-.brand-tagline {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  min-width: 0;
-}
-.app-shell__nav {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-.app-shell__nav > button {
-  font-size: 13px;
-  white-space: nowrap;
-  padding: 0;
-  background: transparent;
-  color: var(--text-secondary);
-}
-.app-shell__nav > button[aria-current="page"] {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.app-shell__nav > button:hover {
-  color: var(--accent-text);
-}
-.theme-switch {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-}
-.theme-switch .button {
-  min-height: 36px;
-  padding: 6px 9px;
-  font-size: 12px;
-  line-height: 1.667;
-  background: transparent;
-}
-.theme-switch .button[aria-pressed="true"] {
-  background: var(--control-hover);
-}
-.theme-switch .icon {
-  width: 16px;
-  height: 16px;
-}
-.theme-mobile,
-.nav-toggle {
-  display: none;
-}
-.app-shell__body {
-  min-width: 0;
-}
-@media (max-width: 1199px) {
-  .brand-tagline {
-    display: none;
-  }
-  .header-actions {
-    gap: 16px;
-  }
-  .app-shell__nav {
-    gap: 16px;
-  }
-}
-@media (max-width: 1023px) {
-  .app-shell__header {
-    height: 64px;
-    padding: 0 18px;
-    position: relative;
-    z-index: 10;
-  }
-  .brand-name {
-    font-size: 20px;
-  }
-  .brand-dot {
-    width: 16px;
-    height: 16px;
-  }
-  .header-actions {
-    gap: 4px;
-  }
-  .theme-switch {
-    display: none;
-  }
-  .theme-mobile,
-  .nav-toggle {
-    display: inline-flex;
-  }
-  .app-shell__nav {
-    display: none;
-    position: absolute;
-    top: 60px;
-    right: 12px;
-    padding: 12px;
-    min-width: 200px;
-    background: var(--panel-bg);
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-  }
-  .app-shell__nav.is-open {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: stretch;
-  }
-  .app-shell__nav > button {
-    text-align: left;
-    padding: 8px 12px;
-  }
+@media (max-width:699px) {
+  .app-shell { padding-bottom:calc(3em + 26px + env(safe-area-inset-bottom)); }
+  .app-shell__header { min-height:72px; padding-block:12px; }
+  .header-actions { gap:2px; }
+  .brand-name { font-size:21px; }
+  .brand-dot { width:16px; height:16px; }
+  .theme-toggle { display:none; }
+  .mobile-data, .nav-toggle { display:inline-flex; }
+  .app-shell__nav { display:none; position:absolute; top:126px; right:16px; z-index:35; min-width:190px; padding:8px; background:var(--panel-bg); border:1px solid var(--border-subtle); border-radius:8px; box-shadow:var(--shadow); }
+  .app-shell__nav.is-open { display:flex; flex-direction:column; align-items:stretch; }
+  .app-shell__nav::after { content:none; }
+  .app-shell__body { padding:12px 16px 0; }
+  .mobile-navigation { position:fixed; z-index:30; bottom:0; left:0; right:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:10px 16px max(10px,env(safe-area-inset-bottom)); background:var(--panel-bg); border-top:1px solid var(--border-subtle); }
+  .mobile-navigation button { min-width:0; overflow-wrap:anywhere; border-radius:8px; background:transparent; border-color:transparent; }
+  .mobile-navigation button[aria-current="page"] { background:var(--brand-primary); color:var(--on-brand); }
 }
 
-/* Text enlargement may wrap navigation without clipping controls. */
-.app-shell__header {
-  min-height: 72px;
-  height: auto;
-  padding-block: 10px;
-  flex-wrap: wrap;
-}
-.header-actions {
-  flex-wrap: wrap;
-}
-.app-shell__nav {
-  flex-wrap: wrap;
-}
-.theme-switch .button {
-  min-height: 44px;
-}
-@media (max-width: 1023px) {
-  .app-shell__header {
-    min-height: 64px;
-    padding-block: 10px;
-  }
+.nav-theme { display:none; }
+@media (max-width:699px) { .nav-theme { display:block; } }
+
+@media (max-width:699px) {
+  .nav-toggle { position:absolute; top:76px; right:16px; z-index:36; width:44px; height:44px; padding:0; background:transparent; border-color:transparent; font-size:24px; letter-spacing:2px; }
+  .nav-year { display:block; }
+  .mobile-data { padding-right:0; }
 }

@@ -1,75 +1,59 @@
-import { ScenarioPanel } from "./ScenarioPanel";
-import { useState } from "react";
-import { format, useForecastData } from "../useForecast";
-import { intervalLabel } from "../display";
-import { ForecastLineChart, ForecastTable } from "./ForecastData";
-import { DataDetails } from "./DataDetails";
-import { TimelinePanel } from "./TimelinePanel";
-import { Button, Icon } from "./ui";
-import { YearView, RouteOverview, NeighborValues } from "./DispatchTools";
-import "./ForecastCard.css";
+import { useRef, useState } from 'react';
+import { format, useForecastData } from '../useForecast';
+import { intervalLabel } from '../display';
+import { ForecastLineChart, ForecastTable } from './ForecastData';
+import { ForecastMetrics, ForecastNotices } from './ForecastSummary';
+import { TimelinePanel } from './TimelinePanel';
+import { Button } from './ui';
+import './ForecastCard.css';
 
-export function ForecastCard({ onClose }: { onClose: () => void }) {
+export function ForecastCard({onOpenScenario, onOpenForecast, compact}: {onOpenScenario: () => void; onOpenForecast: () => void; compact: boolean}) {
   const f = useForecastData();
-  const { current: result, points, busy, error } = f;
-  const [chartMode, setChartMode] = useState<"chart" | "table">("chart");
-  const point = points[f.selected];
-  const daily = result?.filters.resolution === "day";
-  const baseline = f.caps?.routes.find(r => r.route_id === f.route)?.method === 'baseline';
-  const onSelect = (i: number) => { f.setPlaying(false); f.setSelected(i); };
-  if (f.horizon === 'year') return <YearView />;
-  if (f.overview) return <RouteOverview />;
-  return <section className="forecast-card" aria-label="Карточка прогноза" tabIndex={-1}
-    onKeyDown={e => { if (e.key === 'Escape') onClose(); }}>
+  const touchStart = useRef<{x:number; y:number; time:number} | null>(null);
+  const [chartMode, setChartMode] = useState<'chart' | 'table'>('chart');
+  const point = f.points[f.selected], daily = f.current?.filters.resolution === 'day';
+  const onSelect = (i: number) => {f.setPlaying(false); f.setSelected(i);};
+  const openForecast = () => {setChartMode('chart'); onOpenForecast();};
+  return <section className={`forecast-card${compact ? ' forecast-card--compact' : ''}`} aria-label="Карточка прогноза"
+    onTouchStart={e => {
+      touchStart.current = compact && e.touches.length === 1 && !(e.target as HTMLElement).closest('button, input, select, a')
+        ? {x:e.touches[0].clientX, y:e.touches[0].clientY, time:Date.now()} : null;
+    }}
+    onTouchMove={e => {if (e.touches.length !== 1) touchStart.current = null;}}
+    onTouchCancel={() => {touchStart.current = null;}}
+    onTouchEnd={e => {
+      const start = touchStart.current, end = e.changedTouches[0]; touchStart.current = null;
+      if (start && end && Date.now()-start.time < 800 && start.y-end.clientY > 48 && Math.abs(start.x-end.clientX) < 60) openForecast();
+    }}>
+    <div className="forecast-card__handle" aria-hidden="true"><span/></div>
     <div className="forecast-card__summary">
-      <h1 className="forecast-card__interval">{point ? `${intervalLabel(point.start, point.end, !!daily)} · МСК` : `Маршрут ${f.route || 'не выбран'}`}</h1>
-      <div className="forecast-card__value">
-        <strong data-testid={point ? "map-demand" : undefined} data-raw-value={point?.value ?? ''}>{point ? format(point.value) : '—'}</strong>
-        <span>успешных посадок</span>
-      </div>
-      {f.scenarioActive && <p className="scenario-active">Ручной сценарий{point ? ` · база ${format(point.base_value ?? null)} · разница ${format(point.delta ?? null)}` : " · пересчёт"}</p>}
-      {busy && <p className="forecast-message" role="status">Загружаем прогноз…</p>}
-      {f.emptyReason && <p className="forecast-message" role="status">{f.emptyReason}</p>}
-      {error && <p className="forecast-message forecast-message--error" role="alert">{error}</p>}
-      {baseline && <p className="forecast-message">Нет истории обучения: модель возвращает 0. Движение по маршруту возможно.</p>}
-      {result?.total_scope === 'available_only' && <p className="forecast-message" role="status">Есть пропуски · покрытие {format(result.coverage * 100)}%</p>}
-      {result?.total_scope === 'no_data' && <p className="forecast-message" role="status">Нет данных за период. Выберите другую дату.</p>}
+      <h1><span className="forecast-card__route-label">Маршрут </span><span className="forecast-card__route-number">№ </span>{f.route || 'не выбран'}</h1>
+      <p className="forecast-card__interval">{point ? intervalLabel(point.start, point.end, !!daily) : 'Выберите интервал'}<span className="forecast-card__zone"> · МСК</span></p>
+      <div className="forecast-card__value"><strong data-testid={point ? 'map-demand' : undefined} data-raw-value={point?.value ?? ''}>{format(point?.value ?? null)}</strong><span>посадок за {daily ? 'день' : 'час'}</span></div>
     </div>
+    <ForecastMetrics />
+    <ForecastNotices />
+    <div className="forecast-card__quick-actions">
+      <Button variant="primary" onClick={openForecast}>График</Button>
+      <Button variant="ghost" onClick={onOpenScenario} aria-haspopup="dialog" disabled={!f.caps?.scenario_supported || !f.route || f.routeUnavailable}>Поправки{f.scenarioActive ? ' •' : ''}</Button>
+    </div>
+    <p className="forecast-card__swipe-hint">Проведите вверх: прогноз по {daily ? 'дням' : 'часам'}</p>
     <div className="forecast-card__visual">
       <div className="forecast-card__view-toggle" role="group" aria-label="Вид данных">
         <Button variant="ghost" aria-pressed={chartMode === 'chart'} onClick={() => setChartMode('chart')}>График</Button>
         <Button variant="ghost" aria-pressed={chartMode === 'table'} onClick={() => setChartMode('table')}>Таблица</Button>
       </div>
-      {!!points.length ? chartMode === 'chart'
-        ? <ForecastLineChart points={points} unit="успешные посадки" selectedIndex={f.selected} onSelectIndex={onSelect} />
-        : <ForecastTable points={points} unit="успешные посадки" selectedIndex={f.selected} onSelectIndex={onSelect} />
+      {f.points.length ? chartMode === 'chart'
+        ? <ForecastLineChart points={f.points} unit="успешные посадки" selectedIndex={f.selected} onSelectIndex={onSelect} />
+        : <ForecastTable points={f.points} unit="успешные посадки" selectedIndex={f.selected} onSelectIndex={onSelect} />
         : <div className="chart-placeholder" aria-hidden="true"><span/><span/><span/></div>}
-      <TimelinePanel />
     </div>
-    <NeighborValues />
-    <ScenarioPanel />
-    <div className="forecast-card__tools">
-    <details className="service-check">
-      <summary>Проверить выпуск</summary>
-      <p>Маршрут {f.route}{point ? ` · ${intervalLabel(point.start, point.end, !!daily)} МСК` : ''}</p>
-      <dl><div><dt>Рейсы по факту</dt><dd>Нет данных</dd></div><div><dt>Интервалы движения</dt><dd>Нет данных</dd></div><div><dt>Вместимость и высадки</dt><dd>Нет данных</dd></div></dl>
-      <p>Сверьте с расписанием и отчётом о рейсах перед изменением выпуска.</p>
-    </details>
-    </div>
-    {result && <div className="forecast-card__period-total">
-      <span>{result.total_scope === 'available_only' ? 'По доступным данным' : f.horizon === 'day' ? 'За день' : 'За период'}</span>
-      <strong data-testid="total" data-raw-value={f.displayTotal ?? ''}>{format(f.displayTotal)}</strong>
-    </div>}
+    <div className="forecast-card__timeline"><TimelinePanel /></div>
     <div className="forecast-card__actions">
-      <Button variant="primary" disabled={!result || busy || !!error || f.exporting} onClick={() => void f.download()} aria-label="Скачать CSV">
-        {f.exporting ? 'Скачиваем…' : f.scenarioActive ? 'CSV · сценарий' : 'CSV · прогноз'}
-      </Button>
-      {<Button variant="ghost" onClick={f.retry} disabled={busy || f.exporting || !!f.emptyReason}
-        aria-label={f.errorStatus === 410 ? 'Обновить доступные данные' : error ? 'Повторить запрос' : 'Обновить прогноз'}>{error ? 'Повторить' : '↻'}</Button>}
+      <Button variant="ghost" onClick={onOpenScenario} aria-haspopup="dialog" disabled={!f.caps?.scenario_supported || !f.route || f.routeUnavailable}>Поправки{f.scenarioActive ? ' •' : ''}</Button>
+      <Button variant="primary" disabled={!f.current || f.busy || !!f.error || f.exporting} onClick={() => void f.download()} aria-label="Скачать CSV">{f.exporting ? 'Скачиваем…' : 'CSV ↓'}</Button>
     </div>
-    <div className="forecast-card__footer">
-      <details className="forecast-card__details"><summary>О данных</summary><DataDetails /></details>
-      <button className="card-close" onClick={onClose} aria-label="Свернуть карточку"><Icon name="close" /></button>
-    </div>
+    {f.error && <Button onClick={f.retry} disabled={f.busy || f.exporting} aria-label={f.errorStatus === 410 ? 'Обновить доступные данные' : 'Повторить запрос'}>Повторить запрос</Button>}
+    <p className="forecast-card__note">Прогноз по историческим данным</p>
   </section>;
 }

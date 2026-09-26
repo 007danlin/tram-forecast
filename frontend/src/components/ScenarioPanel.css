@@ -1,9 +1,5 @@
-.scenario-panel { margin-block: 12px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 12px; min-width: 0; }
-.scenario-panel summary { cursor: pointer; font-weight: 600; }
-.scenario-panel p { font-size: 12px; line-height: 1.5; color: var(--text-secondary); margin-block: 10px; }
-.scenario-panel__factors { display: grid; gap: 12px; margin-block: 12px; }
-.scenario-panel label { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 13px; }
-.scenario-panel input { grid-column: 1 / -1; width: 100%; min-width: 0; accent-color: var(--chart-line); }
-.scenario-panel output { font-variant-numeric: tabular-nums; }
-.scenario-panel input:focus-visible { outline: 2px solid var(--chart-line); outline-offset: 4px; }
-.scenario-active { font-size: 12px; color: var(--text-secondary); }
+.scenario-panel__factors { display:grid; gap:20px; }
+.scenario-panel__factors label { display:grid; grid-template-columns:1fr auto; align-items:center; gap:0 16px; }
+.scenario-panel__factors output { color:var(--text-primary); font-weight:650; font-variant-numeric:tabular-nums; }
+.scenario-panel__factors input { width:100%; grid-column:1 / -1; min-height:36px; accent-color:var(--chart-line); }
+.scenario-panel__limits { grid-column:1 / -1; display:flex; justify-content:space-between; color:var(--text-secondary); font-size:11px; }
