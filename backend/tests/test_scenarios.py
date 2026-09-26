@@ -55,6 +55,27 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(daily.rows[0].status, 'partial')
         self.assertEqual(daily.rows[0].coverage, 23/24)
 
+    def test_four_factors_and_legacy_identity(self):
+        import hashlib
+        import json
+        body = self.body()
+        original = calculate_scenario(self.snapshot, body, 'x')
+        key = {"calculation_version": "manual-multiply-v1", "base_result_id": original.base.result_id,
+               "coefficients": {"weather": 1.1, "event": 1.2}}
+        self.assertEqual(original.result_id, hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest())
+        for name in ("closures", "changes"):
+            updated = body.model_copy(update={"coefficients": Coefficients(weather=1.1, event=1.2, **{name: 0.5})})
+            result = calculate_scenario(self.snapshot, updated, 'x')
+            self.assertAlmostEqual(result.rows[0].value, 66)
+            self.assertNotEqual(result.result_id, original.result_id)
+            self.assertEqual(result.base, original.base)
+            self.assertIsNone(result.rows[12].value)
+            with self.assertRaises(ValidationError):
+                Coefficients(**{name: 1.11})
+        combined = calculate_scenario(self.snapshot, body.model_copy(update={
+            "coefficients": Coefficients(weather=1.1, event=1.2, closures=0.5, changes=1.5)}), 'x')
+        self.assertAlmostEqual(combined.rows[0].value, 99)
+
     def test_invalid_coefficients(self):
         for value in [float('nan'), float('inf'), -1, 0, 0.49, 1.51, 1.11, True, '1.1']:
             with self.subTest(value=value), self.assertRaises(ValidationError):

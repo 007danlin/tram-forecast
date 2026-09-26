@@ -16,7 +16,10 @@
 
 Capabilities объявляет `scenario_supported=true`, `manual-scenario-v1` и
 `qualitative-year-v1`. `/api/v2/scenarios/query` принимает базовые фильтры и
-`coefficients: {weather, event}`. Каждый коэффициент 0,5–1,5, шаг 0,05.
+`coefficients: {weather, event, closures, changes}`. Новые `closures` и `changes`
+необязательны (по умолчанию 1); старые запросы и result_id сохранены.
+Capabilities содержит список `scenario.coefficients`. CSV добавляет колонки новых
+коэффициентов, если они переданы в запросе экспорта. Каждый коэффициент 0,5–1,5, шаг 0,05.
 Ответ содержит неизменённый `base`, строки с `base_value`, `value`, `delta`,
 сумму и `delta_total`. `source=dispatcher_assumption`; lower/upper равны null,
 `interval_method=not_estimated`. Null, status, coverage и baseline сохраняются.

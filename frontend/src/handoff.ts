@@ -6,6 +6,7 @@ export type Capabilities = {
   resolutions: ('hour' | 'day')[]; warnings: string[]; limitations: string[];
   limits: {max_days: number; max_rows: number};
   scenario_supported?: boolean;
+  scenario?: {coefficients?: string[]};
   year?: {version: string; source: string; qualitative_available: boolean; numeric_supported: false; value: null;
     history_end: string; history_months: number; reason: string;
     scenarios: {name: string; title: string; assumption: string; change: string; needed: string}[]};
@@ -24,7 +25,8 @@ export type Result = {
   total_scope: 'complete' | 'available_only' | 'no_data'; coverage: number;
   warnings: string[]; limitations: string[]; interval_method: string;
 };
-export type Coefficients = {weather: number; event: number};
+export type Coefficients = {weather: number; event: number; closures: number; changes: number};
+export const neutralCoefficients: Coefficients = {weather: 1, event: 1, closures: 1, changes: 1};
 export type Scenario = {schema_version: 'manual-scenario-v1'; calculation_version: 'manual-multiply-v1';
   result_id: string; base: Result; coefficients: Coefficients; rows: Row[]; total: number | null;
   delta_total: number | null; interval_method: 'not_estimated'; source: 'dispatcher_assumption'};
@@ -51,6 +53,7 @@ export function validateCapabilities(v: unknown): Capabilities {
     && strings(v.resolutions) && v.resolutions.length > 0 && v.resolutions.every(r => ['hour', 'day'].includes(r))
     && strings(v.warnings) && strings(v.limitations) && object(v.limits) && number(v.limits.max_days) && number(v.limits.max_rows));
   requireContract(v.scenario_supported === undefined || typeof v.scenario_supported === 'boolean');
+  requireContract(v.scenario === undefined || object(v.scenario) && (v.scenario.coefficients === undefined || strings(v.scenario.coefficients)));
   if (v.year !== undefined) {
     const year = v.year;
     requireContract(object(year) && year.version === 'qualitative-year-v1' && identifier(year.source)
@@ -154,9 +157,9 @@ export async function exportResult(result: Result, signal: AbortSignal): Promise
   return response.blob();
 }
 
-export const sameCoefficients = (a: Coefficients, b: Coefficients) => a.weather === b.weather && a.event === b.event;
+export const sameCoefficients = (a: Coefficients, b: Coefficients) => a.weather === b.weather && a.event === b.event && (a.closures ?? 1) === b.closures && (a.changes ?? 1) === b.changes;
 export async function getScenario(filters: Filters, coefficients: Coefficients, signal: AbortSignal): Promise<Scenario> {
-  const v = await (await request('/api/v2/scenarios/query', signal, {...filters, coefficients})).json();
+  const v = await (await request('/api/v2/scenarios/query', signal, {...filters, coefficients: Object.fromEntries(Object.entries(coefficients).filter(([k,v]) => k === "weather" || k === "event" || v !== 1))})).json();
   requireContract(object(v) && v.schema_version === 'manual-scenario-v1' && v.calculation_version === 'manual-multiply-v1'
     && identifier(v.result_id) && object(v.coefficients) && sameCoefficients(v.coefficients as Coefficients, coefficients)
     && nullable(v.total) && (v.delta_total === null || typeof v.delta_total === 'number' && Number.isFinite(v.delta_total))
@@ -171,7 +174,7 @@ export async function getScenario(filters: Filters, coefficients: Coefficients, 
       && r.available_hours === b.available_hours && r.expected_hours === b.expected_hours
       && r.lower_90 === null && r.upper_90 === null && r.priority_score === null
       && (b.value === null ? r.delta === null : typeof r.value === 'number' && typeof r.delta === 'number'
-        && Math.abs(r.value - b.value * coefficients.weather * coefficients.event) <= 1e-8 + Math.abs(r.value) * 1e-12
+        && Math.abs(r.value - b.value * coefficients.weather * coefficients.event * coefficients.closures * coefficients.changes) <= 1e-8 + Math.abs(r.value) * 1e-12
         && Math.abs(r.delta - (r.value - b.value)) <= 1e-8));
   }
   return v as unknown as Scenario;

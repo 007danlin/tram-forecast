@@ -1,3 +1,4 @@
+import { ScenarioPanel } from "./ScenarioPanel";
 import { ForecastLineChart, ForecastTable } from "./ForecastData";
 import { useForecastData } from "../useForecast";
 import { Button } from "./ui";
@@ -27,6 +28,8 @@ export function AnalyticsView() {
       </div>
       <OverviewButton />
       <DemandIndicator />
+      {f.scenarioActive && <p role="status">Ручной сценарий · CSV содержит базу и поправки</p>}
+      <ScenarioPanel />
       {f.busy && <p role="status">Загружаем прогноз…</p>}
       {f.emptyReason && <p role="status">{f.emptyReason}</p>}
       {f.error && (

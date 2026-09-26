@@ -489,7 +489,7 @@ const close = (a, b) =>
     // Fullscreen is the same mounted map, with keyboard dismissal and restored focus.
     await mapViewport.evaluate((el) => (el.qaIdentity = "expanded-persistent"));
     await page
-      .getByRole("button", { name: "Увеличить сайт", exact: true })
+      .getByRole("button", { name: "Увеличить схему", exact: true })
       .click();
     await page.getByRole("dialog", { name: "Увеличенная схема" }).waitFor();
     await page

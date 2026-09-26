@@ -19,7 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
-from .collectors import collect, iso, timestamp, MET, CLOSURES, DEPTRANS
+from .collectors import collect, iso, timestamp, MET, CLOSURES, CALENDAR
 
 LOG = logging.getLogger(__name__)
 MAX_BYTES = 5 * 1024 * 1024
@@ -32,15 +32,15 @@ SOURCES = [
     dict(id='closures', title='Перекрытия', provider='Дептранс Москвы', url=CLOSURES,
          interval_seconds=1800, stale_after_seconds=7200, needs_key=False,
          description='Ограничения на дорогах, адреса и сроки'),
-    dict(id='changes', title='Изменения движения', provider='Дептранс · Оперативно', url=DEPTRANS,
-         interval_seconds=300, stale_after_seconds=1800, needs_key=False,
-         description='Ограничения и восстановление движения'),
+    dict(id='changes', title='Плановые изменения', provider='Календарь Дептранса', url=CALENDAR,
+         interval_seconds=1800, stale_after_seconds=7200, needs_key=False,
+         description='Даты ограничений и официальные схемы движения'),
     dict(id='events', title='Мероприятия', provider='KudaGo', url='https://kudago.com/msk/',
          interval_seconds=21600, stale_after_seconds=86400, needs_key=False,
          description='События, площадки и даты на ближайшие 14 дней'),
-    dict(id='traffic', title='Пробки', provider='ЦОДД · Дептранс', url=DEPTRANS,
-         interval_seconds=300, stale_after_seconds=7200, needs_key=False,
-         description='Публикуемые сводки по загруженности дорог', derived_from='changes'),
+    dict(id='traffic', title='Пробки', provider='Яндекс Карты · кандидат', url='https://yandex.ru/maps/213/moscow/probki/',
+         interval_seconds=300, stale_after_seconds=7200, needs_key=True,
+         description='Проверенного доступного источника пока нет', blocked=True, hidden=True),
 ]
 
 
@@ -160,6 +160,7 @@ class Monitor:
                 self.states[key]['error']='Локальный снимок повреждён; ожидается повторное получение'
             try:
                 failure=json.loads((self.root/key/'failure.json').read_text())
+                if key=='changes' and failure.get('source_url')!=source['url']: continue
                 timestamp(failure['next_refresh_at'])
                 if failure['last_attempt_at'] > (self.states[key]['last_attempt_at'] or ''):
                     self.states[key].update(failure)
@@ -244,7 +245,8 @@ class Monitor:
             if isinstance(exc,FetchError) and exc.retry_after and exc.retry_after>next_at: next_at=exc.retry_after
             error=str(exc) if isinstance(exc,FetchError) else 'Структура или содержимое источника не прошли проверку'
             if isinstance(exc,OSError): error='Не удалось сохранить снимок мониторинга'
-            failure=dict(last_attempt_at=iso(now),next_refresh_at=iso(next_at),error=error,failures=failures,refreshing=False)
+            failure=dict(last_attempt_at=iso(now),next_refresh_at=iso(next_at),error=error,failures=failures,refreshing=False,
+                         source_url=source['url'])
             with self.lock: self.states[key].update(failure)
             with suppress(OSError):
                 write_json(self.root/key/'failure.json',failure)
@@ -265,6 +267,7 @@ class Monitor:
         now=now or utcnow(); cards=[]
         with self.lock:
             for source in self.sources:
+                if source.get('hidden'): continue
                 key=source['id']; state,rows=self.data(key); coverage=state['coverage']
                 age=(now-timestamp(state['last_success_at'])).total_seconds() if state['last_success_at'] else None
                 status='pending'
@@ -277,6 +280,7 @@ class Monitor:
                 if key=='traffic' and status=='fresh':
                     status='pending' if not latest else 'stale' if (now-timestamp(latest)).total_seconds()>source['stale_after_seconds'] else 'fresh'
                 if key=='weather' and status=='fresh' and rows and max(timestamp(r['valid_end']) for r in rows)<now: status='stale'
+                if key=='changes' and status=='fresh' and coverage.get('window_end') and timestamp(coverage['window_end'])<=now: status='stale'
                 preview=rows[:3]
                 if key=='weather': preview=[r for r in rows if timestamp(r['valid_end'])>now][:1]
                 cards.append({**source,**{k:state[k] for k in ['last_attempt_at','last_success_at','next_refresh_at','error','refreshing','coverage']},
@@ -290,14 +294,10 @@ class Monitor:
     def records(self,key,offset=0,limit=50):
         with self.lock:
             _,rows=self.data(key)
-            return dict(information_mode='operational',source_id=key,total=len(rows),offset=offset,records=rows[offset:offset+limit])
+            return dict(information_mode='operational',source_id=key,total=len(rows),offset=offset,records=rows[offset:offset+limit],
+                        collection_status='not_connected' if key=='traffic' else 'connected')
 
     def data(self,key):
         if key!='traffic': return self.states[key],self.rows[key]
-        rows=[{**r,'source_id':'traffic','id':r['id'].replace('changes:','traffic:'),
-               'valid_start':None,'valid_end':None,'period_precision':'reported_snapshot',
-               'note':'Сводка ЦОДД на момент публикации, не непрерывное измерение и не дорожные сегменты.'}
-              for r in self.rows['changes'] if r['values'].get('traffic_bulletin')]
-        coverage=dict(complete=False,scope='Последние численные сводки ЦОДД из публичной ленты; измерения по улицам недоступны',
-                      latest_publication=max((r['published_at'] for r in rows),default=None))
-        return {**self.states['changes'],'coverage':coverage},rows
+        # Retain the records endpoint's source ID, but never relabel calendar data as traffic.
+        return self.states[key],[]

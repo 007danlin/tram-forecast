@@ -1,4 +1,4 @@
-// Current product acceptance: unchanged base, qualitative year, overview; no manual controls.
+// Current product acceptance: unchanged base, qualitative year, overview; neutral manual controls.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -23,9 +23,9 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     const filters={route_ids:['1'],start:caps.start,end:'2025-11-02T00:00:00+03:00',resolution:'hour',forecast_run_id:caps.forecast_run_id};
     const base=await (await post('/api/v2/handoff/query',filters)).json();
     near(Number(await page.getByTestId('total').getAttribute('data-raw-value')),base.total);
-    assert.equal(await page.getByLabel('Коэффициент погоды').count(),0);
-    assert.equal(await page.getByLabel('Коэффициент события').count(),0);
-    assert.equal(await page.locator('.scenario-panel').count(),0);
+    assert.equal(await page.getByLabel('Коэффициент: Погода').count(),1);
+    assert.equal(await page.getByLabel('Коэффициент: Мероприятия').count(),1);
+    assert.equal(await page.locator('.scenario-panel').count(),1);
     await page.getByRole('button',{name:'Таблица',exact:true}).click();
     const displayed=await page.locator('.forecast-table tbody tr td[data-raw-value]').evaluateAll(cells=>cells.map(c=>Number(c.dataset.rawValue)));
     displayed.forEach((v,i)=>near(v,base.rows[i].value));
@@ -82,8 +82,8 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     await page.screenshot({path:path.join(output,'mobile.png'),fullPage:true});
     assert.equal(errors.length,0,errors.join('\n'));
     assert.equal(requests.filter(r=>r.url.includes('/scenarios/')).length,0);
-    fs.writeFileSync(path.join(output,'acceptance.json'),JSON.stringify({run:caps.forecast_run_id,base_total:base.total,month_total:monthTotal,selected_day_6:selected,checks:['base API/UI/CSV unchanged','no manual controls or scenario requests','year no numeric requests','baseline and unsupported','multi-route totals and CSV','shared time no network ticks','mobile 390px'],errors},null,2));
-    console.log('PASS base/API/UI/CSV, no manual adjustments, qualitative year, overview/time/baseline/mobile');
+    fs.writeFileSync(path.join(output,'acceptance.json'),JSON.stringify({run:caps.forecast_run_id,base_total:base.total,month_total:monthTotal,selected_day_6:selected,checks:['base API/UI/CSV unchanged','neutral coefficients preserve base','year no numeric requests','baseline and unsupported','multi-route totals and CSV','shared time no network ticks','mobile 390px'],errors},null,2));
+    console.log('PASS base/API/UI/CSV, neutral adjustments, qualitative year, overview/time/baseline/mobile');
     await context.close();
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

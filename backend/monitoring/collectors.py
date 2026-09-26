@@ -13,6 +13,7 @@ MSK = ZoneInfo('Europe/Moscow')
 CLOSURES = 'https://transport.mos.ru/mostrans/closures'
 CHANGES = 'https://old.mosgortrans.ru/routes/changes/'
 DEPTRANS = 'https://t.me/s/DtOperativno'
+CALENDAR = 'https://i.transport.mos.ru/perekrytiya'
 EVENTS = 'https://kudago.com/public-api/v1.4/events/'
 MET = 'https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=55.7558&lon=37.6173'
 OPEN_METEO = 'https://api.open-meteo.com/v1/forecast?' + urlencode(dict(
@@ -213,6 +214,65 @@ def parse_changes(body, now):
     return rows
 
 
+def parse_calendar(body, now):
+    """Read dated announcements, without treating an infographic as parsed road data."""
+    root = Document(body).root
+    years = {n.text() for n in root.find(cls='tn-atom') if re.fullmatch(r'20\d{2}', n.text())}
+    if years != {str(now.astimezone(MSK).year)}:
+        raise ValueError('Calendar year missing, ambiguous or outdated')
+    year = int(next(iter(years)))
+    months = {name: i for i, name in enumerate(
+        'января февраля марта апреля мая июня июля августа сентября октября ноября декабря'.split(), 1)}
+    sections = []; current = None; anchor = None
+    for block in root.find(cls='t-rec'):
+        anchors = [a.attrs['name'] for a in block.find(tag='a') if a.attrs.get('name')]
+        if anchors:
+            current = None
+            anchor = anchors[0] if re.fullmatch(r'[a-z0-9-]+', anchors[0]) else None
+        classes = block.attrs.get('class', '').split()
+        text = ' '.join(n.text() for n in block.find(cls='t-text'))
+        if 'uc-header-1' in classes:
+            match = re.fullmatch(r'(\d{1,2})\s+([а-я]+)(?:\s*[–—-]\s*(\d{1,2})\s+([а-я]+))?', text.lower())
+            if not anchor or not match:
+                raise ValueError('Calendar date or section link missing')
+            a, ma, b, mb = match.groups()
+            start = datetime(year, months[ma], int(a), tzinfo=MSK)
+            last = datetime(year, months[mb or ma], int(b or a), tzinfo=MSK)
+            if last < start:
+                raise ValueError('Inverted calendar dates')
+            current = dict(anchor=anchor, period=text, start=start, end=last+timedelta(days=1),
+                           title=None, categories=[], images=[])
+            sections.append(current)
+        elif current is not None:
+            if 'uc-header-2' in classes:
+                current['title'] = text
+            elif 'uc-header-3' in classes and text:
+                current['categories'].append(text)
+            for meta in block.find(tag='meta'):
+                if meta.attrs.get('itemprop') == 'image':
+                    current['images'].append(public_url(meta.attrs['content'], 'static.tildacdn.com'))
+    if not sections or len({s['anchor'] for s in sections}) != len(sections):
+        raise ValueError('Calendar structure missing or duplicate sections')
+    rows = []
+    for section in sections:
+        if not section['title'] or not section['images']:
+            raise ValueError('Calendar announcement title or infographic missing')
+        if section['end'] <= now:
+            continue
+        rows.append(record('changes', section['anchor'], section['title'], now,
+            url=CALENDAR+'#'+section['anchor'], start=iso(section['start']), end=iso(section['end']),
+            precision='calendar_day', location={'name':'Москва · место указано на схеме',
+                'lat':None, 'lon':None, 'status':'city_only'},
+            values={'period_text':section['period'], 'categories':section['categories'],
+                    'infographic_urls':list(dict.fromkeys(section['images']))},
+            note='Плановое объявление Дептранса. Точные часы, улицы и маршруты указаны на схемах и автоматически не распознаны. Даты календаря не означают непрерывного перекрытия.'))
+    if not rows:
+        raise ValueError('Calendar has no current or upcoming announcements')
+    rows.sort(key=lambda r:r['valid_start'])
+    return rows, dict(complete=False, scope='Плановые объявления официального календаря; не оперативная лента и не полный реестр инцидентов',
+        calendar_year=year, window_end=max(r['valid_end'] for r in rows), publication_time_known=False)
+
+
 def parse_events(data, now):
     rows = []
     if not isinstance(data.get('results'), list) or not isinstance(data.get('count'),int):
@@ -294,7 +354,7 @@ def collect(source_id, fetch, now, weather_provider='met'):
     if source_id == 'closures':
         return parse_closures(fetch(CLOSURES), now)
     if source_id == 'changes':
-        return parse_deptrans(fetch(DEPTRANS),now)
+        return parse_calendar(fetch(CALENDAR),now)
     if source_id == 'events':
         params = dict(location='msk',actual_since=int(now.timestamp()),actual_until=int((now+timedelta(days=14)).timestamp()),
                       page_size=100,fields='id,title,dates,place,site_url,publication_date',expand='place',order_by='-publication_date')

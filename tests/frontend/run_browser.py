@@ -62,6 +62,8 @@ def main():
                 if result.returncode == 0:
                     result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/compact-card.cjs'), base], cwd=ROOT, env=env)
                 if result.returncode == 0:
+                    result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/scenarios.cjs'), base], cwd=ROOT, env=env)
+                if result.returncode == 0:
                     result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/map-continuity.cjs'), base], cwd=ROOT, env=env)
                 if result.returncode == 0:
                     result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/route-focus.cjs'), base], cwd=ROOT, env=env)

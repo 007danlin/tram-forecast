@@ -506,13 +506,14 @@
       "route_link": "unknown without geographic intersection"
     },
     "changes": {
-      "url": "https://t.me/s/DtOperativno",
-      "access": "verified public official HTML, current 2026-09-26 publications",
+      "url": "https://i.transport.mos.ru/perekrytiya",
+      "access": "local parser verified against saved public calendar and current web page; VPS availability not verified in this side conversation",
       "needs_key": false,
-      "coverage": "latest public text messages; not complete incident registry; reply links preserved",
+      "coverage": "dated planned announcements and infographic links; not operational incidents",
       "old_operator_candidate": "https://old.mosgortrans.ru/routes/changes/ inspected, last publication 2026-09-01; legacy parser retained",
       "primary_deptrans": "all_news HTTP 477; no bypass; public channel independently available",
-      "normalization": "explicit tram numbers only; unknown links, place and complex effective periods stay unknown"
+      "normalization": "explicit calendar year and date ranges; publication time, precise streets and tram routes in images remain unknown",
+      "previous_telegram": "replaced after VPS TCP timeout; legacy parser retained"
     },
     "events": {
       "url": "https://docs.kudago.com/api/",
@@ -522,10 +523,10 @@
       "attribution": "direct links to each event, no nofollow/noindex"
     },
     "traffic": {
-      "url": "https://t.me/s/DtOperativno",
-      "access": "derived from same official bulletin snapshot",
-      "needs_key": false,
-      "coverage": "published city scores and average speed only; freshness from publication time",
+      "url": "https://yandex.ru/maps/213/moscow/probki/",
+      "access": "reference link only; automatic collection not connected",
+      "needs_key": true,
+      "coverage": "no automatic traffic values collected; official JS API requires a key and compatible data-use terms",
       "tomtom": "candidate remains blocked: key and Moscow segment coverage not validated"
     },
     "details": "backend/monitoring/README.md"

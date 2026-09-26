@@ -1,3 +1,4 @@
+import { ScenarioPanel } from "./ScenarioPanel";
 import { useState } from "react";
 import { format, useForecastData } from "../useForecast";
 import { intervalLabel } from "../display";
@@ -26,6 +27,7 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
         <strong data-testid={point ? "map-demand" : undefined} data-raw-value={point?.value ?? ''}>{point ? format(point.value) : '—'}</strong>
         <span>успешных посадок</span>
       </div>
+      {f.scenarioActive && <p className="scenario-active">Ручной сценарий{point ? ` · база ${format(point.base_value ?? null)} · разница ${format(point.delta ?? null)}` : " · пересчёт"}</p>}
       {busy && <p className="forecast-message" role="status">Загружаем прогноз…</p>}
       {f.emptyReason && <p className="forecast-message" role="status">{f.emptyReason}</p>}
       {error && <p className="forecast-message forecast-message--error" role="alert">{error}</p>}
@@ -45,6 +47,7 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
       <TimelinePanel />
     </div>
     <NeighborValues />
+    <ScenarioPanel />
     <div className="forecast-card__tools">
     <details className="service-check">
       <summary>Проверить выпуск</summary>
@@ -59,7 +62,7 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
     </div>}
     <div className="forecast-card__actions">
       <Button variant="primary" disabled={!result || busy || !!error || f.exporting} onClick={() => void f.download()} aria-label="Скачать CSV">
-        {f.exporting ? 'Скачиваем…' : 'CSV · прогноз'}
+        {f.exporting ? 'Скачиваем…' : f.scenarioActive ? 'CSV · сценарий' : 'CSV · прогноз'}
       </Button>
       {<Button variant="ghost" onClick={f.retry} disabled={busy || f.exporting || !!f.emptyReason}
         aria-label={f.errorStatus === 410 ? 'Обновить доступные данные' : error ? 'Повторить запрос' : 'Обновить прогноз'}>{error ? 'Повторить' : '↻'}</Button>}

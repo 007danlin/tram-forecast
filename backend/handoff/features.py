@@ -9,6 +9,7 @@ class ScenarioCapabilities(ContractModel):
     max: float
     step: float
     source: Literal["dispatcher_assumption"]
+    coefficients: list[str]
     query: str
     export: str
 
@@ -34,7 +35,7 @@ class YearCapabilities(ContractModel):
 
 
 SCENARIO = {"schema_version": "manual-scenario-v1", "min": 0.5, "max": 1.5, "step": 0.05,
-            "source": "dispatcher_assumption", "query": "/api/v2/scenarios/query",
+            "source": "dispatcher_assumption", "coefficients": ["weather", "event", "closures", "changes"], "query": "/api/v2/scenarios/query",
             "export": "/api/v2/scenarios/export"}
 YEAR = {
     "version": "qualitative-year-v1", "source": "ml.cli.command_year_scenario",

@@ -88,7 +88,7 @@ const { chromium, webkit } = require("playwright");
       );
     }
     await page
-      .getByRole("button", { name: "Увеличить сайт", exact: true })
+      .getByRole("button", { name: "Увеличить схему", exact: true })
       .click();
     // Every original fragment is still hittable and selects all of its route, not its colour.
     for (const lane of network.lanes) {
@@ -180,7 +180,7 @@ const { chromium, webkit } = require("playwright");
         network.lanes.find((l) => l.id === id).routes[0],
       );
       await page
-        .getByRole("button", { name: "Увеличить сайт", exact: true })
+        .getByRole("button", { name: "Увеличить схему", exact: true })
         .click();
       await page
         .getByRole("button", { name: "Вся схема", exact: true })

@@ -11,7 +11,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 from io import BytesIO
 
-from backend.monitoring.collectors import (MET, MSK, collect, parse_closures, parse_changes,
+from backend.monitoring.collectors import (MET, MSK, CALENDAR, collect, parse_calendar, parse_closures, parse_changes,
     parse_events, parse_met, parse_open_meteo, parse_deptrans, record, timestamp)
 from backend.monitoring.service import Fetcher, FetchError, Monitor
 
@@ -48,7 +48,39 @@ def event_payload():
         'place':{'title':'Тестовая площадка','address':'Тестовая, 1','coords':{'lat':55.75,'lon':37.61}}}]}
 
 
+def calendar(period='26 сентября', year=2026):
+    return f'''<div class="tn-atom">{year}</div>
+<div class="t-rec"><a name="s-26"></a></div>
+<div class="t-rec uc-header-1"><div class="t-text">{period}</div></div>
+<div class="t-rec uc-header-2"><div class="t-text">Тестовое мероприятие</div></div>
+<div class="t-rec uc-header-3"><div class="t-text">Перекрытия</div></div>
+<div class="t-rec"><meta itemprop="image" content="https://static.tildacdn.com/test/map.png"></div>'''.encode()
+
+
 class CollectorTests(unittest.TestCase):
+    def test_calendar_preserves_days_and_images_without_inventing_publication_or_routes(self):
+        rows, coverage = parse_calendar(calendar(), NOW)
+        r = rows[0]
+        self.assertEqual(r['valid_start'], '2026-09-26T00:00:00+03:00')
+        self.assertEqual(r['valid_end'], '2026-09-27T00:00:00+03:00')
+        self.assertEqual(r['source_url'], CALENDAR+'#s-26')
+        self.assertIsNone(r['published_at'])
+        self.assertEqual(r['route_link']['status'], 'unknown')
+        self.assertEqual(r['location']['status'], 'city_only')
+        self.assertEqual(len(r['values']['infographic_urls']), 1)
+        self.assertFalse(coverage['complete'])
+        rows,_=parse_calendar(calendar('10 апреля – 27 сентября'),NOW)
+        self.assertEqual(rows[0]['valid_end'], '2026-09-28T00:00:00+03:00')
+        urls=[]
+        collect('changes', lambda u: urls.append(u) or calendar(), NOW)
+        self.assertEqual(urls,[CALENDAR])
+
+    def test_calendar_rejects_stale_year_expired_sections_and_changed_structure(self):
+        for html in [calendar(year=2025), calendar('25 сентября'), calendar('27 сентября – 26 сентября'),
+                     calendar('неизвестный период'), calendar().replace(b'uc-header-2',b'unknown'),
+                     calendar().replace(b'https://static.tildacdn.com/',b'https://evil.invalid/')]:
+            with self.subTest(html=html), self.assertRaises(ValueError):parse_calendar(html,NOW)
+
     def test_weather_units_provenance_and_no_route_invention(self):
         rows,coverage=parse_met(json.dumps(met_payload()).encode(),NOW)
         self.assertEqual(len(rows),48);self.assertTrue(coverage['complete'])
@@ -185,23 +217,42 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(other.rows['weather'],[])
         self.assertEqual(other.view(NOW)['sources'][0]['provider'],'Open-Meteo')
 
-    def test_lagging_publications_disabled_and_missing_bulletin(self):
+    def test_lagging_publications_disabled_and_hidden_traffic(self):
         m=self.monitor
         m.states['changes'].update(last_success_at=NOW.isoformat(),coverage={'latest_publication':(NOW-timedelta(days=8)).isoformat()})
         self.assertEqual(m.view(NOW)['sources'][2]['status'],'lagging')
-        self.assertEqual(m.view(NOW)['sources'][4]['status'],'pending')
+        self.assertEqual(len(m.view(NOW)['sources']),4)
         m.enabled=False;self.assertEqual(m.view(NOW)['sources'][0]['status'],'disabled')
 
-    def test_traffic_uses_publication_age_not_successful_refetch(self):
+    def test_removed_traffic_does_not_reuse_old_telegram_records(self):
         m=self.monitor
         row=record('changes','1','Traffic',NOW,url='https://t.me/DtOperativno/1',
             published=(NOW-timedelta(hours=3)).isoformat(),values={'traffic_bulletin':{'road_load_score':6}})
         m.states['changes'].update(last_success_at=NOW.isoformat())
         m.rows['changes']=[row]
-        self.assertEqual(m.view(NOW)['sources'][4]['status'],'stale')
-        out=m.records('traffic')['records'][0]
-        self.assertEqual(out['source_id'],'traffic');self.assertIsNone(out['valid_end'])
-        self.assertEqual(out['values']['traffic_bulletin']['road_load_score'],6)
+        self.assertNotIn('traffic',[s['id'] for s in m.view(NOW)['sources']])
+        self.assertEqual(m.records('traffic')['records'],[])
+        self.assertEqual(m.records('traffic')['collection_status'],'not_connected')
+
+    def test_provider_replacement_drops_old_records_and_failure_backoff(self):
+        legacy=[record('changes','old','Old bulletin',NOW,url='https://t.me/DtOperativno/1')]
+        with patch('backend.monitoring.service.collect',return_value=(legacy,{})):
+            self.monitor.refresh('changes')
+        path=self.root/'changes/current.json'
+        state=json.loads(path.read_text());state['source_url']='https://t.me/s/DtOperativno'
+        path.write_text(json.dumps(state))
+        failure={'last_attempt_at':(NOW+timedelta(days=1)).isoformat(), 'next_refresh_at':(NOW+timedelta(days=2)).isoformat(),
+                 'error':'Old Telegram timeout', 'failures':5}
+        (self.root/'changes/failure.json').write_text(json.dumps(failure))
+        m=Monitor(self.root)
+        self.assertEqual(m.rows['changes'],[])
+        self.assertIsNone(m.states['changes']['next_refresh_at'])
+        path.unlink()
+        self.assertIsNone(Monitor(self.root).states['changes']['error'])
+
+    def test_calendar_becomes_stale_when_announced_period_ends(self):
+        self.monitor.states['changes'].update(last_success_at=NOW.isoformat(),coverage={'window_end':NOW.isoformat()})
+        self.assertEqual(self.monitor.view(NOW)['sources'][2]['status'],'stale')
 
     def test_single_collector_owner_and_disabled_no_acquisition(self):
         self.assertTrue(self.monitor.acquire());other=Monitor(self.root)

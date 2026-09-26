@@ -23,6 +23,8 @@ Coefficient = Annotated[float, Field(strict=True, ge=0.5, le=1.5, multiple_of=0.
 class Coefficients(ContractModel):
     weather: Coefficient = 1.0
     event: Coefficient = 1.0
+    closures: Coefficient = 1.0
+    changes: Coefficient = 1.0
 
 
 class ScenarioQuery(Query):
@@ -55,11 +57,12 @@ class ScenarioResult(ContractModel):
 def calculate_scenario(snapshot: Snapshot, body: ScenarioQuery, request_id: str) -> ScenarioResult:
     base = calculate(snapshot, Query.model_validate(body.model_dump(exclude={"coefficients"})), request_id)
     key = {"calculation_version": VERSION, "base_result_id": base.result_id,
-           "coefficients": body.coefficients.model_dump()}
+           "coefficients": {k: v for k, v in body.coefficients.model_dump().items()
+                            if k in ("weather", "event") or v != 1.0}}
     result_id = hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()
     rows = []
     for row in base.rows:
-        value = None if row.value is None else row.value * body.coefficients.weather * body.coefficients.event
+        value = None if row.value is None else row.value * body.coefficients.weather * body.coefficients.event * body.coefficients.closures * body.coefficients.changes
         rows.append(ScenarioRow(**{**row.model_dump(), "value": value,
             "base_value": row.value, "delta": None if value is None else value - row.value,
             "lower_90": None, "upper_90": None, "priority_score": None}))
@@ -93,6 +96,11 @@ def export(body: ScenarioExport, request: Request):
         "metric_id": result.base.metric_id, "timezone": result.base.timezone,
         "calculation_version": VERSION, "interval_method": result.interval_method,
         "source": result.source}
+
+    # Keep legacy CSV columns unchanged for two-factor clients.
+    for name in ("closures", "changes"):
+        if name in body.coefficients.model_fields_set:
+            metadata[name] = getattr(result.coefficients, name)
 
     def stream():
         buffer = io.StringIO()

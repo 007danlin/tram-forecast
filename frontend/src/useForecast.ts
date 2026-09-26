@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { addDays, ApiError, buildFilters, exportResult, getCapabilities, getResult, OVERVIEW, sameFilters } from './handoff';
-import type { Capabilities, Horizon, Result } from './handoff';
+import { addDays, ApiError, buildFilters, exportResult, exportScenario, getScenario, neutralCoefficients, sameCoefficients, getCapabilities, getResult, OVERVIEW, sameFilters } from './handoff';
+import type { Capabilities, Coefficients, Scenario, Horizon, Result } from './handoff';
 export const format = (value: number | null) => value === null ? 'Нет данных' : value.toLocaleString('ru-RU', {maximumFractionDigits: 2});
 export const statusLabels = {ok: 'Полное покрытие', cold_start_zero_baseline: 'Нулевой baseline', partial: 'Неполное покрытие', no_data: 'Нет данных'};
 const message = (error: unknown) => error instanceof Error ? error.name === 'AbortError' ? 'Время ожидания истекло. Повторите запрос.' : error.message : 'Не удалось получить данные.';
@@ -17,6 +17,9 @@ export function useForecast() {
   const [error, setError] = useState('');
   const [errorStatus, setErrorStatus] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
+  const [coefficients, setCoefficients] = useState<Coefficients>(neutralCoefficients);
+  const [scenario, setScenario] = useState<Scenario | null>(null);
+  const scenarioActive = !sameCoefficients(coefficients, neutralCoefficients);
   const [exporting, setExporting] = useState(false);
   const [selected, setSelected] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -33,10 +36,11 @@ export function useForecast() {
     catch (e) { return {filters: null, problem: message(e)}; }
   }, [caps, route, day, horizon, routeUnavailable]);
   const filters = filtersState.filters;
-  const current = result && filters && sameFilters(result.filters, filters) ? result : null;
+  const current = result && filters && sameFilters(result.filters, filters) && (scenarioActive
+    ? scenario && sameCoefficients(scenario.coefficients, coefficients) : !scenario) ? result : null;
   const busy = loadingCaps || loading;
-  const changeContext = useCallback(() => {
-    generation.current += 1; exportController.current?.abort(); setPlaying(false); setExporting(false);
+  const changeContext = useCallback((resetCoefficients = true) => {
+    generation.current += 1; exportController.current?.abort(); setPlaying(false); setExporting(false); if (resetCoefficients) setCoefficients(neutralCoefficients);
   }, []);
   const changeRoute = useCallback((value: string) => {explicitRoute.current = true; changeContext(); setRoute(value);}, [changeContext]);
   const showError = (e: unknown) => {setError(message(e)); setErrorStatus(e instanceof ApiError ? e.status : 0);};
@@ -55,15 +59,17 @@ export function useForecast() {
 
   useEffect(() => {
     const controller = new AbortController(); let active = true;
-    setResult(null); setPlaying(false); setLoading(false); setError(''); setErrorStatus(0);
+    setResult(null); setScenario(null); setPlaying(false); setLoading(false); setError(''); setErrorStatus(0);
     if (!filters) return;
     const timeout = window.setTimeout(() => controller.abort(), 10000);
     setLoading(true); setError(''); setErrorStatus(0);
-    const pending = getResult(filters, controller.signal).then(value => {if (active) setResult(value);});
+    const pending = scenarioActive
+      ? getScenario(filters, coefficients, controller.signal).then(value => {if (active) {setScenario(value); setResult(value.base);}})
+      : getResult(filters, controller.signal).then(value => {if (active) setResult(value);});
     void pending
       .catch(e => {if (active) showError(e);}).finally(() => {window.clearTimeout(timeout); if (active) setLoading(false);});
     return () => {active = false; controller.abort(); window.clearTimeout(timeout);};
-  }, [filters, attempt]);
+  }, [filters, attempt, coefficients, scenarioActive]);
 
   useEffect(() => () => exportController.current?.abort(), []);
   useEffect(() => {
@@ -82,27 +88,29 @@ export function useForecast() {
     const timeout = window.setTimeout(() => controller.abort(), 30000);
     setExporting(true); setPlaying(false);
     try {
-      const blob = await exportResult(current, controller.signal);
+      const blob = await (scenarioActive && scenario ? exportScenario(scenario, controller.signal) : exportResult(current, controller.signal));
       if (controller.signal.aborted || generation.current !== version) return;
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = url; link.download = `tramflow-base-${overview ? 'overview' : route}-${current.filters.start.slice(0, 10)}.csv`;
+      const link = document.createElement('a'); link.href = url; link.download = `tramflow-${scenarioActive ? "scenario" : "base"}-${overview ? 'overview' : route}-${current.filters.start.slice(0, 10)}.csv`;
       document.body.append(link); link.click(); link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {if (generation.current === version) showError(e);}
     finally {window.clearTimeout(timeout); if (generation.current === version) setExporting(false);}
   }
   function retry() {
-    changeContext(); setResult(null); setError('');
+    changeContext(!caps || errorStatus === 410); setResult(null); setError('');
     if (!caps || errorStatus === 410) {setCaps(null); setBootstrap(v => v + 1);}
     else setAttempt(v => v + 1);
   }
   const usable = !busy && !error && !filtersState.problem ? current : null;
-  const rows = usable?.rows ?? [];
+  const rows = usable ? scenarioActive && scenario ? scenario.rows : usable.rows : [];
   const points = useMemo(() => overview ? [] : rows.map(row => ({...row, timestamp: row.start})), [rows, overview]);
   // Filter validation and CSV conflicts do not imply a disconnected backend.
   const connection: 'checking' | 'ok' | 'error' = loadingCaps ? 'checking' : caps && (!error || errorStatus === 409) ? 'ok' : 'error';
   return {caps, route, day, horizon, overview, routeUnavailable, emptyReason, connection, current: usable, points, rows,
-    displayTotal: usable?.total ?? null,
+    displayTotal: usable ? scenarioActive && scenario ? scenario.total : usable.total : null,
+    coefficients, scenarioActive, scenario: usable && scenarioActive ? scenario : null,
+    changeCoefficients: (value: Coefficients) => {generation.current += 1; exportController.current?.abort(); setExporting(false); setPlaying(false); setCoefficients(value);},
     busy, error: error || filtersState.problem,
     errorStatus, exporting, retry, download, selected, setSelected, playing, setPlaying,
     changeRoute,

@@ -1,3 +1,4 @@
+import { ScenarioPanel } from './ScenarioPanel';
 import { useState } from 'react';
 import { OVERVIEW } from '../handoff';
 import { format, useForecastData } from '../useForecast';
@@ -47,6 +48,8 @@ export function RouteOverview() {
     || a.route.route_id.localeCompare(b.route.route_id, 'ru', {numeric: true}));
   return <section className="dispatch-panel route-overview" aria-label="Обзор маршрутов">
     <h1>Обзор маршрутов</h1>
+    {f.scenarioActive && <p role="status">Ручной сценарий для всех маршрутов обзора</p>}
+    <ScenarioPanel />
 <p className="dispatch-muted">Успешные посадки · МСК</p>
     {f.current && <p>{dateLabel(f.current.filters.start, true)} — {dateLabel(new Date(Date.parse(f.current.filters.end) - 1).toISOString().slice(0, 10), true)}</p>}
     {f.busy && <p role="status">Загружаем обзор…</p>}

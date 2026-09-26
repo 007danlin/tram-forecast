@@ -6,7 +6,7 @@ type RecordItem = {
   valid_start: string | null; valid_end: string | null; published_at: string | null;
   location: {name: string | null; address?: string};
   route_link: {status: string; route_ids: string[]};
-  values: {temperature_c?: number; precipitation_mm?: number; wind_ms?: number}; note: string | null;
+  values: {temperature_c?: number; precipitation_mm?: number; wind_ms?: number; infographic_urls?: string[]}; note: string | null;
 };
 type Source = {
   id: string; title: string; provider: string; url: string; description: string;
@@ -77,12 +77,14 @@ export function SourceMonitor() {
               <p>{item.valid_start ? date(item.valid_start) : 'Начало неизвестно'} — {item.valid_end ? date(item.valid_end) : 'Окончание неизвестно'}</p>
               <p>{item.route_link.status==='explicit' ? `Трамвайные маршруты: ${item.route_link.route_ids.join(', ')}` : 'Связь с трамвайным маршрутом не установлена'}</p>
               <p>{item.note}</p>
+              {item.values.infographic_urls?.slice(0,3).map((url,i)=><p key={url}><a href={safeLink(url)} target="_blank" rel="noopener noreferrer">Схема ограничения {i+1} ↗</a></p>)}
             </div>)}
           </>}
           {source.attribution && <p>{source.attribution}{source.license_url && <> · <a href={source.license_url} target="_blank" rel="noopener noreferrer">Лицензия</a></>}</p>}
         </details>
       </article>)}
     </div>
+    <p className="source-card__description"><a href="https://yandex.ru/maps/213/moscow/probki/" target="_blank" rel="noopener noreferrer">Посмотреть пробки в Яндекс Картах ↗</a><br/>Автоматическое получение данных о пробках пока не подключено.</p>
     <div className="source-monitor__boundary"><span aria-hidden="true">◷</span><p><b>Прогноз и мониторинг — разные периоды.</b><br/>Модель B2 прогнозирует ноябрь–декабрь 2025. Новые онлайн-данные сохраняются отдельно; их влияние на числа ещё не подтверждено проверкой.</p></div>
   </section>;
 }
