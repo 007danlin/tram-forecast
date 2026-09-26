@@ -164,6 +164,12 @@ def load_snapshot(root: Path) -> Snapshot:
     limitations = tuple(metadata["limitations"])
     if not all(isinstance(v, str) for v in limitations):
         raise ValueError("Invalid limitations")
+    interval = metadata.get("interval")
+    if not isinstance(interval, dict):
+        raise ValueError("Invalid interval metadata")
+    interval_method = interval.get("method")
+    if not isinstance(interval_method, str) or not interval_method.strip():
+        raise ValueError("Interval method must be a non-empty string")
     return Snapshot(
         run_id=receipt["forecast_run_id"],
         model_version=hashes["model.joblib"],
@@ -176,7 +182,7 @@ def load_snapshot(root: Path) -> Snapshot:
         cold_routes=cold_routes,
         start=min(stamps),
         end=max(stamps) + timedelta(hours=1),
-        interval_method=metadata["interval"]["method"],
+        interval_method=interval_method,
         cells=MappingProxyType(cells),
         limitations=limitations,
     )

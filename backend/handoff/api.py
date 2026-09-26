@@ -42,6 +42,116 @@ class HandoffError(Exception):
         self.status, self.code, self.message = status, code, message
 
 
+class HandoffErrorBody(ContractModel):
+    code: Literal[
+        "unknown_route",
+        "run_unavailable",
+        "request_too_large",
+        "artifacts_unavailable",
+        "forecast_unavailable",
+        "result_mismatch",
+    ]
+    message: str
+    request_id: str
+
+
+class HandoffErrorResponse(ContractModel):
+    error: HandoffErrorBody
+
+
+class HandoffValidationBody(ContractModel):
+    code: Literal["invalid_request"]
+    message: str
+    request_id: str
+    fields: list[list[str | int]]
+
+
+class HandoffValidationResponse(ContractModel):
+    error: HandoffValidationBody
+
+
+ERROR_RESPONSES = {
+    status: {"model": HandoffErrorResponse, "description": description}
+    for status, description in (
+        (404, "Route outside the delivered catalogue"),
+        (410, "Requested run is not loaded"),
+        (413, "Requested result exceeds the row limit"),
+        (503, "No validated release or forecast temporarily unavailable"),
+    )
+}
+QUERY_RESPONSES = {
+    **ERROR_RESPONSES,
+    422: {"model": HandoffValidationResponse, "description": "Invalid request fields"},
+}
+
+
+class HandoffReady(ContractModel):
+    status: Literal["ready"]
+    forecast_run_id: str
+    source: Literal["validated_csv"]
+    model_loaded: Literal[False]
+    rows: int
+
+
+class HandoffRoute(ContractModel):
+    route_id: Identifier
+    method: Literal["model", "baseline"]
+
+
+class HandoffLimits(ContractModel):
+    max_days: int
+    max_rows: int
+    retained_runs: int
+
+
+class HandoffScenarioCapabilities(ContractModel):
+    schema_version: Literal["manual-scenario-v1"]
+    min: float
+    max: float
+    step: float
+    source: Literal["dispatcher_assumption"]
+    query: str
+    export: str
+
+
+class HandoffYearScenario(ContractModel):
+    name: str
+    title: str
+    assumption: str
+    change: str
+    needed: str
+
+
+class HandoffYearCapabilities(ContractModel):
+    version: Literal["qualitative-year-v1"]
+    source: str
+    qualitative_available: Literal[True]
+    numeric_supported: Literal[False]
+    value: None
+    history_end: str
+    history_months: int
+    reason: str
+    scenarios: list[HandoffYearScenario]
+
+
+class HandoffCapabilities(Period):
+    schema_version: Literal["ml-handoff-v1"]
+    forecast_run_id: str
+    metric_id: Literal["successful_validations"]
+    unit: Literal["successful_boardings"]
+    timezone: Literal["Europe/Moscow"]
+    routes: list[HandoffRoute]
+    spatial_levels: list[Literal["route"]]
+    directions_supported: Literal[False]
+    resolutions: list[Literal["hour", "day"]]
+    scenario_supported: Literal[True]
+    scenario: HandoffScenarioCapabilities
+    year: HandoffYearCapabilities
+    limits: HandoffLimits
+    warnings: list[str]
+    limitations: list[str]
+
+
 class Query(Period):
     route_ids: Annotated[list[Identifier], Field(min_length=1, max_length=100)]
     resolution: Literal["hour", "day"] = "hour"
@@ -205,7 +315,9 @@ def calculate(snapshot: Snapshot, query: Query, request_id: str) -> Result:
     )
 
 
-@router.get("/ready")
+@router.get(
+    "/ready", response_model=HandoffReady, responses={503: ERROR_RESPONSES[503]}
+)
 def ready(request: Request):
     snapshot = get_snapshot(request)
     return {
@@ -217,7 +329,11 @@ def ready(request: Request):
     }
 
 
-@router.get("/capabilities")
+@router.get(
+    "/capabilities",
+    response_model=HandoffCapabilities,
+    responses={503: ERROR_RESPONSES[503]},
+)
 def capabilities(request: Request):
     snapshot = get_snapshot(request)
     return {
@@ -247,7 +363,7 @@ def capabilities(request: Request):
     }
 
 
-@router.post("/query", response_model=Result)
+@router.post("/query", response_model=Result, responses=QUERY_RESPONSES)
 def query(body: Query, request: Request):
     return calculate(get_snapshot(request), body, request.state.request_id)
 
@@ -256,10 +372,19 @@ def query(body: Query, request: Request):
     "/export",
     response_class=StreamingResponse,
     responses={
+        **QUERY_RESPONSES,
+        409: {
+            "model": HandoffErrorResponse,
+            "description": "Export does not match expected result",
+        },
         200: {
             "content": {"text/csv": {"schema": {"type": "string"}}},
             "description": "Pinned unrounded result, not the organizer submission format",
-        }
+            "headers": {
+                "X-Result-Id": {"schema": {"type": "string"}},
+                "Content-Disposition": {"schema": {"type": "string"}},
+            },
+        },
     },
 )
 def export(body: Export, request: Request):
