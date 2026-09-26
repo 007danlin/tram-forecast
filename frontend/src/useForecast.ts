@@ -85,7 +85,7 @@ export function useForecast() {
     finally {window.clearTimeout(timeout); if (generation.current === version) setExporting(false);}
   }
   function retry() {
-    changeContext(); setError('');
+    changeContext(); setResult(null); setError('');
     if (!caps || errorStatus === 410) {setCaps(null); setBootstrap(v => v + 1);}
     else setAttempt(v => v + 1);
   }
