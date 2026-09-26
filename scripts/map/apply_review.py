@@ -1,4 +1,5 @@
 """Apply idempotent reviewed corrections without renumbering remaining entities."""
+import hashlib
 import json
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
@@ -10,6 +11,12 @@ def apply_review(network):
     removed = set(review['exclude_stops'])
     network['stops'] = [stop for stop in network['stops'] if stop['id'] not in removed]
     for lane in network['lanes']:
+        correction = review.get('lane_geometry', {}).get(lane['id'])
+        if correction and lane['points'] != correction['points']:
+            digest = hashlib.sha256(json.dumps(lane['points'], separators=(',', ':')).encode()).hexdigest()
+            if digest != correction['before_sha256']:
+                raise ValueError(f"Unreviewed geometry for {lane['id']}; inspect the PDF before applying repairs")
+            lane['points'] = correction['points']
         if lane['id'] in review['reference_verified_lanes']:
             lane['referenceVerified'] = True
     return network

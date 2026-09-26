@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loadNetwork, MAP_BASE, type Lane, type Network } from "../map/loadMap";
+import { loadNetwork, MAP_BASE, type Network } from "../map/loadMap";
 import { Icon } from "./ui";
+import { groupRouteLanes, routeSelectionName } from "../map/routeSelection";
 import "./tram-map.css";
 
 type View = { cx: number; cy: number; zoom: number };
@@ -26,8 +27,6 @@ function distance(px: number, py: number, points: [number, number][]) {
   }
   return best;
 }
-const laneName = (l: Lane, index: number) =>
-  `${l.routes?.map((n) => "№ " + n).join(", ") || "Линия"} · участок ${index + 1}${l.inferred && !l.referenceVerified ? " · номер уточняется" : ""}`;
 
 export const TramMap = memo(function TramMap() {
   const [map, setMap] = useState<Network | null>(null),
@@ -185,6 +184,16 @@ export const TramMap = memo(function TramMap() {
       );
     }
   };
+  const routeGroups = useMemo(() => groupRouteLanes(map?.lanes ?? []), [map]);
+  const groupsByLane = useMemo(
+    () =>
+      new Map(
+        routeGroups.flatMap((group) =>
+          group.lanes.map((lane) => [lane.id, group] as const),
+        ),
+      ),
+    [routeGroups],
+  );
   const onPointerUp = (e: React.PointerEvent) => {
     const wasTracked = pointers.current.delete(e.pointerId);
     gesture.current = null;
@@ -198,8 +207,12 @@ export const TramMap = memo(function TramMap() {
     const x = view.cx + (e.clientX - rect.left - size.w / 2) / scale,
       y = view.cy + (e.clientY - rect.top - size.h / 2) / scale;
     const radius = e.pointerType === "touch" ? 22 : 10;
-    const hits = map.lanes
-      .map((l) => ({ id: l.id, d: distance(x, y, l.points) * scale }))
+    const hits = routeGroups
+      .map((group) => ({
+        id: group.id,
+        d:
+          Math.min(...group.lanes.map((l) => distance(x, y, l.points))) * scale,
+      }))
       .filter((l) => l.d <= radius)
       .sort((a, b) => a.d - b.d);
     const ambiguous = hits.filter(
@@ -244,7 +257,7 @@ export const TramMap = memo(function TramMap() {
       );
     }
   };
-  const selection = map?.lanes.find((l) => l.id === selected);
+  const selection = selected ? groupsByLane.get(selected) : undefined;
   const hitLines = useMemo(
     () =>
       map?.lanes.map((l) => (
@@ -306,16 +319,24 @@ export const TramMap = memo(function TramMap() {
                 strokeLinejoin="round"
                 pointerEvents="none"
               >
-                <polyline
-                  points={selection.points.join(" ")}
-                  stroke="#fff"
-                  strokeWidth="7.4"
-                />
-                <polyline
-                  points={selection.points.join(" ")}
-                  stroke={selection.color}
-                  strokeWidth="5"
-                />
+                {/* All halos first: an end cap must not erase the next segment. */}
+                {selection.lanes.map((lane) => (
+                  <polyline
+                    key={`halo-${lane.id}`}
+                    points={lane.points.join(" ")}
+                    stroke="#fff"
+                    strokeWidth="4.6"
+                  />
+                ))}
+                {selection.lanes.map((lane) => (
+                  <polyline
+                    key={lane.id}
+                    data-selected-lane={lane.id}
+                    points={lane.points.join(" ")}
+                    stroke={lane.color}
+                    strokeWidth="3.2"
+                  />
+                ))}
               </g>
             )}
             <g className="map-layer map-layer--hit">{hitLines}</g>
@@ -379,22 +400,23 @@ export const TramMap = memo(function TramMap() {
                     Выбрать линию
                     <select
                       aria-label="Выбрать линию"
-                      value={selected ?? ""}
+                      value={selection?.id ?? ""}
                       onChange={(e) => {
                         setSelected(e.target.value || null);
                         setCandidates([]);
                       }}
                     >
                       <option value="">Без выделения</option>
-                      {map.lanes.map((l, i) => (
-                        <option key={l.id} value={l.id}>
-                          {laneName(l, i)}
+                      {routeGroups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {routeSelectionName(group)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <p>
-                    Схема 2026 года. Выбор линии пока не связан с прогнозом.
+                    Схема 2026 года. Выделяется весь маршрут. Выбор пока не
+                    связан с прогнозом.
                   </p>
                 </div>
               )}
@@ -407,7 +429,7 @@ export const TramMap = memo(function TramMap() {
               >
                 <p>Рядом несколько линий</p>
                 {candidates.map((id) => {
-                  const index = map.lanes.findIndex((l) => l.id === id);
+                  const group = groupsByLane.get(id)!;
                   return (
                     <button
                       key={id}
@@ -416,7 +438,7 @@ export const TramMap = memo(function TramMap() {
                         setCandidates([]);
                       }}
                     >
-                      {laneName(map.lanes[index], index)}
+                      {routeSelectionName(group)}
                     </button>
                   );
                 })}
@@ -425,10 +447,7 @@ export const TramMap = memo(function TramMap() {
             )}
             {selection && (
               <p className="tram-map__selected" role="status">
-                {selection.routes?.map((n) => "№ " + n).join(", ")}
-                {selection.inferred && !selection.referenceVerified
-                  ? " · номер уточняется"
-                  : ""}
+                {routeSelectionName(selection)}
                 <button
                   aria-label="Снять выделение линии"
                   onClick={() => setSelected(null)}

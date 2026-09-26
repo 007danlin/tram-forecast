@@ -116,9 +116,11 @@ const close = (a, b) =>
     await page.mouse.click(lineTarget.x, lineTarget.y);
     await page.waitForFunction(
       (points) =>
-        document
-          .querySelector('.tram-map__viewport polyline[stroke-width="5"]')
-          ?.getAttribute("points") === points,
+        [
+          ...document.querySelectorAll(
+            ".tram-map__viewport [data-selected-lane]",
+          ),
+        ].some((line) => line.getAttribute("points") === points),
       lineTarget.points,
     );
     await page.getByRole("button", { name: "Открыть прогноз" }).click();
@@ -213,11 +215,14 @@ const close = (a, b) =>
           .evaluate((el) => el.qaIdentity),
         "persistent",
       );
-      assert.equal(
+      assert.ok(
         await mapSvg
-          .locator('polyline[stroke-width="5"]')
-          .getAttribute("points"),
-        lineTarget.points,
+          .locator("[data-selected-lane]")
+          .evaluateAll(
+            (lines, points) =>
+              lines.some((line) => line.getAttribute("points") === points),
+            lineTarget.points,
+          ),
       );
     }
     await checkRows(24);
@@ -620,8 +625,13 @@ const close = (a, b) =>
       .getByRole("button", { name: "Линии схемы", exact: true })
       .click();
     const chosen = await mapSvg
-      .locator('polyline[stroke-width="5"]')
-      .getAttribute("points");
+      .locator("[data-selected-lane]")
+      .evaluateAll((lines) =>
+        lines.map((line) => [
+          line.dataset.selectedLane,
+          line.getAttribute("points"),
+        ]),
+      );
     const box = await mapViewport.boundingBox(),
       cx = box.x + box.width / 2,
       cy = box.y + box.height / 2;
@@ -630,8 +640,15 @@ const close = (a, b) =>
     await page.mouse.move(cx + 50, cy + 30, { steps: 5 });
     await page.mouse.move(cx, cy, { steps: 5 });
     await page.mouse.up();
-    assert.equal(
-      await mapSvg.locator('polyline[stroke-width="5"]').getAttribute("points"),
+    assert.deepEqual(
+      await mapSvg
+        .locator("[data-selected-lane]")
+        .evaluateAll((lines) =>
+          lines.map((line) => [
+            line.dataset.selectedLane,
+            line.getAttribute("points"),
+          ]),
+        ),
       chosen,
     );
     const cdp = await context.newCDPSession(page);
@@ -653,8 +670,15 @@ const close = (a, b) =>
       type: "touchEnd",
       touchPoints: [],
     });
-    assert.equal(
-      await mapSvg.locator('polyline[stroke-width="5"]').getAttribute("points"),
+    assert.deepEqual(
+      await mapSvg
+        .locator("[data-selected-lane]")
+        .evaluateAll((lines) =>
+          lines.map((line) => [
+            line.dataset.selectedLane,
+            line.getAttribute("points"),
+          ]),
+        ),
       chosen,
     );
     await cdp.detach();

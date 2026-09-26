@@ -92,10 +92,8 @@ const { webkit } = require("playwright");
       .getByRole("button", { name: "Закрыть увеличенную схему", exact: true })
       .press("Escape");
     assert.equal(
-      await page
-        .locator('.tram-map__viewport polyline[stroke-width="5"]')
-        .count(),
-      1,
+      await page.locator(".tram-map__viewport [data-selected-lane]").count(),
+      2,
     );
     await page.reload();
     await page.getByTestId("total").waitFor();
