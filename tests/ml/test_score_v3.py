@@ -1,3 +1,4 @@
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,9 @@ import numpy as np
 import pandas as pd
 
 from ml.score_v3 import OriginSnapshot, ScoreV3Model, _source_features, score_v3_config
+
+
+HAS_CATBOOST = importlib.util.find_spec("catboost") is not None
 
 
 def synthetic_history(days=80):
@@ -67,6 +71,7 @@ class ScoreV3Tests(unittest.TestCase):
         self.assertTrue((shares >= 0).all())
         np.testing.assert_allclose(shares.reshape(2, 24).sum(axis=1), [1.0, 1.0])
 
+    @unittest.skipUnless(HAS_CATBOOST, "Optional CatBoost dependency is unavailable")
     def test_daily_model_serialization_and_next_horizon(self):
         history = synthetic_history()
         config = score_v3_config(
