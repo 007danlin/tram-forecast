@@ -152,6 +152,8 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByRole('button',{name:'Аналитика',exact:true}).click();
     assert.equal(await page.locator('.analytics-view tbody tr').count(),24);
     await page.getByRole('button',{name:'Карта',exact:true}).click();
+    // ResizeObserver restores the viewport asynchronously after display:none.
+    await page.waitForFunction(expected => document.querySelector('.tram-map__viewport svg')?.getAttribute('viewBox') === expected, retainedView);
     assert.equal(await mapSvg.getAttribute('viewBox'),retainedView);
     assert.equal(await mapViewport.evaluate(el => el.qaIdentity),'persistent');
     await page.getByRole('button',{name:'Настройки',exact:true}).click();
