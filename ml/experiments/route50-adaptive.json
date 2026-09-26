@@ -1,0 +1,23 @@
+{
+  "schema": "route50-adaptive-v1",
+  "profile_days": 28,
+  "reference_days": 84,
+  "maximum_level_ratio": 0.35,
+  "consecutive_weekends": 3,
+  "minimum_reference_days_per_dow": 6,
+  "minimum_recent_days_per_dow": 3,
+  "profile_weight": 1.0,
+  "additional_origins": ["2025-09-08", "2025-09-15", "2025-09-22", "2025-09-29"],
+  "primary_origin": "2025-09-29",
+  "common_evaluation_start": "2025-10-01",
+  "last_observed_date": "2025-10-31",
+  "research_export_criteria": {
+    "minimum_old_window_delta": 0.0,
+    "minimum_additional_window_delta": 0.0,
+    "primary_score_gain_strictly_positive": true,
+    "primary_weekend_sae_reduction_at_least": 0.2,
+    "final_origin_must_switch": true
+  },
+  "uncertainty": "Additional origins share October targets: one observed low-regime period, not independent confirmations.",
+  "status": "Single rule fixed before this adaptive run; thresholds are informed by previously inspected history, not a pristine holdout. Research CSV only, no replacement of incumbent."
+}
