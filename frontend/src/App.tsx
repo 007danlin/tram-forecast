@@ -18,7 +18,7 @@ export function App() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const filterBarRef = useRef<HTMLDivElement>(null);
 
-  const connection: ConnectionStatus = forecast.current ? 'ok' : error ? 'error' : 'checking';
+  const connection: ConnectionStatus = forecast.connection;
 
   useEffect(() => {
     if (!cardOpen) reopenRef.current?.focus();

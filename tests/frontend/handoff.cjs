@@ -118,6 +118,7 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await setHorizon('week');
     await page.getByLabel('Дата (МСК)').fill('2025-12-29');
     await page.getByRole('alert').waitFor(); assert.equal(await page.getByRole('button',{name:'Скачать CSV'}).isDisabled(),true);
+    assert.equal(await page.locator('.app-shell__badge--ok').textContent(),'Пакет подключён');
     await page.getByLabel('Дата (МСК)').fill('2025-11-01');
     await setHorizon('day'); await checkRows(24);
     for (const status of [503,410]) {
@@ -131,6 +132,7 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     }
     await page.route('**/handoff/export',route => route.fulfill({status:409,contentType:'application/json',body:'{"error":{"code":"fixture"}}'}));
     await page.getByRole('button',{name:'Скачать CSV'}).click(); await page.getByRole('alert').waitFor();
+    assert.equal(await page.locator('.app-shell__badge--ok').textContent(),'Пакет подключён');
     assert.equal(await page.getByRole('button',{name:'Скачать CSV'}).isDisabled(),true);
     await page.unroute('**/handoff/export'); await page.getByRole('button',{name:'Повторить запрос',exact:true}).click(); await checkRows(24);
     for (const empty of [false,true]) {
@@ -167,6 +169,9 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true);
     await page.screenshot({path:output+'/mobile.png',fullPage:true});
+    const mobileView = await mapSvg.getAttribute('viewBox');
+    await page.getByRole('button',{name:'Увеличить',exact:true}).click();
+    await page.waitForFunction(before => document.querySelector('.tram-map__viewport svg')?.getAttribute('viewBox') !== before, mobileView);
     assert.deepEqual(errors,[]);
     console.log(`PASS ${sourceKind} batch → API → UI → CSV; missing release and recovery, day/week/December/baseline, stale requests, MSK in non-MSK browser, 503/410/409, partial/no_data, keyboard, responsive, map remains mounted.`);
   } finally {await browser.close();}

@@ -91,7 +91,9 @@ export function useForecast() {
   }
   const usable = !busy && !error && !filtersState.problem ? current : null;
   const points = useMemo(() => usable?.rows.map(row => ({...row, timestamp: row.start})) ?? [], [usable]);
-  return {caps, route, day, horizon, current: usable, points, busy, error: error || filtersState.problem,
+  // Filter validation and CSV conflicts do not imply a disconnected backend.
+  const connection: 'checking' | 'ok' | 'error' = loadingCaps ? 'checking' : caps && (!error || errorStatus === 409) ? 'ok' : 'error';
+  return {caps, route, day, horizon, connection, current: usable, points, busy, error: error || filtersState.problem,
     errorStatus, exporting, retry, download, selected, setSelected, playing, setPlaying,
     changeRoute: (value: string) => {changeContext(); setRoute(value);},
     changeDay: (value: string) => {changeContext(); setDay(value);},

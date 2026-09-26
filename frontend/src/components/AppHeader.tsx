@@ -7,8 +7,8 @@ export type ConnectionStatus = 'checking' | 'ok' | 'error';
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
   checking: 'Проверяем соединение…',
-  ok: 'Прогноз готов',
-  error: 'Прогноз недоступен',
+  ok: 'Пакет подключён',
+  error: 'Пакет недоступен',
 };
 
 export function AppHeader({
