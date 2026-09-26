@@ -52,6 +52,13 @@ ENSEMBLE_SCALE = 0.96
 
 
 def build_hgbt_model(model_name: str, experiment_config: dict | None = None) -> "HourlyGradientBoostingModel":
+    if model_name.startswith("score_v3_"):
+        from ml.score_v3 import ScoreV3Model
+
+        model = ScoreV3Model(experiment_config)
+        if model.name != model_name:
+            raise ValueError("Model name and score-v3 config disagree")
+        return model
     if model_name == "calendar_interaction_squared_hgbt":
         if experiment_config is not None:
             raise ValueError("Interaction model does not accept a weather experiment config")
@@ -60,6 +67,13 @@ def build_hgbt_model(model_name: str, experiment_config: dict | None = None) -> 
         if experiment_config is not None:
             raise ValueError("Interaction ensemble does not accept a weather experiment config")
         return CalendarInteractionEnsembleModel()
+
+    if model_name.startswith("score_"):
+        from ml.score_models import ScoreModel
+        model = ScoreModel(experiment_config)
+        if model.name != model_name:
+            raise ValueError("Model name and score config disagree")
+        return model
     variants = {
         "calendar_hgbt": dict(include_lags=False),
         "lagged_hgbt": dict(include_lags=True),
@@ -83,6 +97,8 @@ def build_hgbt_model(model_name: str, experiment_config: dict | None = None) -> 
         if model_name != config["model_name"]:
             raise ValueError("Model name and experiment config disagree")
         options.update(weather_columns=tuple(config["weather_columns"]), experiment_config=config)
+        if "seed" in config:
+            options["random_seed"] = config["seed"]
     return HourlyGradientBoostingModel(**options)
 
 
@@ -169,7 +185,14 @@ def make_training_features(
     return data[columns], data[TARGET_COLUMN].to_numpy(dtype=float)
 
 
-def _pipeline(numeric_columns: tuple[str, ...], *, max_iter: int, max_leaf_nodes: int) -> Pipeline:
+def _pipeline(
+    numeric_columns: tuple[str, ...],
+    *,
+    max_iter: int,
+    max_leaf_nodes: int,
+    random_seed: int = RANDOM_SEED,
+    early_stopping: str | bool = "auto",
+) -> Pipeline:
     preprocessing = ColumnTransformer(
         [
             ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), list(CATEGORICAL_COLUMNS)),
@@ -181,7 +204,8 @@ def _pipeline(numeric_columns: tuple[str, ...], *, max_iter: int, max_leaf_nodes
         **HGBT_FIXED_PARAMETERS,
         max_iter=max_iter,
         max_leaf_nodes=max_leaf_nodes,
-        random_state=RANDOM_SEED,
+        random_state=random_seed,
+        early_stopping=early_stopping,
     )
     return Pipeline([("preprocessing", preprocessing), ("regressor", regressor)])
 
@@ -198,6 +222,8 @@ class HourlyGradientBoostingModel:
     experiment_config: dict | None = None
     max_iter: int = 220
     max_leaf_nodes: int = 31
+    random_seed: int = RANDOM_SEED
+    early_stopping: str | bool = "auto"
 
     @property
     def selected_weather_columns(self):
@@ -233,7 +259,13 @@ class HourlyGradientBoostingModel:
             numeric += self.selected_weather_columns
         if self.include_lags:
             numeric += LAG_NUMERIC_COLUMNS
-        self.pipeline_ = _pipeline(numeric, max_iter=self.max_iter, max_leaf_nodes=self.max_leaf_nodes)
+        self.pipeline_ = _pipeline(
+            numeric,
+            max_iter=self.max_iter,
+            max_leaf_nodes=self.max_leaf_nodes,
+            random_seed=self.random_seed,
+            early_stopping=self.early_stopping,
+        )
         self.pipeline_.fit(features, target)
         self.history_ = ordered[["route", "date", "hour", "timestamp", TARGET_COLUMN]].copy()
         self.history_start_ = ordered["date"].min()
@@ -307,6 +339,7 @@ class NativeInteractionGradientBoostingModel(HourlyGradientBoostingModel):
     max_iter: int = 300
     max_leaf_nodes: int = 31
     half_life_days: float = INTERACTION_HALF_LIFE_DAYS
+    early_stopping: str | bool = "auto"
 
     @property
     def name(self) -> str:
@@ -357,6 +390,7 @@ class NativeInteractionGradientBoostingModel(HourlyGradientBoostingModel):
             l2_regularization=1.0,
             categorical_features=list(INTERACTION_CATEGORICAL_COLUMNS),
             random_state=RANDOM_SEED,
+            early_stopping=self.early_stopping,
         )
         self.pipeline_.fit(
             _interaction_features(training),
@@ -411,6 +445,7 @@ class CalendarInteractionEnsembleModel(HourlyGradientBoostingModel):
     calendar_weight: float = ENSEMBLE_CALENDAR_WEIGHT
     interaction_weight: float = ENSEMBLE_INTERACTION_WEIGHT
     output_scale: float = ENSEMBLE_SCALE
+    component_early_stopping: str | bool = "auto"
 
     @property
     def name(self) -> str:
@@ -447,8 +482,11 @@ class CalendarInteractionEnsembleModel(HourlyGradientBoostingModel):
             include_official_calendar=True,
             include_weather=False,
             information_mode="operational",
+            early_stopping=self.component_early_stopping,
         ).fit(history)
-        self.interaction_model_ = NativeInteractionGradientBoostingModel().fit(history)
+        self.interaction_model_ = NativeInteractionGradientBoostingModel(
+            early_stopping=self.component_early_stopping
+        ).fit(history)
         self.supported_routes_ = tuple(
             sorted(set(self.calendar_model_.supported_routes_) & set(self.interaction_model_.supported_routes_))
         )

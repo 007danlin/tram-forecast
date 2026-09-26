@@ -44,7 +44,12 @@ def sha256_file(path: str | Path) -> str:
 
 
 def _versions() -> dict[str, str]:
-    return {name: importlib.metadata.version(name) for name in ("numpy", "pandas", "scikit-learn", "joblib")}
+    result = {name: importlib.metadata.version(name) for name in ("numpy", "pandas", "scikit-learn", "joblib")}
+    try:
+        result["catboost"] = importlib.metadata.version("catboost")
+    except importlib.metadata.PackageNotFoundError:
+        pass
+    return result
 
 
 def _write_artifact(
@@ -104,7 +109,7 @@ def _write_artifact(
     limitations = [
         "Target measures successful boardings, not onboard occupancy.",
         "No direction or stop-level target is available.",
-        "Route 5 is excluded from the nine-route trained-model scope by the later Q&A addendum; the local organizer sample still contains it.",
+        "Route 5 is excluded from training; the full organizer sample keeps it with the team-approved deterministic zero fallback.",
         "Events, closures and traffic are not used because comparable versioned archives were not supplied.",
         "Annual numeric forecasting is unsupported with ten months of history.",
     ]
@@ -133,8 +138,11 @@ def _write_artifact(
             )
             if enabled
         ],
-        "random_seed": RANDOM_SEED,
-        "model_parameters": getattr(
+        "random_seed": config.get("seed", RANDOM_SEED) if config else RANDOM_SEED,
+        "model_parameters": {
+            "config": config,
+            "fit_details": getattr(model, "fit_details_", {}),
+        } if model_name.startswith("score_") else getattr(
             model,
             "parameter_manifest",
             {
@@ -149,7 +157,11 @@ def _write_artifact(
         "training_period": {"start": str(FINAL_TRAIN_START), "end": str(FINAL_TRAIN_END)},
         "model_scope_routes": list(MODELED_ROUTES),
         "organizer_sample_routes_observed": list(SAMPLE_ROUTES),
-        "route_5_contract_status": "unresolved: later Q&A says exclude; local sample still contains route 5",
+        "route_5_contract_status": "resolved_zero_fallback_full_sample",
+        "route_5_decision_source": (
+            "Daniel relayed organizer permission on 2026-09-26; the team selected zero, "
+            "not invented random values"
+        ),
         "supported_routes": supported_routes,
         "excluded_model_routes": sorted(set(SAMPLE_ROUTES) - set(MODELED_ROUTES)),
         "submission_fallback_routes": sorted(set(SAMPLE_ROUTES) - set(MODELED_ROUTES)),
@@ -184,7 +196,7 @@ def _write_artifact(
     feature_schema = {
         "schema_version": MODEL_SCHEMA_VERSION,
         "keys": {"route": "int", "date": "YYYY-MM-DD", "hour": "int[0,23]"},
-        "calendar_features": ["route", "hour", "weekday", "month", "is_weekend", "day_of_year_sin", "day_of_year_cos"],
+        "calendar_features": getattr(model, "feature_columns_", ["route", "hour", "weekday", "month", "is_weekend", "day_of_year_sin", "day_of_year_cos"]),
         "official_calendar_features": list(HOLIDAY_MODEL_COLUMNS) if model.include_official_calendar else [],
         "weather_features": list(model.selected_weather_columns) if model.include_weather else [],
         "experiment_config": config,
@@ -313,6 +325,8 @@ def write_submission(
     *,
     scope: str = "sample",
 ) -> Path:
+    if Path(output_path).exists():
+        raise ValueError("Submission exists; choose a new output")
     template = pd.read_csv(template_path, sep=";")
     expected_columns = ["route", "date", "hour", "prediction"]
     if list(template.columns) != expected_columns:
@@ -382,6 +396,11 @@ def submission_preflight(
         "hours_valid": bool(numeric_hour.notna().all() and numeric_hour.mod(1).eq(0).all() and numeric_hour.between(0, 23).all()),
         "routes_valid": bool(numeric_route.notna().all() and numeric_route.mod(1).eq(0).all()),
         "routes": sorted(numeric_route.dropna().astype(int).unique().tolist()),
+        "route_5_zero_fallback": bool(
+            scope != "sample"
+            or 5 not in numeric_route.dropna().astype(int).unique()
+            or numeric_prediction.loc[numeric_route.eq(5)].eq(0).all()
+        ),
     }
     passed = (
         checks["columns_exact"]
@@ -398,6 +417,7 @@ def submission_preflight(
         and checks["hours_valid"]
         and checks["routes_valid"]
         and checks["routes"] == sorted(template["route"].astype(int).unique().tolist())
+        and checks["route_5_zero_fallback"]
     )
     return {
         "passed": bool(passed),
@@ -406,10 +426,11 @@ def submission_preflight(
         "rounding_policy": "floor(x + 0.5) at submission export only",
         "submission_scope": scope,
         "contract_status": (
-            "matches_local_organizer_sample_but_route_5_conflicts_with_later_QA"
+            "full_sample_route_5_zero_fallback_approved_by_team"
             if scope == "sample" and 5 in checks["routes"]
-            else "nine_route_candidate_pending_organizer_sample_reconciliation"
+            else "diagnostic_modeled_routes_only_not_for_platform_submission"
         ),
+        "route_5_fallback_policy": "zero; route excluded from model training; absence of movement is not asserted",
         "model_scope_routes": list(MODELED_ROUTES),
         "local_sample_routes": sorted(original_template["route"].astype(int).unique().tolist()),
         "checks": checks,

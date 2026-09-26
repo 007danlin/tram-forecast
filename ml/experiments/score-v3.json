@@ -1,0 +1,56 @@
+{
+  "schema": "score-v3-study",
+  "seed": 20250925,
+  "threads": 4,
+  "new_training_config_limit": 24,
+  "folds": [
+    {
+      "id": "S1",
+      "train_start": "2025-01-01",
+      "train_end": "2025-04-30",
+      "start": "2025-05-01",
+      "end": "2025-06-30"
+    },
+    {
+      "id": "S2",
+      "train_start": "2025-01-01",
+      "train_end": "2025-05-31",
+      "start": "2025-06-01",
+      "end": "2025-07-31"
+    },
+    {
+      "id": "S3",
+      "train_start": "2025-01-01",
+      "train_end": "2025-06-30",
+      "start": "2025-07-01",
+      "end": "2025-08-30"
+    },
+    {
+      "id": "S4",
+      "train_start": "2025-01-01",
+      "train_end": "2025-07-31",
+      "start": "2025-08-01",
+      "end": "2025-09-30"
+    }
+  ],
+  "diagnostic": {
+    "id": "D",
+    "train_start": "2025-01-01",
+    "train_end": "2025-08-31",
+    "start": "2025-09-01",
+    "end": "2025-10-31"
+  },
+  "thresholds": {
+    "min_gain": 0.002,
+    "min_improved_folds": 3,
+    "min_fold_delta": -0.003,
+    "min_horizon_delta": -0.003,
+    "max_route_mae_increase": 0.05,
+    "diagnostic_min_delta": -0.003,
+    "tie_tolerance": 0.0005
+  },
+  "blend_weights": [0.25, 0.5, 0.75],
+  "rounding": "floor(x + 0.5) once at metric/export",
+  "route_5_policy": "excluded from training; zero fallback; full 14640-row sample retained",
+  "selection_warning": "S1-S4 overlap; D was previously used and is a repeated diagnostic, not an independent holdout"
+}
