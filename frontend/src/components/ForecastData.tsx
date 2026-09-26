@@ -1,6 +1,7 @@
 import "./ForecastData.css";
 import type { Row } from "../handoff";
 import { format, statusLabels } from "../useForecast";
+import { smoothChartPath } from "../chartPath";
 
 export type ForecastPoint = Row & { timestamp: string };
 
@@ -22,18 +23,9 @@ export function ForecastLineChart({
   const max = Math.max(1, ...points.map((p) => p.value ?? 0));
   const x = (i: number) => 40 + (i * 520) / Math.max(1, points.length - 1);
   const y = (v: number) => 190 - (v / max) * 160;
-  let drawing = false;
-  const line = points
-    .map((p, i) => {
-      if (p.value === null) {
-        drawing = false;
-        return "";
-      }
-      const part = `${drawing ? "L" : "M"}${x(i)},${y(p.value)}`;
-      drawing = true;
-      return part;
-    })
-    .join(" ");
+  const line = smoothChartPath(points.map((p, i) =>
+    p.value === null ? null : { x: x(i), y: y(p.value) },
+  ));
   return (
     <div className="forecast-chart">
       <svg
@@ -54,7 +46,14 @@ export function ForecastLineChart({
         <text x="8" y="30">
           {format(max)}
         </text>
-        <path d={line} fill="none" stroke="var(--chart-line)" strokeWidth="3" />
+        <path
+          d={line}
+          fill="none"
+          stroke="var(--chart-line)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
         {points.map(
           (p, i) =>
             p.value !== null && (
