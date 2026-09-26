@@ -98,3 +98,21 @@ decode; для приёмочных latency используется k6. Кэш 
 Сводка — [verification-load](../../docs/verification-load.md); исходные JSON
 остаются в `artifacts/`.
 [Семантика constant-arrival-rate](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/).
+
+## Ручной сценарий D1
+
+Отдельный локальный smoke `scenarios.js`: 50 RPS/30s прогрев, затем 200 RPS/60s
+только при успешном прогреве. Использует тот же reference из исходного release.
+70% day/hour, 30% month/day; коэффициенты 0.8/1.1 × 1.2; semantic-проверка каждой
+строки. URL ограничен localhost/frontend. Результаты и пределы —
+[приёмка P0/P1](../../docs/submission-final/verification.md).
+
+```sh
+# После запуска локального проекта tramflow-final-qa по README комплекта:
+docker run --rm --network container:tramflow-final-qa-frontend-1 \
+  -v "$PWD/tests/load:/scripts:ro" -v "$PWD/artifacts/load/run-01:/results" \
+  -e BASE_URL=http://127.0.0.1:5173 -e REFERENCE=/results/reference.json \
+  -e RATE=50 -e DURATION=30s grafana/k6:1.3.0 \
+  run --summary-export /results/scenario-warmup.json /scripts/scenarios.js
+# Затем повторить с RATE=200, DURATION=60s и новым именем summary.
+```

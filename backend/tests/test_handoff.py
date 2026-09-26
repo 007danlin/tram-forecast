@@ -285,6 +285,24 @@ class HandoffHttpTests(unittest.TestCase):
                 self.assertEqual(status, 503)
                 HandoffErrorResponse.model_validate_json(raw)
 
+    def test_capabilities_preserve_scenario_and_qualitative_year(self):
+        from backend.handoff.features import SCENARIO, YEAR
+
+        status, _, raw = self.call("/api/v2/handoff/capabilities")
+        self.assertEqual(status, 200)
+        payload = json.loads(raw)
+        self.assertTrue(payload["scenario_supported"])
+        self.assertEqual(payload["scenario"], SCENARIO)
+        self.assertEqual(payload["year"], YEAR)
+        schema = app.openapi()["components"]["schemas"]
+        required = schema["HandoffCapabilities"]["required"]
+        self.assertTrue({"scenario_supported", "scenario", "year"}.issubset(required))
+        year_schema = schema["HandoffCapabilities"]["properties"]["year"]["$ref"].rsplit("/", 1)[-1]
+        self.assertEqual(
+            schema[year_schema]["properties"]["numeric_supported"]["const"],
+            False,
+        )
+
     def test_parallel_clients_do_not_share_filters(self):
         def fetch(route):
             status, _, raw = self.call(

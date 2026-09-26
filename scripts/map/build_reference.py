@@ -21,6 +21,10 @@ BOUNDS = [62, 112, 1065, 1198]
 HEART = tuple(range(14726, 14733))
 HEART_BACK = 14608
 EXCLUDE = {3058, 14609, HEART_BACK, *HEART}
+# Pogonny Proezd: these dark underpaint paths are covered by pale PDF shading
+# operations 8511–8524. The vector-only export omits shading; keeping its
+# underpaint would thicken/fill the letters. The visible text is path 8525.
+LABEL_UNDERPAINT = frozenset(range(8497, 8511))
 
 def number(v):
     return f'{v:.2f}'.rstrip('0').rstrip('.') or '0'
@@ -81,7 +85,7 @@ def main():
     favicon.write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="952 134 132 132"><title>TramFlow</title>'+icon_paths+'</svg>')
     elements = []
     for d in drawings:
-        if d['seqno'] in EXCLUDE: continue
+        if d['seqno'] in EXCLUDE or d['seqno'] in LABEL_UNDERPAINT: continue
         if d['seqno'] == 0 or not pymupdf.Rect(d['rect']).intersects(bounds): continue
         if d['type'] != 'f': raise ValueError('This reference is expected to contain fill paths only')
         color = '#' + ''.join(f'{round(c*255):02x}' for c in d['fill'])
@@ -98,6 +102,7 @@ def main():
     svg = out.read_text()
     metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'excluded_poster_paths':sorted(EXCLUDE),'favicon_sha256':hashlib.sha256(favicon.read_bytes()).hexdigest(),'station_label_count':len(labels),'optimizer':'svgo 4.0.0 --multipass','path_extraction':'get_cdrawings; signed rectangle coordinates preserve compound-path winding','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
     metadata['station_symbol_count'] = len(symbols)
+    metadata['excluded_label_underpaint_paths'] = sorted(LABEL_UNDERPAINT)
     (out.parent/'schematic.meta.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
     print(f'{len(elements)} vector paths; {out.stat().st_size} bytes; no images/scripts/external links')
 

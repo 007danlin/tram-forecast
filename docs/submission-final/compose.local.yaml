@@ -1,0 +1,11 @@
+# Isolated jury rehearsal; no VPS ports or services are changed.
+services:
+  backend:
+    ports: !override
+      - "127.0.0.1:18106:8000"
+    cpus: "2.0"
+    mem_limit: 4g
+    memswap_limit: 4g
+  frontend:
+    ports: !override
+      - "127.0.0.1:15186:5173"

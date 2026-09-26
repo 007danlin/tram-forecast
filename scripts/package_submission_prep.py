@@ -35,7 +35,7 @@ SOURCE_DIRS = (
     "docs", "deploy", ".github",
 )
 EXTENSIONS = {".py", ".js", ".cjs", ".mjs", ".tsx", ".ts", ".css", ".md", ".json", ".yml", ".yaml", ".sh"}
-SPECIAL_NAMES = {"requirements.txt", "requirements.in", "Dockerfile", "frontend.Dockerfile",
+SPECIAL_NAMES = {"requirements.txt", "requirements-score.txt", "requirements-inference.txt", "requirements.in", "Dockerfile", "frontend.Dockerfile",
                  "Caddyfile.http", "Caddyfile.https", "Caddyfile.protected"}
 
 
@@ -74,6 +74,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--ml-git-dir", type=Path)
     parser.add_argument("--ml-ref", help="Reviewed immutable 40-character commit SHA")
+    parser.add_argument("--include-list", type=Path, help="Explicit JSON list of reviewed untracked source paths")
     args = parser.parse_args()
     destination = args.output_dir.resolve()
     if destination.exists():
@@ -105,7 +106,7 @@ def main():
             "Возможности и результаты этой версии проверяйте по включённым README и model-card;\n"
             "выбор commit сам по себе не подтверждает готовность модели или совпадение с web release.\n"
             "Перед сдачей проверить train-маску, временные границы, округление и preflight.\n"
-            "Позднее QA исключает № 5 из модели; локальный sample содержит его. Финальный DS scope не согласован.\n"
+            "Финальный DS scope — полный sample: 14 640 строк, включая нулевой baseline № 5.\n"
             "Установка ML-зависимостей: python -m pip install -r ml/requirements.txt.\n"
             "Команды автора и ограничения: ml/README.md.\n"
         ).encode()
@@ -116,12 +117,32 @@ def main():
         ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
     source_dirty = bool(subprocess.check_output(
         ["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=no"]))
+    included = set()
+    if args.include_list:
+        names = json.loads(args.include_list.read_text())
+        if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+            parser.error("--include-list must contain a JSON array of source paths")
+        for name in names:
+            path = Path(name)
+            if (path.is_absolute() or ".." in path.parts or path.as_posix() != name
+                    or local_only(name) or not any(name.startswith(d + "/") for d in SOURCE_DIRS)
+                    or not (path.suffix in EXTENSIONS or path.name in SPECIAL_NAMES)):
+                parser.error("Unapproved source path in include list: " + name)
+            included.add(name)
+        source_dirty = source_dirty or bool(included - tracked)
+    untracked = {name.decode() for name in subprocess.check_output(
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--others", "--exclude-standard"]).split(b"\0") if name}
+    missing_code = sorted(name for name in untracked - included
+        if any(name.startswith(d + "/") for d in SOURCE_DIRS)
+        and Path(name).suffix in {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".css"})
+    if missing_code:
+        parser.error("Untracked code would be omitted; review and use --include-list: " + ", ".join(missing_code))
     required = {*ROOT_FILES, "frontend/Dockerfile"}
     missing = required - tracked
     if missing:
         parser.error("Required sources must be included in Git: " + ", ".join(sorted(missing)))
     paths = {ROOT / name for name in required}
-    for name in tracked:
+    for name in tracked | included:
         path = Path(name)
         if local_only(name):
             parser.error("Local data/artifact cannot be packaged: " + name)
@@ -140,9 +161,9 @@ def main():
         f"Базовый HEAD: {source_commit}; tracked working changes: {source_dirty}.\n"
         "Web использует /api/v2/handoff/*: готовый ML CSV, день/неделя/месяц и закреплённый экспорт.\n"
         "Сам ML-пакет передаётся отдельно: без него интерфейс сообщает недоступность прогноза.\n"
-        "Исходники — текущие байты файлов, включённых в индекс Git; untracked-файлы не включены.\n"
+        "Исходники — снимок рабочего дерева: tracked и явно перечисленные в include-list новые файлы.\n"
         "Незакоммиченные изменения отслеживаемых файлов также попадают в архив; проверьте MANIFEST.sha256.\n"
-        "Начать с README.md и docs/integration/qa-2026-09-25/jury-guide.md.\n"
+        "Начать с README.md; актуальная финальная инструкция — docs/submission-final/README.md, если включена.\n"
         "Повтор упаковки и tooling/delivery тесты требуют Git checkout; для них используйте репозиторий.\n"
         "Импорт: python -m backend.handoff.install /absolute/path/package.zip --output artifacts/release.\n"
         "После установки backend-зависимостей и импорта: export TRAMFLOW_HANDOFF_HOST_DIR=\"$PWD/artifacts/release\";\n"
@@ -167,7 +188,7 @@ def main():
         "Этот упаковщик не ищет, не создаёт и не включает реальный submission, sample или веса.\n"
         "Наличие готового DS-файла на машине проверяется отдельно; отчёты прошлых версий не заменяют preflight.\n"
         "Для выбранной модели выполнить ml submission по ML README и проверить checksum результата.\n"
-        "Существуют sample-кандидат на 14 640 строк и modeled_routes на 13 176; финальный scope не выбран.\n"
+        "Финальный scope: полный sample на 14 640 строк, включая № 5 и ночь. modeled_routes — только диагностика.\n"
         "Это файл статуса, его нельзя загружать вместо конкурсного CSV.\n"
         "Опись: tram-forecast/docs/integration/qa-2026-09-25/release-checklist.md в web-архиве.\n"
     )
@@ -182,6 +203,10 @@ def main():
         "archives": verification,
         "source_commit": source_commit,
         "source_dirty": source_dirty,
+        "explicit_untracked_sources": sorted(included - tracked),
+        "source_fingerprint": hashlib.sha256("".join(
+            f"{hashlib.sha256(content).hexdigest()}  {name}\n"
+            for name, content in sorted(files.items())).encode()).hexdigest(),
         "ml_source_commit": args.ml_ref,
         "not_performed_by_packager": ["deployment", "messages", "commit", "push", "actual DS submission",
                                       "final owner acceptance", "real-model backtest", "HTTP load test"],

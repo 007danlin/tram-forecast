@@ -1,5 +1,5 @@
 {
-  "registry_version": "2026-09-26-quality-085-v1",
+  "registry_version": "2026-09-26-local-b2-accepted",
   "checked_at": "2026-09-26",
   "scope": "Internal ML registry; it does not change the HTTP API contract.",
   "status_definitions": {
@@ -16,27 +16,87 @@
   },
   "factors": [
     {
-      "factor_id": "F01", "name": "Production calendar", "priority": "P0",
-      "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "validated", "use": "model_feature",
-      "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S1", "url": "https://government.ru/docs/all/155500/", "access": "public_official_document", "needs_key": false}],
-      "coverage": {"train_2025_01_01_08_31": 1.0, "validation_2025_09_01_10_31": 1.0, "forecast_2025_11_01_12_31": 1.0, "routes": "9/9 modeled routes; route 5 excluded from model scope"},
+      "factor_id": "F01",
+      "name": "Production calendar",
+      "priority": "P0",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "validated",
+      "use": "model_feature",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S1",
+          "url": "https://government.ru/docs/all/155500/",
+          "access": "public_official_document",
+          "needs_key": false
+        }
+      ],
+      "coverage": {
+        "train_2025_01_01_08_31": 1.0,
+        "validation_2025_09_01_10_31": 1.0,
+        "forecast_2025_11_01_12_31": 1.0,
+        "routes": "9/9 modeled routes; route 5 excluded from model scope"
+      },
       "implementation": "Verified 2025 days off, transfers, working weekend, adjacent-day flags and day-off streak; date join is many-to-one. F01 is retained in both components of the selected calendar_interaction_ensemble.",
       "experiment_id": "selection_2025_*__calendar_holiday_hgbt",
-      "effect": {"reference": "calendar_hgbt", "metric_basis": "submission_rounded_floor_x_plus_0_5", "effect_scope": "nine modeled routes; WAPE delta unchanged after removing zero route 5", "wape_score_delta": 0.0380429065653219, "mae_delta": -31.89366907557965, "raw_wape_score_delta": 0.0380472082145768},
-      "decision": "included_in_selected_model", "blocker": null
+      "effect": {
+        "reference": "calendar_hgbt",
+        "metric_basis": "submission_rounded_floor_x_plus_0_5",
+        "effect_scope": "nine modeled routes; WAPE delta unchanged after removing zero route 5",
+        "wape_score_delta": 0.0380429065653219,
+        "mae_delta": -31.89366907557965,
+        "raw_wape_score_delta": 0.0380472082145768
+      },
+      "decision": "included_in_selected_model",
+      "blocker": null
     },
     {
-      "factor_id": "F02", "name": "Weather and hazardous-condition proxies", "priority": "P0",
-      "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "rejected", "use": "model_feature", "information_modes": ["competition_retro"],
-      "sources": [{"source_id": "S2", "url": "https://open-meteo.com/en/docs/historical-weather-api", "access": "public_api_era5_reanalysis", "needs_key": false}],
-      "snapshot": {"source_id": "open_meteo_era5_moscow_2025", "period": "2025-01-01T00:00:00/2025-12-31T23:00:00", "hours": 8760, "raw_sha256": "9b05c7981a9468390511c899e84b2a2d8727dce2fc8cf5b367f6f43e2c6ecd23", "normalized_sha256": "a6b029e7309d78f831bb789d07c7379cc066d9c694add4837aefdfbbeaf05b24", "storage": "local artifacts; not committed"},
-      "coverage": {"train_2025_01_01_08_31": 1.0, "validation_2025_09_01_10_31": 1.0, "forecast_2025_11_01_12_31": 1.0, "routes": "9/9 modeled routes; common-city proxy"},
+      "factor_id": "F02",
+      "name": "Weather and hazardous-condition proxies",
+      "priority": "P0",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "rejected",
+      "use": "model_feature",
+      "information_modes": [
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S2",
+          "url": "https://open-meteo.com/en/docs/historical-weather-api",
+          "access": "public_api_era5_reanalysis",
+          "needs_key": false
+        }
+      ],
+      "snapshot": {
+        "source_id": "open_meteo_era5_moscow_2025",
+        "period": "2025-01-01T00:00:00/2025-12-31T23:00:00",
+        "hours": 8760,
+        "raw_sha256": "9b05c7981a9468390511c899e84b2a2d8727dce2fc8cf5b367f6f43e2c6ecd23",
+        "normalized_sha256": "a6b029e7309d78f831bb789d07c7379cc066d9c694add4837aefdfbbeaf05b24",
+        "storage": "local artifacts; not committed"
+      },
+      "coverage": {
+        "train_2025_01_01_08_31": 1.0,
+        "validation_2025_09_01_10_31": 1.0,
+        "forecast_2025_11_01_12_31": 1.0,
+        "routes": "9/9 modeled routes; common-city proxy"
+      },
       "implementation": "Hourly ERA5 reanalysis at one Moscow grid point; all-null snow_depth excluded without imputation; strict timestamp join.",
       "experiment_id": "selection_2025_*__competition_weather_hgbt",
-      "effect": {"reference": "calendar_holiday_hgbt", "metric_basis": "submission_rounded_floor_x_plus_0_5", "effect_scope": "historical ten-route experiment; route 5 contributed zero target/error", "wape_score_delta": -0.0068138633063657, "mae_delta": 5.14122628726288, "raw_wape_score_delta": -0.006813813346236},
+      "effect": {
+        "reference": "calendar_holiday_hgbt",
+        "metric_basis": "submission_rounded_floor_x_plus_0_5",
+        "effect_scope": "historical ten-route experiment; route 5 contributed zero target/error",
+        "wape_score_delta": -0.0068138633063657,
+        "mae_delta": 5.14122628726288,
+        "raw_wape_score_delta": -0.006813813346236
+      },
       "decision": "excluded_no_incremental_selection_gain",
       "blocker": "Operational mode remains unimplemented because no matching as-of forecast-run archive was used.",
       "verification_2026_09_25": {
@@ -54,86 +114,374 @@
       }
     },
     {
-      "factor_id": "F03", "name": "Daylight", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "model_feature", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S2", "url": "https://open-meteo.com/en/docs/historical-weather-api", "access": "documentation checked; solar fields not collected", "needs_key": false}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No versioned 2025 solar snapshot or independent astronomy implementation."
+      "factor_id": "F03",
+      "name": "Daylight",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "model_feature",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S2",
+          "url": "https://open-meteo.com/en/docs/historical-weather-api",
+          "access": "documentation checked; solar fields not collected",
+          "needs_key": false
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No versioned 2025 solar snapshot or independent astronomy implementation."
     },
     {
-      "factor_id": "F04", "name": "Schools, colleges and universities", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "blocked", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S9", "url": "https://data.mos.ru/", "access": "entry point only", "needs_key": "unknown"}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No institution-specific 2024/25 and 2025/26 calendars linked to verified route geometry."
+      "factor_id": "F04",
+      "name": "Schools, colleges and universities",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "blocked",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S9",
+          "url": "https://data.mos.ru/",
+          "access": "entry point only",
+          "needs_key": "unknown"
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No institution-specific 2024/25 and 2025/26 calendars linked to verified route geometry."
     },
     {
-      "factor_id": "F05", "name": "Sports events", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S10", "url": "https://www.khl.ru/calendar/", "access": "entry point only", "needs_key": false}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "Historical seasons, actual venues/times, cancellations and route links not archived and validated."
+      "factor_id": "F05",
+      "name": "Sports events",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S10",
+          "url": "https://www.khl.ru/calendar/",
+          "access": "entry point only",
+          "needs_key": false
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "Historical seasons, actual venues/times, cancellations and route links not archived and validated."
     },
     {
-      "factor_id": "F06", "name": "Concerts, theatre and exhibitions", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S3", "url": "https://www.mos.ru/afisha/", "access": "entry point only", "needs_key": false}, {"source_id": "S4", "url": "https://vdnh.ru/events/", "access": "entry point only", "needs_key": false}, {"source_id": "S5", "url": "https://kudago.com/public-api/", "access": "aggregator candidate", "needs_key": "unknown"}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No deduplicated 2025 archive with verified timing, venue and route linkage."
+      "factor_id": "F06",
+      "name": "Concerts, theatre and exhibitions",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S3",
+          "url": "https://www.mos.ru/afisha/",
+          "access": "entry point only",
+          "needs_key": false
+        },
+        {
+          "source_id": "S4",
+          "url": "https://vdnh.ru/events/",
+          "access": "entry point only",
+          "needs_key": false
+        },
+        {
+          "source_id": "S5",
+          "url": "https://kudago.com/public-api/",
+          "access": "aggregator candidate",
+          "needs_key": "unknown"
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No deduplicated 2025 archive with verified timing, venue and route linkage."
     },
     {
-      "factor_id": "F07", "name": "Festivals, fairs and seasonal leisure", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S6", "url": "https://t.me/s/mskseasons?before=7569", "access": "single entry point, not an archive", "needs_key": false}, {"source_id": "S3", "url": "https://www.mos.ru/afisha/", "access": "entry point only", "needs_key": false}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No complete 2025 venue/hour archive or verified geographic binding."
+      "factor_id": "F07",
+      "name": "Festivals, fairs and seasonal leisure",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S6",
+          "url": "https://t.me/s/mskseasons?before=7569",
+          "access": "single entry point, not an archive",
+          "needs_key": false
+        },
+        {
+          "source_id": "S3",
+          "url": "https://www.mos.ru/afisha/",
+          "access": "entry point only",
+          "needs_key": false
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No complete 2025 venue/hour archive or verified geographic binding."
     },
     {
-      "factor_id": "F08", "name": "Tram supply changes", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S7", "url": "https://i.transport.mos.ru/perekrytiya", "access": "public current page; 2025 machine-readable archive unconfirmed", "needs_key": false}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No versioned 2025 archive of affected tram routes, stops and effective intervals."
+      "factor_id": "F08",
+      "name": "Tram supply changes",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S7",
+          "url": "https://i.transport.mos.ru/perekrytiya",
+          "access": "public current page; 2025 machine-readable archive unconfirmed",
+          "needs_key": false
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No versioned 2025 archive of affected tram routes, stops and effective intervals."
     },
     {
-      "factor_id": "F09", "name": "Connecting public transport", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S8", "url": "https://www.mosmetro.ru/", "access": "public news entry point", "needs_key": false}, {"source_id": "S11", "url": "https://www.central-ppk.ru/new/press/news/", "access": "entry point only", "needs_key": false}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No complete 2025 archive linked to verified tram interchange geometry."
+      "factor_id": "F09",
+      "name": "Connecting public transport",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S8",
+          "url": "https://www.mosmetro.ru/",
+          "access": "public news entry point",
+          "needs_key": false
+        },
+        {
+          "source_id": "S11",
+          "url": "https://www.central-ppk.ru/new/press/news/",
+          "access": "entry point only",
+          "needs_key": false
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No complete 2025 archive linked to verified tram interchange geometry."
     },
     {
-      "factor_id": "F10", "name": "Roadworks, restrictions and incidents", "priority": "P1/P2", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S7", "url": "https://transport.mos.ru/mostrans/closures", "access": "public current page; history unconfirmed", "needs_key": false}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No complete 2025 effective intervals and geometry intersections."
+      "factor_id": "F10",
+      "name": "Roadworks, restrictions and incidents",
+      "priority": "P1/P2",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S7",
+          "url": "https://transport.mos.ru/mostrans/closures",
+          "access": "public current page; history unconfirmed",
+          "needs_key": false
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No complete 2025 effective intervals and geometry intersections."
     },
     {
-      "factor_id": "F11", "name": "Road traffic", "priority": "P2", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "blocked", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S12", "url": "https://docs.tomtom.com/traffic-api/documentation/tomtom-maps/v1/product-information/introduction", "access": "documentation only", "needs_key": true}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "2025 Moscow archive, segment coverage, license and access unconfirmed."
+      "factor_id": "F11",
+      "name": "Road traffic",
+      "priority": "P2",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "blocked",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S12",
+          "url": "https://docs.tomtom.com/traffic-api/documentation/tomtom-maps/v1/product-information/introduction",
+          "access": "documentation only",
+          "needs_key": true
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "2025 Moscow archive, segment coverage, license and access unconfirmed."
     },
     {
-      "factor_id": "F12", "name": "Rail interchange waves", "priority": "P2", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "blocked", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S13", "url": "https://yandex.ru/dev/rasp/doc/ru/", "access": "documentation only", "needs_key": true}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "Key required; 2025 history and verified interchange links unconfirmed."
+      "factor_id": "F12",
+      "name": "Rail interchange waves",
+      "priority": "P2",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "blocked",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S13",
+          "url": "https://yandex.ru/dev/rasp/doc/ru/",
+          "access": "documentation only",
+          "needs_key": true
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "Key required; 2025 history and verified interchange links unconfirmed."
     },
     {
-      "factor_id": "F13", "name": "Points of interest and land use", "priority": "P1", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "blocked", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S9", "url": "https://data.mos.ru/", "access": "entry point only", "needs_key": "unknown"}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "Organizer stop references cover only routes 1,5,7,11,12; dated 2025 POI geometry unvalidated."
+      "factor_id": "F13",
+      "name": "Points of interest and land use",
+      "priority": "P1",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "blocked",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S9",
+          "url": "https://data.mos.ru/",
+          "access": "entry point only",
+          "needs_key": "unknown"
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "Organizer stop references cover only routes 1,5,7,11,12; dated 2025 POI geometry unvalidated."
     },
     {
-      "factor_id": "F14", "name": "Retail activity and opening hours", "priority": "P2", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "blocked", "use": "scenario_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [], "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No concrete primary 2025 archive or verified route-linked territory selected."
+      "factor_id": "F14",
+      "name": "Retail activity and opening hours",
+      "priority": "P2",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "blocked",
+      "use": "scenario_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No concrete primary 2025 archive or verified route-linked territory selected."
     },
     {
-      "factor_id": "F15", "name": "Fares and alternative availability", "priority": "P2", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "candidate", "use": "context_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [{"source_id": "S8", "url": "https://www.mosmetro.ru/", "access": "official news entry point; no normalized series", "needs_key": false}],
-      "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No normalized effective-period series for 2025 fares, parking and seasonal alternatives."
+      "factor_id": "F15",
+      "name": "Fares and alternative availability",
+      "priority": "P2",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "candidate",
+      "use": "context_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [
+        {
+          "source_id": "S8",
+          "url": "https://www.mosmetro.ru/",
+          "access": "official news entry point; no normalized series",
+          "needs_key": false
+        }
+      ],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No normalized effective-period series for 2025 fares, parking and seasonal alternatives."
     },
     {
-      "factor_id": "F16", "name": "Emergency and city restrictions", "priority": "P2", "owner_acquisition": "Igor", "owner_model_effect": "Georgy",
-      "status": "blocked", "use": "scenario_only", "information_modes": ["operational", "competition_retro"],
-      "sources": [], "coverage": null, "experiment_id": null, "decision": "not_integrated", "blocker": "No verified primary 2025 archive with effective intervals and local geography selected."
+      "factor_id": "F16",
+      "name": "Emergency and city restrictions",
+      "priority": "P2",
+      "owner_acquisition": "Igor",
+      "owner_model_effect": "Georgy",
+      "status": "blocked",
+      "use": "scenario_only",
+      "information_modes": [
+        "operational",
+        "competition_retro"
+      ],
+      "sources": [],
+      "coverage": null,
+      "experiment_id": null,
+      "decision": "not_integrated",
+      "blocker": "No verified primary 2025 archive with effective intervals and local geography selected."
     }
-  ]
+  ],
+  "champion_passport": {
+    "model": "calendar_interaction_ensemble",
+    "model_sha256": "39edd75e265102f5973d14acd94bd4ae75a0473f12b7d07e47e2dc8b32eb9942",
+    "report": "docs/submission-final/b2-acceptance.md",
+    "included_categories": [
+      "calendar"
+    ],
+    "exact_b2_calendar_off_ablation": "not_run; F01 delta is historical",
+    "calendar_access": "Official CBR 2025 section independently retrieved and matched on 2026-09-26; HTML SHA 3068b6cc4a737dd0f611c8dd1f934fd31110f513bd528b77754a01b31b1a296c; original retrieval at training unknown"
+  }
 }

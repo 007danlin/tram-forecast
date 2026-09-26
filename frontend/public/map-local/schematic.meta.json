@@ -7,8 +7,8 @@
     1065,
     1198
   ],
-  "paths": 11998,
-  "sha256": "9e2b0ac42f8dbd22ab1572993cc1d1c9c154a6d59806ad1036d9fb27f0c1fb46",
+  "paths": 11984,
+  "sha256": "dfac4fbdca6f1cbf6224020b3cc999d6ca5a1bf914161182b9c933b26e6f898e",
   "raster_images": 0,
   "excluded_poster_paths": [
     3058,
@@ -27,5 +27,21 @@
   "optimizer": "svgo 4.0.0 --multipass",
   "path_extraction": "get_cdrawings; signed rectangle coordinates preserve compound-path winding",
   "note": "Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.",
-  "station_symbol_count": 99
+  "station_symbol_count": 99,
+  "excluded_label_underpaint_paths": [
+    8497,
+    8498,
+    8499,
+    8500,
+    8501,
+    8502,
+    8503,
+    8504,
+    8505,
+    8506,
+    8507,
+    8508,
+    8509,
+    8510
+  ]
 }
