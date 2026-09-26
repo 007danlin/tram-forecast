@@ -25,19 +25,23 @@ def number(v):
     return f'{v:.2f}'.rstrip('0').rstrip('.') or '0'
 
 def point(p):
-    return f'{number(p.x)} {number(p.y)}'
+    return f'{number(p[0])} {number(p[1])}'
 
 def path(items):
     parts, last = [], None
     for item in items:
         kind = item[0]
         if kind == 're':
-            r, orientation = item[1:]
-            pts = [r.tl, r.tr, r.br, r.bl] if orientation == 1 else [r.tl, r.bl, r.br, r.tr]
+            # Keep signed rectangle coordinates: normalizing x0/x1 or y0/y1
+            # reverses winding and fills holes in compound nonzero paths.
+            r, orientation = pymupdf.Rect(item[1]), item[2]
+            # PyMuPDF +1 means anticlockwise. Match line/curve subpaths too:
+            # reversing every rectangle alone breaks mixed rectangle/line holes.
+            pts = [r.tl, r.bl, r.br, r.tr] if orientation == 1 else [r.tl, r.tr, r.br, r.bl]
             parts.append('M' + point(pts[0]) + ''.join('L' + point(p) for p in pts[1:]) + 'Z')
             last = None
         elif kind == 'qu':
-            q = item[1]
+            q = pymupdf.Quad(item[1])
             parts.append('M'+point(q.ul)+'L'+point(q.ur)+'L'+point(q.lr)+'L'+point(q.ll)+'Z')
             last = None
         elif kind in ('l', 'c'):
@@ -64,7 +68,9 @@ def main():
     labels=[label for label in network['labels'] if label.get('originalGlyphs')]
     glyphs={seq for label in labels for seq in label['originalGlyphs']}
     label_defs=''.join('<g id="station-label-'+label['id']+'">'+''.join(f'<use href="#glyph-{seq}"/>' for seq in label['originalGlyphs'])+'</g>' for label in labels)
-    drawings = page.get_drawings()
+    # get_drawings() normalizes rectangles in PyMuPDF 1.28.2, losing part of
+    # their winding information (e.g. the white frame around the Kremlin).
+    drawings = page.get_cdrawings()
     icon = [d for d in drawings if d['seqno'] in (HEART_BACK, *HEART)]
     icon_paths = ''.join('<path fill="'+('#fff' if d['seqno']==HEART_BACK else '#46507d')+'" d="'+path(d['items'])+'"/>' for d in icon)
     favicon = ROOT/'frontend/public/favicon.svg'
@@ -72,7 +78,7 @@ def main():
     elements = []
     for d in drawings:
         if d['seqno'] in EXCLUDE: continue
-        if d['seqno'] == 0 or not d['rect'].intersects(bounds): continue
+        if d['seqno'] == 0 or not pymupdf.Rect(d['rect']).intersects(bounds): continue
         if d['type'] != 'f': raise ValueError('This reference is expected to contain fill paths only')
         color = '#' + ''.join(f'{round(c*255):02x}' for c in d['fill'])
         rule = ' fill-rule="evenodd"' if d['even_odd'] else ''
@@ -85,7 +91,7 @@ def main():
     out.write_text(svg)
     subprocess.run(['npx', '--yes', '--package=svgo@4.0.0', '--', 'svgo', str(out), '-o', str(out), '--multipass', '--config', str(ROOT/'scripts/map/svgo-reference.mjs')], check=True)
     svg = out.read_text()
-    metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'excluded_poster_paths':sorted(EXCLUDE),'favicon_sha256':hashlib.sha256(favicon.read_bytes()).hexdigest(),'station_label_count':len(labels),'optimizer':'svgo 4.0.0 --multipass','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
+    metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'excluded_poster_paths':sorted(EXCLUDE),'favicon_sha256':hashlib.sha256(favicon.read_bytes()).hexdigest(),'station_label_count':len(labels),'optimizer':'svgo 4.0.0 --multipass','path_extraction':'get_cdrawings; signed rectangle coordinates preserve compound-path winding','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
     (out.parent/'schematic.meta.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
     print(f'{len(elements)} vector paths; {out.stat().st_size} bytes; no images/scripts/external links')
 

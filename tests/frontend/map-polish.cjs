@@ -21,6 +21,73 @@ const { chromium, webkit } = require("playwright");
     const response = await page.request.get(new URL(icon, base).href);
     assert.equal(response.status(), 200);
     assert.match(await response.text(), /viewBox="952 134 132 132"/);
+    // Render the shipped SVG in the browser. These PDF-verified interior samples
+    // catch white compound frames accidentally covering the lower Kremlin tower.
+    const kremlin = await page.evaluate(async () => {
+      const source = await (await fetch("/map-local/schematic.svg")).text();
+      const svg = new DOMParser().parseFromString(source, "image/svg+xml")
+        .documentElement;
+      svg.setAttribute("viewBox", "536 665 17 35");
+      svg.setAttribute("width", "408");
+      svg.setAttribute("height", "840");
+      let url = URL.createObjectURL(new Blob(
+        [new XMLSerializer().serializeToString(svg)],
+        { type: "image/svg+xml" },
+      ));
+      try {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = 408;
+        canvas.height = 840;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        const sample = (x, y, originX = 536, originY = 665) => Array.from(ctx.getImageData(
+          Math.round((x - originX) * 24), Math.round((y - originY) * 24), 1, 1,
+        ).data);
+        const result = {
+          red: [
+            [544, 678.7], [544, 688.5], [544, 691.48],
+            [544, 693.3], [539.5, 693.3], [548.3, 693.3],
+            ...Array.from({ length: 6 }, (_, i) => [541.52 + i * 0.951, 689.4]),
+          ].map(([x, y]) => sample(x, y)),
+          white: [
+            [538.9, 693.3], [544, 691.23], [544, 691.79],
+            ...Array.from({ length: 7 }, (_, i) => [541.045 + i * 0.951, 689.4]),
+          ].map(([x, y]) => sample(x, y)),
+          png: canvas.toDataURL("image/png").split(",")[1],
+        };
+        // Bratsevo also combines rectangles with ordinary line subpaths.
+        // Their winding must agree, otherwise the facade turns solid white.
+        URL.revokeObjectURL(url);
+        svg.setAttribute("viewBox", "116 315 17 35");
+        url = URL.createObjectURL(new Blob(
+          [new XMLSerializer().serializeToString(svg)],
+          { type: "image/svg+xml" },
+        ));
+        image.src = url;
+        await image.decode();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0);
+        result.brown = [[124, 334.1], [129.5, 329], [132.5, 325.4]]
+          .map(([x, y]) => sample(x, y, 116, 315));
+        return result;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    });
+    for (const [i, pixel] of kremlin.red.entries())
+      assert.ok(pixel[0] > 190 && pixel[1] < 70 && pixel[2] < 70 && pixel[3] === 255,
+        `Kremlin red wall/neck/stripe ${i} must not be covered: ${pixel}`);
+    for (const [i, pixel] of kremlin.white.entries())
+      assert.ok(pixel.every((channel) => channel > 245),
+        `Kremlin white window/border ${i} must remain visible: ${pixel}`);
+    for (const [i, pixel] of kremlin.brown.entries())
+      assert.ok([171, 106, 87, 255].every((c, j) => Math.abs(c - pixel[j]) < 8),
+        `Bratsevo facade ${i} must retain mixed-path cutouts: ${pixel}`);
+    fs.writeFileSync(`${out}/${engine.name()}-kremlin-detail.png`,
+      Buffer.from(kremlin.png, "base64"));
     await page.getByLabel("Маршрут", { exact: true }).selectOption("50");
     assert.equal(await page.locator("path[data-selected-lane]").count(), 3);
     assert.equal(await page.locator("polyline[data-selected-lane]").count(), 0);
@@ -79,6 +146,7 @@ const { chromium, webkit } = require("playwright");
     for (const [name, x, y, scale] of [
       ["emblem-removed", 1018, 200, 4],
       ["footer-removed", 210, 1287, 4],
+      ["kremlin-restored", 544, 684, 12],
     ]) {
       await page
         .getByRole("button", { name: "Вся схема", exact: true })
@@ -105,7 +173,7 @@ const { chromium, webkit } = require("playwright");
     }
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${engine.name()}: smooth selected paths, TramFlow title, local heart favicon, seamless paper at minimum zoom, mobile/desktop themes.`,
+      `PASS ${engine.name()}: Kremlin walls, seven windows and borders; smooth selected paths, TramFlow title, local heart favicon, seamless paper at minimum zoom, mobile/desktop themes.`,
     );
   } finally {
     await browser.close();
