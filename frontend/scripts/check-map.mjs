@@ -46,6 +46,19 @@ try {
     throw new Error(
       "Векторная схема не должна содержать растр, скрипты или внешние ресурсы",
     );
+  const favicon = readFileSync(
+    new URL("../public/favicon.svg", import.meta.url),
+  );
+  if (
+    createHash("sha256").update(favicon).digest("hex") !==
+    reference.favicon_sha256
+  )
+    throw new Error("Иконка вкладки не соответствует извлечённому оригиналу");
+  if (
+    !reference.excluded_poster_paths?.includes(3058) ||
+    !reference.excluded_poster_paths?.includes(14609)
+  )
+    throw new Error("Рамка/легенда печатной схемы не исключены");
   const svg = vector.toString();
   if (reference.station_label_count !== map.labels.length)
     throw new Error("Несовпадение числа подписей SVG");

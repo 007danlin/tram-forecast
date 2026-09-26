@@ -7,9 +7,22 @@
     1065,
     1178
   ],
-  "paths": 11993,
-  "sha256": "e1c81f4e4596300fd840652b171fb4641032c70ca99c5a013c137f587cd39a55",
+  "paths": 11983,
+  "sha256": "1504174f34afc61daeed027399e4fd5f6fc95e265ebe262b08b5badf988c88f3",
   "raster_images": 0,
+  "excluded_poster_paths": [
+    3058,
+    14608,
+    14609,
+    14726,
+    14727,
+    14728,
+    14729,
+    14730,
+    14731,
+    14732
+  ],
+  "favicon_sha256": "93a7707716105f720badccdccd66f1304af06cbae6518737aa3e9979f6388f5a",
   "station_label_count": 424,
   "optimizer": "svgo 4.0.0 --multipass",
   "note": "Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json."

@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MAP_BASE, type Network } from "../map/loadMap";
+import { smoothRoute } from "../map/smoothRoutes";
 import { Icon } from "./ui";
 import {
   groupRouteLanes,
@@ -235,6 +236,15 @@ export const TramMap = memo(function TramMap({
     }
   };
   const routeGroups = useMemo(() => groupRouteLanes(map?.lanes ?? []), [map]);
+  const curves = useMemo(
+    () =>
+      new Map(
+        routeGroups
+          .flatMap((group) => smoothRoute(group.lanes))
+          .map((lane) => [lane.id, lane]),
+      ),
+    [routeGroups],
+  );
   const groupsByLane = useMemo(
     () =>
       new Map(
@@ -261,7 +271,9 @@ export const TramMap = memo(function TramMap({
       .map((group) => ({
         id: group.id,
         d:
-          Math.min(...group.lanes.map((l) => distance(x, y, l.points))) * scale,
+          Math.min(
+            ...group.lanes.map((l) => distance(x, y, curves.get(l.id)!.points)),
+          ) * scale,
       }))
       .filter((l) => l.d <= radius)
       .sort((a, b) => a.d - b.d);
@@ -315,17 +327,17 @@ export const TramMap = memo(function TramMap({
   const hitLines = useMemo(
     () =>
       map?.lanes.map((l) => (
-        <polyline
+        <path
           key={l.id}
           data-lane={l.id}
-          points={l.points.join(" ")}
+          d={curves.get(l.id)!.d}
           fill="none"
           stroke="transparent"
           strokeWidth="12"
           vectorEffect="non-scaling-stroke"
         />
       )),
-    [map],
+    [map, curves],
   );
   return (
     <section className="tram-map" aria-labelledby="tram-map-title">
@@ -378,18 +390,18 @@ export const TramMap = memo(function TramMap({
               >
                 {/* All halos first: an end cap must not erase the next segment. */}
                 {selection.lanes.map((lane) => (
-                  <polyline
+                  <path
                     key={`halo-${lane.id}`}
-                    points={lane.points.join(" ")}
+                    d={curves.get(lane.id)!.d}
                     stroke="#fff"
                     strokeWidth="4.6"
                   />
                 ))}
                 {selection.lanes.map((lane) => (
-                  <polyline
+                  <path
                     key={lane.id}
                     data-selected-lane={lane.id}
-                    points={lane.points.join(" ")}
+                    d={curves.get(lane.id)!.d}
                     stroke={lane.color}
                     strokeWidth="3.2"
                   />

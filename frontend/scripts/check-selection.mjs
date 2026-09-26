@@ -96,3 +96,60 @@ for (const number of ["", "not-on-map"]) {
 console.log(
   "PASS every route selects its stops and labels; clear/unknown routes select nothing.",
 );
+
+// Smooth paths retain all reviewed knots/endpoints and stay in the same corridor.
+const { smoothRoute } = await import("../src/map/smoothRoutes.ts");
+for (const group of groups) {
+  const smooth = smoothRoute(group.lanes);
+  assert.deepEqual(
+    smooth.map((l) => l.id),
+    group.lanes.map((l) => l.id),
+  );
+  const joints = new Map();
+  for (const line of smooth) {
+    const first = line.curves[0],
+      last = line.curves.at(-1);
+    for (const [point, control] of [
+      [first[0], first[1]],
+      [last[3], last[2]],
+    ]) {
+      const key = point.map((n) => n.toFixed(3)).join(",");
+      const directions = joints.get(key) ?? [];
+      directions.push([control[0] - point[0], control[1] - point[1]]);
+      joints.set(key, directions);
+    }
+  }
+  for (const directions of joints.values())
+    if (directions.length === 2)
+      for (const axis of [0, 1])
+        assert.ok(
+          Math.abs(directions[0][axis] + directions[1][axis]) < 1e-8,
+          `Sharp fragment join in ${group.routes}`,
+        );
+  for (const line of smooth) {
+    const original = group.lanes.find((l) => l.id === line.id);
+    assert.deepEqual(line.points[0], original.points[0]);
+    assert.deepEqual(line.points.at(-1), original.points.at(-1));
+    assert.ok(line.d.includes("C") && !/NaN|Infinity/.test(line.d));
+    for (let i = 1; i < line.curves.length; i++) {
+      const a = line.curves[i - 1],
+        b = line.curves[i];
+      assert.deepEqual(a[3], b[0]);
+      for (const axis of [0, 1])
+        assert.ok(
+          Math.abs(a[3][axis] - a[2][axis] - (b[1][axis] - b[0][axis])) < 1e-8,
+          `Tangent discontinuity ${line.id}`,
+        );
+    }
+    // Handles cannot drag the path out of the local neighbourhood or form wide loops.
+    for (const c of line.curves)
+      for (const [a, b] of [
+        [c[0], c[1]],
+        [c[2], c[3]],
+      ])
+        assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1]) <= 4.000001);
+  }
+}
+console.log(
+  "PASS 45 smooth paths: exact endpoints, continuous tangents, bounded controls.",
+);

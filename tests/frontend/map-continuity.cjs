@@ -141,6 +141,7 @@ const { chromium, webkit } = require("playwright");
       ["36-novogireevo", "red-1", 992, 563, 8],
       ["t2-novogireevo", "red-2", 992, 563, 8],
       ["50-terminal", "teal-2", 450, 589, 14],
+      ["50-miit", "teal-3", 450, 514, 14],
     ]) {
       await page
         .getByRole("button", { name: "Закрыть увеличенную схему", exact: true })
@@ -195,7 +196,7 @@ const { chromium, webkit } = require("playwright");
     }
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${engine.name()}: 35 route choices, all 45 lane clicks, entire matching route selected, 7 crossing/loop screenshots.`,
+      `PASS ${engine.name()}: 35 route choices, all 45 lane clicks, entire matching route selected, 8 crossing/loop screenshots.`,
     );
   } finally {
     await browser.close();

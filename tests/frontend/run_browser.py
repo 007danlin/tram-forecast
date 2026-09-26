@@ -63,6 +63,8 @@ def main():
                     result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/map-continuity.cjs'), base], cwd=ROOT, env=env)
                 if result.returncode == 0:
                     result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/route-focus.cjs'), base], cwd=ROOT, env=env)
+                if result.returncode == 0:
+                    result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/map-polish.cjs'), base], cwd=ROOT, env=env)
                 if result.returncode:
                     log.seek(0)
                     print(log.read()[-5000:])

@@ -19,6 +19,7 @@ ROOT_FILES = (
     "compose.handoff.yaml", "compose.load.yaml",
     "frontend/README.md", "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",
     "frontend/tsconfig.json", "frontend/vite.config.js",
+    "frontend/public/favicon.svg",
     "frontend/public/map-local/schematic.svg",
     "frontend/public/map-local/schematic.meta.json",
     "frontend/public/fonts/Manrope.woff2",

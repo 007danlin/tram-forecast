@@ -16,6 +16,10 @@ ROOT = Path(__file__).resolve().parents[2]
 EXPECTED = '13bf11ade2d5a36bd3af8b4990e505e9692cf39eacbdb91f79e419f83bcf5c6f'
 # Original map field; excludes the poster title, printed route legend and footer.
 BOUNDS = [62, 112, 1065, 1178]
+# Poster decorations in this checksum-locked source; no network/station shapes.
+HEART = tuple(range(14726, 14733))
+HEART_BACK = 14608
+EXCLUDE = {3058, 14609, HEART_BACK, *HEART}
 
 def number(v):
     return f'{v:.2f}'.rstrip('0').rstrip('.') or '0'
@@ -60,8 +64,14 @@ def main():
     labels=[label for label in network['labels'] if label.get('originalGlyphs')]
     glyphs={seq for label in labels for seq in label['originalGlyphs']}
     label_defs=''.join('<g id="station-label-'+label['id']+'">'+''.join(f'<use href="#glyph-{seq}"/>' for seq in label['originalGlyphs'])+'</g>' for label in labels)
+    drawings = page.get_drawings()
+    icon = [d for d in drawings if d['seqno'] in (HEART_BACK, *HEART)]
+    icon_paths = ''.join('<path fill="'+('#fff' if d['seqno']==HEART_BACK else '#46507d')+'" d="'+path(d['items'])+'"/>' for d in icon)
+    favicon = ROOT/'frontend/public/favicon.svg'
+    favicon.write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="952 134 132 132"><title>TramFlow</title>'+icon_paths+'</svg>')
     elements = []
-    for d in page.get_drawings():
+    for d in drawings:
+        if d['seqno'] in EXCLUDE: continue
         if d['seqno'] == 0 or not d['rect'].intersects(bounds): continue
         if d['type'] != 'f': raise ValueError('This reference is expected to contain fill paths only')
         color = '#' + ''.join(f'{round(c*255):02x}' for c in d['fill'])
@@ -75,7 +85,7 @@ def main():
     out.write_text(svg)
     subprocess.run(['npx', '--yes', '--package=svgo@4.0.0', '--', 'svgo', str(out), '-o', str(out), '--multipass', '--config', str(ROOT/'scripts/map/svgo-reference.mjs')], check=True)
     svg = out.read_text()
-    metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'station_label_count':len(labels),'optimizer':'svgo 4.0.0 --multipass','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
+    metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'excluded_poster_paths':sorted(EXCLUDE),'favicon_sha256':hashlib.sha256(favicon.read_bytes()).hexdigest(),'station_label_count':len(labels),'optimizer':'svgo 4.0.0 --multipass','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
     (out.parent/'schematic.meta.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
     print(f'{len(elements)} vector paths; {out.stat().st_size} bytes; no images/scripts/external links')
 

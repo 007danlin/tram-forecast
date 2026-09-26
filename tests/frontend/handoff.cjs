@@ -589,7 +589,7 @@ const close = (a, b) =>
       .evaluateAll((lines) =>
         lines.map((line) => [
           line.dataset.selectedLane,
-          line.getAttribute("points"),
+          line.getAttribute("d"),
         ]),
       );
     const box = await mapViewport.boundingBox(),
@@ -606,7 +606,7 @@ const close = (a, b) =>
         .evaluateAll((lines) =>
           lines.map((line) => [
             line.dataset.selectedLane,
-            line.getAttribute("points"),
+            line.getAttribute("d"),
           ]),
         ),
       chosen,
@@ -636,7 +636,7 @@ const close = (a, b) =>
         .evaluateAll((lines) =>
           lines.map((line) => [
             line.dataset.selectedLane,
-            line.getAttribute("points"),
+            line.getAttribute("d"),
           ]),
         ),
       chosen,
