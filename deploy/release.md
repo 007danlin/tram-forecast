@@ -134,6 +134,14 @@ HTTP v1/healthy сами по себе не являются приёмкой р
 
 ## Границы восстановления
 
+Серверный `compose.server.yaml` включает автоматический мониторинг и отдельный
+named volume `tramflow_monitoring-data` в `/var/lib/tramflow-monitoring`.
+Обычный updater сохраняет кеш, снимки и расписание при пересоздании backend.
+Не применять `docker compose down --volumes`: эта команда удаляет накопленное
+состояние мониторинга. Handoff остаётся отдельным read-only mount.
+Проверка после обновления: `GET /api/v2/monitoring/status`; доступность каждого
+источника проверяется с VPS независимо от локального результата.
+
 Предыдущие frontend/image и пути release сохраняются в `/opt/tramflow-backups/`,
 старая статика также остаётся в `/srv/tramflow-before-*`. Данные release и
 состояние Caddy в `/var/lib/caddy` резервируются отдельно; image snapshot не

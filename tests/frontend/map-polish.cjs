@@ -236,7 +236,7 @@ const { chromium, webkit } = require("playwright");
     // Enlarged clean map corners: no poster emblem, footer heading or white frame.
     await page.setViewportSize({ width: 1280, height: 800 });
     await page
-      .getByRole("button", { name: "Увеличить область схемы", exact: true })
+      .getByRole("button", { name: "Увеличить сайт", exact: true })
       .click();
     for (const [name, x, y, scale] of [
       ["emblem-removed", 1018, 200, 4],

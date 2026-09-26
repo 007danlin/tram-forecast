@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { SourceMonitor } from "./SourceMonitor";
 import { DataDetails } from "./DataDetails";
 import { Button, Icon } from "./ui";
 import "./SettingsPanel.css";
@@ -40,11 +41,10 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <Icon name="close" />
         </Button>
       </div>
-      <p>
-        TramFlow показывает прогноз посадок по маршрутам и времени на основе
-        исторических данных.
-      </p>
+      <SourceMonitor />
+      <details className="data-passport"><summary>Прогноз: данные и ограничения</summary>
       <DataDetails />
+      </details>
     </dialog>
   );
 }

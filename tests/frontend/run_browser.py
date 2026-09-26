@@ -41,7 +41,7 @@ def main():
             source_kind = 'synthetic'
         backend_port, frontend_port = port(), port()
         base = f'http://127.0.0.1:{frontend_port}'
-        env = {**os.environ, 'TRAMFLOW_HANDOFF_DIR': str(release), 'BACKEND_URL': f'http://127.0.0.1:{backend_port}'}
+        env = {**os.environ, 'TRAMFLOW_MONITOR_ENABLED': '0', 'TRAMFLOW_HANDOFF_DIR': str(release), 'BACKEND_URL': f'http://127.0.0.1:{backend_port}'}
         with (root / 'server.log').open('w+') as log:
             try:
                 processes.append(subprocess.Popen([sys.executable, '-m', 'uvicorn', 'backend.main:app', '--host', '127.0.0.1', '--port', str(backend_port)], cwd=ROOT, env=env, stdout=log, stderr=log, start_new_session=True))

@@ -1,7 +1,7 @@
 import { ForecastLineChart, ForecastTable } from "./ForecastData";
 import { useForecastData } from "../useForecast";
 import { Button } from "./ui";
-import { OverviewButton, RouteOverview, ScenarioPanel, YearView, DemandIndicator } from "./DispatchTools";
+import { OverviewButton, RouteOverview, YearView, DemandIndicator } from "./DispatchTools";
 import "./AnalyticsView.css";
 export function AnalyticsView() {
   const f = useForecastData();
@@ -31,7 +31,6 @@ export function AnalyticsView() {
         вагона.
       </p>
       <OverviewButton />
-      <ScenarioPanel />
       <DemandIndicator />
       {f.busy && <p role="status">Загружаем прогноз…</p>}
       {f.emptyReason && <p role="status">{f.emptyReason}</p>}

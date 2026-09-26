@@ -100,12 +100,12 @@ export function Workspace({
           className="map-expand"
           ref={expandTrigger}
           aria-label={
-            expanded ? "Закрыть увеличенную схему" : "Увеличить область схемы"
+            expanded ? "Закрыть увеличенную схему" : "Увеличить сайт"
           }
           onClick={() => onExpandedChange(!expanded)}
         >
           <Icon name={expanded ? "close" : "expand"} />
-          <span>{expanded ? "Закрыть схему" : "Схема · увеличить"}</span>
+          <span>{expanded ? "Закрыть схему" : "Увеличить сайт"}</span>
         </Button>
         <TramMap
           map={network}

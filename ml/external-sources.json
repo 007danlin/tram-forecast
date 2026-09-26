@@ -483,5 +483,51 @@
     ],
     "exact_b2_calendar_off_ablation": "not_run; F01 delta is historical",
     "calendar_access": "Official CBR 2025 section independently retrieved and matched on 2026-09-26; HTML SHA 3068b6cc4a737dd0f611c8dd1f934fd31110f513bd528b77754a01b31b1a296c; original retrieval at training unknown"
+  },
+  "operational_monitoring": {
+    "implementation": "backend/monitoring",
+    "checked_at": "2026-09-26",
+    "historical_registry_preserved": true,
+    "model_effect": "not_applied",
+    "weather": {
+      "provider": "MET Norway Locationforecast 2.0",
+      "url": "https://api.met.no/weatherapi/locationforecast/2.0/documentation",
+      "needs_key": false,
+      "access": "verified HTTP 200 for Moscow",
+      "coverage": "current hourly forecast, no Moscow 2025 archive through this endpoint",
+      "license": "CC BY 4.0",
+      "candidate_open_meteo": "current forecast API timed out from this host; historical ERA5 pipeline preserved; alternative parser available"
+    },
+    "closures": {
+      "url": "https://transport.mos.ru/mostrans/closures",
+      "access": "public HTML snapshot, date-checked",
+      "needs_key": false,
+      "coverage": "today; 2025 complete archive unverified",
+      "route_link": "unknown without geographic intersection"
+    },
+    "changes": {
+      "url": "https://t.me/s/DtOperativno",
+      "access": "verified public official HTML, current 2026-09-26 publications",
+      "needs_key": false,
+      "coverage": "latest public text messages; not complete incident registry; reply links preserved",
+      "old_operator_candidate": "https://old.mosgortrans.ru/routes/changes/ inspected, last publication 2026-09-01; legacy parser retained",
+      "primary_deptrans": "all_news HTTP 477; no bypass; public channel independently available",
+      "normalization": "explicit tram numbers only; unknown links, place and complex effective periods stay unknown"
+    },
+    "events": {
+      "url": "https://docs.kudago.com/api/",
+      "endpoint": "https://kudago.com/public-api/v1.4/events/",
+      "needs_key": false,
+      "coverage": "Moscow next 14 days, paginated; no claim of exhaustive city coverage",
+      "attribution": "direct links to each event, no nofollow/noindex"
+    },
+    "traffic": {
+      "url": "https://t.me/s/DtOperativno",
+      "access": "derived from same official bulletin snapshot",
+      "needs_key": false,
+      "coverage": "published city scores and average speed only; freshness from publication time",
+      "tomtom": "candidate remains blocked: key and Moscow segment coverage not validated"
+    },
+    "details": "backend/monitoring/README.md"
   }
 }

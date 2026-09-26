@@ -4,7 +4,7 @@ import { dateLabel, intervalLabel } from "../display";
 import { ForecastLineChart, ForecastTable } from "./ForecastData";
 import { DataDetails } from "./DataDetails";
 import { Button, Icon } from "./ui";
-import { ScenarioPanel, YearView, RouteOverview } from "./DispatchTools";
+import { YearView, RouteOverview } from "./DispatchTools";
 import "./ForecastCard.css";
 
 export function ForecastCard({ onClose }: { onClose: () => void }) {
@@ -45,7 +45,7 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
               : dateLabel(forecast.day, true)}
           </p>
         </div>
-        <p className="forecast-card__meta">Исторический прогноз · МСК · {forecast.layer === 'base' ? 'База' : 'Ручной сценарий'}</p>
+        <p className="forecast-card__meta">Исторический прогноз · МСК · Базовая модель</p>
         <div className="forecast-card__total">
           {result ? (
             <strong data-testid="total" data-raw-value={forecast.displayTotal ?? ""}>
@@ -111,7 +111,6 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
           </p>
         )}
       </div>
-      <ScenarioPanel />
       <div className="forecast-card__visual" id="forecast-visual">
         <div
           className="forecast-card__view-toggle"

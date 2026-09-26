@@ -78,7 +78,7 @@ const { webkit } = require("playwright");
     await page.getByLabel("Маршрут", { exact: true }).selectOption("11");
     await page.getByTestId("total").waitFor();
     await page
-      .getByRole("button", { name: "Увеличить область схемы", exact: true })
+      .getByRole("button", { name: "Увеличить сайт", exact: true })
       .click();
     await page.getByRole("dialog", { name: "Увеличенная схема" }).waitFor();
     await page

@@ -1,5 +1,6 @@
 """Real HTTP checks using unittest + the application's existing dependencies."""
 import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 import re
@@ -19,6 +20,9 @@ from ml import forecast
 class IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.monitor_env = patch.dict(os.environ, {"TRAMFLOW_MONITOR_ENABLED": "0"})
+        cls.monitor_env.start()
+        cls.addClassCleanup(cls.monitor_env.stop)
         cls.sock = socket.socket()
         cls.sock.bind(("127.0.0.1", 0))
         cls.base = f"http://127.0.0.1:{cls.sock.getsockname()[1]}"
@@ -46,6 +50,19 @@ class IntegrationTests(unittest.TestCase):
 
     def test_health(self):
         self.assertEqual(self.get("/api/v1/health"), {"status": "ok"})
+
+    def test_monitoring_is_independent_read_only_and_explicitly_disabled(self):
+        status=self.get('/api/v2/monitoring/status')
+        self.assertEqual(status['information_mode'],'operational')
+        self.assertEqual(status['forecast_effect'],'not_applied')
+        self.assertFalse(status['automatic'])
+        self.assertEqual(status['sources'][0]['status'],'disabled')
+        records=self.get('/api/v2/monitoring/records?source_id=weather&limit=1')
+        self.assertLessEqual(len(records['records']),1)
+        for path,code in [('/api/v2/monitoring/records?source_id=unknown',404),
+                          ('/api/v2/monitoring/records?source_id=weather&limit=101',422)]:
+            with self.assertRaises(HTTPError) as caught:self.get(path)
+            self.assertEqual(caught.exception.code,code)
 
     def test_backend_calls_ml_and_returns_its_values(self):
         example = forecast.predict_mock()

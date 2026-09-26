@@ -324,7 +324,7 @@ class HandoffHttpTests(unittest.TestCase):
         root = Path(cls.tmp.name)
         install(make_archive(root), root / "release")
         cls.env = patch.dict(
-            os.environ, {"TRAMFLOW_HANDOFF_DIR": str(root / "release")}
+            os.environ, {"TRAMFLOW_HANDOFF_DIR": str(root / "release"), "TRAMFLOW_MONITOR_ENABLED": "0"}
         )
         cls.env.start()
         cls.sock = socket.socket()

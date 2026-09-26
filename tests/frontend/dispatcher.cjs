@@ -1,4 +1,4 @@
-// Local-only D1/D2/D3 acceptance against a supplied real release.
+// Current product acceptance: unchanged base, qualitative year, overview; no manual controls.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -23,48 +23,20 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     const filters={route_ids:['1'],start:caps.start,end:'2025-11-02T00:00:00+03:00',resolution:'hour',forecast_run_id:caps.forecast_run_id};
     const base=await (await post('/api/v2/handoff/query',filters)).json();
     near(Number(await page.getByTestId('total').getAttribute('data-raw-value')),base.total);
-    await page.locator('.scenario-panel summary').click();
-    await page.getByLabel('Коэффициент погоды').focus();
-    await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
-    await page.getByLabel('Коэффициент события').focus();
-    for(let i=0;i<4;i++) await page.keyboard.press('ArrowRight');
-    await page.locator('[data-scenario-total]').waitFor();
-    const scenario=await (await post('/api/v2/scenarios/query',{...filters,coefficients:{weather:1.1,event:1.2}})).json();
-    await page.waitForFunction(total=>Number(document.querySelector('[data-testid="total"]')?.dataset.rawValue)===total,scenario.total);
-    near(scenario.total,base.total*1.32);
-    near(Number(await page.getByTestId('map-demand').getAttribute('data-raw-value')),scenario.rows[0].value);
+    assert.equal(await page.getByLabel('Коэффициент погоды').count(),0);
+    assert.equal(await page.getByLabel('Коэффициент события').count(),0);
+    assert.equal(await page.locator('.scenario-panel').count(),0);
     await page.getByRole('button',{name:'Таблица',exact:true}).click();
     const displayed=await page.locator('.forecast-table tbody tr td[data-raw-value]').evaluateAll(cells=>cells.map(c=>Number(c.dataset.rawValue)));
-    displayed.forEach((v,i)=>near(v,scenario.rows[i].value));
+    displayed.forEach((v,i)=>near(v,base.rows[i].value));
     const downloadPromise=page.waitForEvent('download');
     await page.getByRole('button',{name:'Скачать CSV',exact:true}).click();
-    const download=await downloadPromise; await download.saveAs(path.join(output,'scenario-route1.csv'));
-    const csv=fs.readFileSync(path.join(output,'scenario-route1.csv'),'utf8').replace(/^\uFEFF/,'').trim().split(/\r?\n/).map(l=>l.split(','));
+    await (await downloadPromise).saveAs(path.join(output,'base-route1.csv'));
+    const csv=fs.readFileSync(path.join(output,'base-route1.csv'),'utf8').replace(/^\uFEFF/,'').trim().split(/\r?\n/).map(l=>l.split(','));
     const fields=csv.shift();
-    csv.forEach((r,i)=>{near(Number(r[fields.indexOf('value')]),scenario.rows[i].value);near(Number(r[fields.indexOf('base_value')]),base.rows[i].value);assert.equal(r[fields.indexOf('result_id')],scenario.result_id);});
-    await post('/api/v2/scenarios/export',{...filters,coefficients:{weather:1.1,event:1.2},expected_result_id:base.result_id},409);
-    for(const value of [-1,0.49,1.51,1.11,'1.1',true]) await post('/api/v2/scenarios/query',{...filters,coefficients:{weather:value,event:1}},422);
-    await page.screenshot({path:path.join(output,'scenario.png'),fullPage:true});
-    // A delayed previous request must not overwrite the final controls.
-    await page.route('**/scenarios/query',async route=>{if(route.request().postDataJSON().coefficients.weather===1.15)await new Promise(r=>setTimeout(r,500));await route.continue().catch(()=>{});});
-    await page.getByLabel('Коэффициент погоды').focus(); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
-    await page.waitForFunction(()=>document.querySelector('.coefficient')?.textContent.includes('1.20'));
-    const latest=await (await post('/api/v2/scenarios/query',{...filters,coefficients:{weather:1.2,event:1.2}})).json();
-    await page.waitForFunction(total=>Number(document.querySelector('[data-testid="total"]')?.dataset.rawValue)===total,latest.total);
-    await page.unroute('**/scenarios/query');
-    await page.getByRole('button',{name:'Сбросить сценарий',exact:true}).click();
-    await page.waitForFunction(total=>Number(document.querySelector('[data-testid="total"]')?.dataset.rawValue)===total,base.total);
+    csv.forEach((r,i)=>{near(Number(r[fields.indexOf('value')]),base.rows[i].value);assert.equal(r[fields.indexOf('result_id')],base.result_id);});
     await page.getByRole('button',{name:'1 мес',exact:true}).click(); await page.getByTestId('total').waitFor();
     const monthTotal=Number(await page.getByTestId('total').getAttribute('data-raw-value'));
-    if(!await page.locator('.scenario-panel').evaluate(el=>el.open)) await page.locator('.scenario-panel summary').click();
-    await page.getByLabel('Коэффициент события').focus(); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
-    const monthScenario=await (await post('/api/v2/scenarios/query',{...filters,end:'2025-12-01T00:00:00+03:00',resolution:'day',coefficients:{weather:1,event:1.1}})).json();
-    await page.waitForFunction(total=>Number(document.querySelector('[data-testid="total"]')?.dataset.rawValue)===total,monthScenario.total);
-    near(monthScenario.total,monthTotal*1.1);
-    const monthCSV=await post('/api/v2/scenarios/export',{...monthScenario.base.filters,coefficients:monthScenario.coefficients,expected_result_id:monthScenario.result_id});
-    fs.writeFileSync(path.join(output,'scenario-month.csv'),await monthCSV.body());
-    await page.getByRole('button',{name:'Сбросить сценарий',exact:true}).click();
-    await page.waitForFunction(total=>Number(document.querySelector('[data-testid="total"]')?.dataset.rawValue)===total,monthTotal);
     const beforeYear=requests.length;
     await page.getByRole('button',{name:'Год · качественно',exact:true}).click();
     await page.getByRole('region',{name:'Качественный год'}).waitFor();
@@ -100,9 +72,6 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     assert.equal(requests.length,noTickNetwork);
     await page.getByLabel('Маршрут',{exact:true}).selectOption('5');await page.getByTestId('total').waitFor();
     near(Number(await page.getByTestId('total').getAttribute('data-raw-value')),0);
-    await page.locator('.scenario-panel summary').click();
-    await page.getByLabel('Коэффициент события').focus(); await page.keyboard.press('ArrowRight');
-    await page.locator('[data-scenario-total]').waitFor();near(Number(await page.getByTestId('total').getAttribute('data-raw-value')),0);
     await page.getByLabel('Маршрут',{exact:true}).selectOption('2');assert.equal(await page.getByTestId('total').count(),0);
     assert.equal(await page.getByRole('button',{name:'Скачать CSV',exact:true}).isDisabled(),true);
     await page.getByLabel('Маршрут',{exact:true}).selectOption('__overview__');await page.locator('[data-overview-route="1"]').waitFor();
@@ -112,8 +81,9 @@ const near = (a,b) => assert.ok(Math.abs(a-b) <= 1e-8 + Math.abs(b)*1e-12, `${a}
     await page.getByRole('button',{name:'График, таблица и сведения'}).click();
     await page.screenshot({path:path.join(output,'mobile.png'),fullPage:true});
     assert.equal(errors.length,0,errors.join('\n'));
-    fs.writeFileSync(path.join(output,'acceptance.json'),JSON.stringify({run:caps.forecast_run_id,base_total:base.total,scenario_total:scenario.total,coefficients:scenario.coefficients,month_total:monthTotal,month_scenario_total:monthScenario.total,selected_day_6:selected,checks:['real API/UI/CSV','month scenario UI/API/CSV','invalid coefficients 422','stale export 409','rapid coefficients','reset','year no numeric requests','baseline and unsupported','multi-route totals and CSV','shared time no network ticks','mobile 390px'],errors},null,2));
-    console.log('PASS D1/D2/D3 real release: scenario/API/UI/CSV, reset/stale/422, qualitative year, overview/time/baseline/mobile');
+    assert.equal(requests.filter(r=>r.url.includes('/scenarios/')).length,0);
+    fs.writeFileSync(path.join(output,'acceptance.json'),JSON.stringify({run:caps.forecast_run_id,base_total:base.total,month_total:monthTotal,selected_day_6:selected,checks:['base API/UI/CSV unchanged','no manual controls or scenario requests','year no numeric requests','baseline and unsupported','multi-route totals and CSV','shared time no network ticks','mobile 390px'],errors},null,2));
+    console.log('PASS base/API/UI/CSV, no manual adjustments, qualitative year, overview/time/baseline/mobile');
     await context.close();
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

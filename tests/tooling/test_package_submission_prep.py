@@ -84,7 +84,7 @@ class PackageTests(unittest.TestCase):
             with ZipFile(destination / "web-handoff-preparation.zip") as z:
                 names = {n.removeprefix("tram-forecast/") for n in z.namelist()}
                 self.assertTrue(set(REQUIRED).issubset(names), sorted(set(REQUIRED) - names))
-                for name in ("compose.yaml", "compose.handoff.yaml", "compose.load.yaml",
+                for name in ("compose.yaml", "compose.handoff.yaml", "compose.load.yaml", "compose.monitoring.yaml",
                              "backend/handoff/install.py", "backend/requirements.txt",
                              "frontend/public/map-local/network.json", "frontend/public/tram-icon.png", "frontend/public/favicon.svg", "tests/load/handoff.js",
                              "frontend/public/map-local/schematic.svg", "frontend/public/map-local/schematic.meta.json",

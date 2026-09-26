@@ -18,6 +18,8 @@ from ml import adapter
 from backend.handoff.api import HandoffError, error_handler, router
 from backend.handoff.scenarios import router as scenario_router
 from backend.handoff.store import load_snapshot
+from backend.monitoring.api import router as monitoring_router
+from backend.monitoring.service import Monitor
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +38,23 @@ async def lifespan(app: FastAPI):
             )
         except Exception:
             logger.exception("ML handoff rejected; v2 unavailable")
-    yield
-    app.state.handoff_snapshot = None
+    app.state.monitor = Monitor(
+        os.environ.get("TRAMFLOW_MONITOR_DIR", "artifacts/monitoring/live"),
+        enabled=os.environ.get("TRAMFLOW_MONITOR_ENABLED", "1") == "1",
+        weather_provider=os.environ.get("TRAMFLOW_WEATHER_PROVIDER", "met"),
+    )
+    await app.state.monitor.start()
+    try:
+        yield
+    finally:
+        await app.state.monitor.close()
+        app.state.handoff_snapshot = None
 
 
 app = FastAPI(title="TramFlow API", version="0.2.0", lifespan=lifespan)
 app.include_router(router)
 app.include_router(scenario_router)
+app.include_router(monitoring_router)
 app.add_exception_handler(HandoffError, error_handler)
 
 

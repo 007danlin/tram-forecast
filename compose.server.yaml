@@ -5,6 +5,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
+    environment:
+      TRAMFLOW_MONITOR_ENABLED: "${TRAMFLOW_MONITOR_ENABLED:-1}"
+      TRAMFLOW_MONITOR_DIR: /var/lib/tramflow-monitoring
+      TRAMFLOW_WEATHER_PROVIDER: met
+    volumes:
+      - monitoring-data:/var/lib/tramflow-monitoring
     ports:
       - "127.0.0.1:8000:8000"
     logging:
@@ -18,3 +24,5 @@ services:
       timeout: 3s
       retries: 5
       start_period: 15s
+volumes:
+  monitoring-data:

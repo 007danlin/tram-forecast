@@ -5,31 +5,6 @@ import { dateLabel, intervalLabel } from '../display';
 import { Button } from './ui';
 import './DispatchTools.css';
 
-export function ScenarioPanel() {
-  const f = useForecastData();
-  if (f.horizon === 'year' || !f.caps?.scenario_supported) return null;
-  return <details className="scenario-panel"><summary>Сценарий · {f.layer === 'base' ? 'база' : 'ручные поправки'}</summary>
-    <p>Допущение диспетчера на весь период. Это не переобучение и не доказанный эффект погоды или события.</p>
-    <div className="dispatch-controls" role="group" aria-label="Слой прогноза">
-      <Button aria-pressed={f.layer === 'base'} onClick={() => f.changeLayer('base')}>База</Button>
-      <Button aria-pressed={f.layer === 'scenario'} onClick={() => f.changeLayer('scenario')}>Сценарий</Button>
-    </div>
-    {(['weather', 'event'] as const).map(key => <label className="coefficient" key={key}>
-      <span>{key === 'weather' ? 'Погода' : 'Событие'} · {f.coefficients[key].toFixed(2)}</span>
-      <input type="range" aria-label={key === 'weather' ? 'Коэффициент погоды' : 'Коэффициент события'}
-        min="0.5" max="1.5" step="0.05" value={f.coefficients[key]}
-        onChange={e => f.changeCoefficients({...f.coefficients, [key]: Number(e.target.value)})}/>
-    </label>)}
-    <Button onClick={f.resetScenario}>Сбросить сценарий</Button>
-    {f.current && <dl className="scenario-comparison" data-testid="scenario-comparison">
-      <div><dt>База</dt><dd data-base-total={f.current.total ?? ''}>{format(f.current.total)}</dd></div>
-      {f.scenario && <><div><dt>Сценарий</dt><dd data-scenario-total={f.scenario.total ?? ''}>{format(f.scenario.total)}</dd></div>
-      <div><dt>Разница</dt><dd>{format(f.scenario.delta_total)}</dd></div></>}
-    </dl>}
-    <p>Интервал сценария не оценён. Базовые интервалы относятся только к базе. CSV выгружает выбранный слой{f.overview ? ' для всего обзора' : ' для выбранного маршрута'}.</p>
-  </details>;
-}
-
 export function YearView() {
   const f = useForecastData(), meta = f.caps?.year;
   const start = f.day ? `${f.day.slice(0, 7)}-01` : '';
@@ -46,7 +21,7 @@ export function YearView() {
       <p className="dispatch-muted">Описание {meta.version}, источник: {meta.source}.</p>
     </> : <p>Качественное описание недоступно в этой версии сервиса.</p>}
     <Button disabled aria-label="Скачать CSV">Численный CSV недоступен</Button>
-    <p>Численный год не поддержан; годовая сумма и интервал не оценены. Ручные коэффициенты к этому описанию не применяются.</p>
+    <p>Численный год не поддержан; годовая сумма и интервал не оценены.</p>
   </section>;
 }
 
@@ -71,9 +46,8 @@ export function RouteOverview() {
     || a.route.route_id.localeCompare(b.route.route_id, 'ru', {numeric: true}));
   return <section className="dispatch-panel route-overview" aria-label="Обзор маршрутов">
     <h1>Обзор маршрутов</h1>
-    <p>Спрос: успешные посадки, не заполненность. Слой: {f.layer === 'base' ? 'База' : `Сценарий · погода ${f.coefficients.weather}, событие ${f.coefficients.event}`}.</p>
+    <p>Спрос: успешные посадки, не заполненность. Базовая модель.</p>
     {f.current && <p>{dateLabel(f.current.filters.start, true)} — {dateLabel(f.current.filters.end, true)} (конец не включён), МСК.</p>}
-    <ScenarioPanel/>
     {f.busy && <p role="status">Загружаем обзор…</p>}
     {f.error && <><p role="alert">{f.error}</p><Button onClick={f.retry}>Повторить запрос</Button></>}
     <label>Сортировать по спросу <select aria-label="Сортировка обзора" value={sort} onChange={e => setSort(e.target.value as 'total' | 'selected')}>
@@ -100,7 +74,7 @@ export function DemandIndicator() {
   const previous = f.points[f.selected - 1], next = f.points[f.selected + 1];
   if (!point || f.horizon === 'year') return null;
   return <section className="dispatch-panel demand-indicator" aria-label="Спрос выбранного маршрута">
-    <h2>Маршрут {f.route} · {f.layer === 'base' ? 'База' : `Сценарий × ${f.coefficients.weather} × ${f.coefficients.event}`}</h2>
+    <h2>Маршрут {f.route} · Базовая модель</h2>
     <p>{intervalLabel(point.start, point.end, f.current?.filters.resolution === 'day')} · МСК</p>
     <strong data-testid="map-demand" data-raw-value={point.value ?? ''}>{format(point.value)} успешных посадок</strong>
     <p>{statusLabels[point.status]} · {format(point.coverage * 100)}%</p>

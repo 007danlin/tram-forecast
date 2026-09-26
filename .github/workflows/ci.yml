@@ -57,6 +57,7 @@ jobs:
     env:
       COMPOSE_PROJECT_NAME: tramflow-ci
       TRAMFLOW_HANDOFF_HOST_DIR: /tmp/tramflow-ci-release
+      TRAMFLOW_MONITOR_ENABLED: "0"
     steps:
       - uses: actions/checkout@v4
       - name: Validate local and server deployment configuration

@@ -1,5 +1,7 @@
 services:
   backend:
+    environment:
+      TRAMFLOW_MONITOR_ENABLED: ${TRAMFLOW_MONITOR_ENABLED:-1}
     build:
       context: .
       dockerfile: backend/Dockerfile

@@ -1,0 +1,11 @@
+# Local/operational acquisition. No model writes; keep this volume across restarts.
+services:
+  backend:
+    environment:
+      TRAMFLOW_MONITOR_ENABLED: "1"
+      TRAMFLOW_MONITOR_DIR: /var/lib/tramflow-monitoring
+      TRAMFLOW_WEATHER_PROVIDER: met
+    volumes:
+      - monitoring-data:/var/lib/tramflow-monitoring
+volumes:
+  monitoring-data:

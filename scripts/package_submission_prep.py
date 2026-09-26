@@ -16,7 +16,7 @@ ROOT_FILES = (
     "README.md", "INTEGRATION.md", "AGENTS.md", "LICENSE", ".gitignore", ".gitattributes",
     "claude-interactive-tram-map.md",
     ".dockerignore", ".env.example", "compose.yaml", "compose.server.yaml",
-    "compose.handoff.yaml", "compose.load.yaml",
+    "compose.handoff.yaml", "compose.load.yaml", "compose.monitoring.yaml",
     "frontend/README.md", "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",
     "frontend/tsconfig.json", "frontend/vite.config.js",
     "frontend/public/favicon.svg",
@@ -125,7 +125,7 @@ def main():
         for name in names:
             path = Path(name)
             if (path.is_absolute() or ".." in path.parts or path.as_posix() != name
-                    or local_only(name) or not any(name.startswith(d + "/") for d in SOURCE_DIRS)
+                    or local_only(name) or not (name in ROOT_FILES or any(name.startswith(d + "/") for d in SOURCE_DIRS))
                     or not (path.suffix in EXTENSIONS or path.name in SPECIAL_NAMES)):
                 parser.error("Unapproved source path in include list: " + name)
             included.add(name)
@@ -138,9 +138,9 @@ def main():
     if missing_code:
         parser.error("Untracked code would be omitted; review and use --include-list: " + ", ".join(missing_code))
     required = {*ROOT_FILES, "frontend/Dockerfile"}
-    missing = required - tracked
+    missing = required - (tracked | included)
     if missing:
-        parser.error("Required sources must be included in Git: " + ", ".join(sorted(missing)))
+        parser.error("Required sources must be included in Git or the reviewed include list: " + ", ".join(sorted(missing)))
     paths = {ROOT / name for name in required}
     for name in tracked | included:
         path = Path(name)
@@ -167,7 +167,8 @@ def main():
         "Повтор упаковки и tooling/delivery тесты требуют Git checkout; для них используйте репозиторий.\n"
         "Импорт: python -m backend.handoff.install /absolute/path/package.zip --output artifacts/release.\n"
         "После установки backend-зависимостей и импорта: export TRAMFLOW_HANDOFF_HOST_DIR=\"$PWD/artifacts/release\";\n"
-        "docker compose -f compose.yaml -f compose.handoff.yaml up --build. Первая сборка требует сети/кэша.\n"
+        "docker compose -f compose.yaml -f compose.handoff.yaml -f compose.monitoring.yaml up --build. Первая сборка требует сети/кэша.\n"
+        "Мониторинг хранится отдельно от модели; источники, свежесть и ограничения — backend/monitoring/README.md.\n"
         "Качество/нагрузка и их версии: ml/reports/model-card.md и docs/verification-load.md.\n"
         "Raw, модель, private credentials и DS submission не включены.\n"
         "Публикация, commit/push и отправка выполняются отдельно.\n"
