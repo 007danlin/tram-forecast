@@ -24,12 +24,46 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByRole('button',{name:'Повторить запрос',exact:true}).click();
     await page.getByTestId('total').waitFor();
     await page.getByRole('button',{name:'Таблица',exact:true}).click();
+    await page.getByRole('button',{name:'Свернуть карточку'}).click();
     await page.locator('.tram-map__viewport svg').waitFor();
     await page.locator('.tram-map__viewport').evaluate(el => el.qaIdentity = 'persistent');
+    const mapViewport = page.locator('.tram-map__viewport');
+    const mapSvg = mapViewport.locator('svg');
+    const initialView = await mapSvg.getAttribute('viewBox');
+    await mapViewport.focus();
+    await mapViewport.press('ArrowRight');
+    await page.waitForFunction(initial => document.querySelector('.tram-map__viewport svg').getAttribute('viewBox') !== initial, initialView);
+    await mapViewport.press('+');
+    await mapViewport.press('0');
+    await page.waitForFunction(initial => document.querySelector('.tram-map__viewport svg').getAttribute('viewBox') === initial, initialView);
+    // Select a visible real line away from controls. A DOM hit corridor may overlap
+    // its neighbour: selection must match the clicked geometry, not paint order.
+    const lineTarget = await mapSvg.evaluate(svg => {
+      const box = svg.viewBox.baseVal, rect = svg.getBoundingClientRect();
+      const lines = [...svg.querySelectorAll('polyline[data-lane]')];
+      for (const line of lines) {
+        for (const point of line.points) {
+          const x = (point.x - box.x) / box.width * rect.width;
+          const y = (point.y - box.y) / box.height * rect.height;
+          if (x < 50 || x > rect.width - 100 || y < 180 || y > rect.height - 60) continue;
+          // Avoid a junction where two lanes legitimately have the same point.
+          const shared = lines.some(other => other !== line && [...other.points].some(p => Math.hypot(p.x-point.x,p.y-point.y) < .5));
+          if (!shared) return {x:rect.x+x,y:rect.y+y,points:line.getAttribute('points')};
+        }
+      }
+      throw new Error('No visible route geometry available for acceptance');
+    });
+    await page.mouse.click(lineTarget.x,lineTarget.y);
+    await page.waitForFunction(points => document.querySelector('.tram-map__viewport polyline[stroke-width="5"]')?.getAttribute('points') === points, lineTarget.points);
+    await page.getByRole('button',{name:'Открыть прогноз'}).click();
+    await page.getByRole('button',{name:'Таблица',exact:true}).click();
+    const horizonLabels = {day:'1 день',week:'1 нед',month:'1 мес'};
+    async function setHorizon(value) {await page.getByRole('button',{name:horizonLabels[value],exact:true}).click();}
     async function checkRows(count) {
       const selectedRoute=await page.getByLabel('Маршрут',{exact:true}).inputValue();
       const selectedDay=await page.getByLabel('Дата (МСК)').inputValue();
-      const selectedHorizon=await page.getByLabel('Период',{exact:true}).inputValue();
+      const horizonText=await page.locator('.filter-bar__horizon [aria-pressed=true]').textContent();
+      const selectedHorizon=Object.keys(horizonLabels).find(key => horizonLabels[key] === horizonText);
       const firstDay=selectedHorizon === 'month' ? selectedDay.slice(0,7)+'-01' : selectedDay;
       const expectedRows=Array.from({length:count},(_,i) => {
         const stamp=new Date(Date.parse(firstDay+'T00:00:00Z')+i*(selectedHorizon==='day'?3600000:86400000));
@@ -54,10 +88,11 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
       }
       close(Number(await page.getByTestId('total').getAttribute('data-raw-value')),total);
       assert.equal(await page.locator('.tram-map__viewport').evaluate(el => el.qaIdentity),'persistent');
+      assert.equal(await mapSvg.locator('polyline[stroke-width="5"]').getAttribute('points'),lineTarget.points);
     }
     await checkRows(24);
-    await page.getByLabel('Период',{exact:true}).selectOption('week'); await checkRows(7);
-    await page.getByLabel('Период',{exact:true}).selectOption('month'); await checkRows(30);
+    await setHorizon('week'); await checkRows(7);
+    await setHorizon('month'); await checkRows(30);
     await page.getByLabel('Дата (МСК)').fill('2025-12-01'); await checkRows(31);
     const downloaded = page.waitForEvent('download'); await page.getByRole('button',{name:'Скачать CSV'}).click();
     const download = await downloaded; const csv = fs.readFileSync(await download.path(),'utf8').replace(/^\uFEFF/,'').trim().split(/\r?\n/);
@@ -79,12 +114,18 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByLabel('Маршрут',{exact:true}).selectOption('7');
     await page.waitForFunction(() => document.querySelector('tbody tr')?.dataset.route === '7'); await checkRows(31);
     await page.unroute('**/handoff/query');
-    // Out-of-range weeks are explained and cannot be exported.
-    await page.getByLabel('Период',{exact:true}).selectOption('week');
+    // Out-of-range weeks remain explained on every card tab and cannot be exported.
+    await page.getByRole('tab',{name:'О маршруте',exact:true}).click();
+    await setHorizon('week');
     await page.getByLabel('Дата (МСК)').fill('2025-12-29');
     await page.getByRole('alert').waitFor(); assert.equal(await page.getByRole('button',{name:'Скачать CSV'}).isDisabled(),true);
+    assert.equal(await page.locator('.app-shell__badge--ok').textContent(),'Пакет подключён');
+    await page.getByRole('tab',{name:'По участкам',exact:true}).click();
+    await page.getByRole('alert').waitFor();
+    await page.getByRole('tab',{name:'Прогноз',exact:true}).click();
+    await page.getByRole('alert').waitFor();
     await page.getByLabel('Дата (МСК)').fill('2025-11-01');
-    await page.getByLabel('Период',{exact:true}).selectOption('day'); await checkRows(24);
+    await setHorizon('day'); await checkRows(24);
     for (const status of [503,410]) {
       await page.route('**/handoff/query',route => route.fulfill({status,contentType:'application/json',body:'{"error":{"code":"fixture"}}'}));
       await page.getByRole('button',{name:'Обновить прогноз',exact:true}).click(); await page.getByRole('alert').waitFor();
@@ -96,6 +137,7 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     }
     await page.route('**/handoff/export',route => route.fulfill({status:409,contentType:'application/json',body:'{"error":{"code":"fixture"}}'}));
     await page.getByRole('button',{name:'Скачать CSV'}).click(); await page.getByRole('alert').waitFor();
+    assert.equal(await page.locator('.app-shell__badge--ok').textContent(),'Пакет подключён');
     assert.equal(await page.getByRole('button',{name:'Скачать CSV'}).isDisabled(),true);
     await page.unroute('**/handoff/export'); await page.getByRole('button',{name:'Повторить запрос',exact:true}).click(); await checkRows(24);
     for (const empty of [false,true]) {
@@ -113,13 +155,28 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByRole('button',{name:'Обновить прогноз',exact:true}).click(); await checkRows(24);
     await page.getByRole('button',{name:'График',exact:true}).click();
     await page.screenshot({path:output+'/desktop.png',fullPage:true});
-    await page.getByRole('button',{name:'Свернуть прогноз'}).click(); await page.getByRole('button',{name:'Открыть прогноз'}).click();
+    const retainedView = await mapSvg.getAttribute('viewBox');
+    await page.getByRole('button',{name:'Аналитика',exact:true}).click();
+    assert.equal(await page.locator('.analytics-view tbody tr').count(),24);
+    await page.getByRole('button',{name:'Карта',exact:true}).click();
+    // ResizeObserver restores the viewport asynchronously after display:none.
+    await page.waitForFunction(expected => document.querySelector('.tram-map__viewport svg')?.getAttribute('viewBox') === expected, retainedView);
+    assert.equal(await mapSvg.getAttribute('viewBox'),retainedView);
+    assert.equal(await mapViewport.evaluate(el => el.qaIdentity),'persistent');
+    await page.getByRole('button',{name:'Настройки',exact:true}).click();
+    await page.getByRole('dialog',{name:'Настройки',exact:true}).waitFor();
+    await page.getByRole('dialog',{name:'Настройки',exact:true}).press('Escape');
+    assert.equal(await page.getByRole('button',{name:'Настройки',exact:true}).getAttribute('aria-expanded'),'false');
+    await page.getByRole('button',{name:'Свернуть карточку'}).click(); await page.getByRole('button',{name:'Открыть прогноз'}).click();
     await page.locator('.forecast-card').press('Escape');
     await page.waitForFunction(() => document.activeElement?.textContent === 'Открыть прогноз');
     await page.getByRole('button',{name:'Открыть прогноз'}).click();
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true);
     await page.screenshot({path:output+'/mobile.png',fullPage:true});
+    const mobileView = await mapSvg.getAttribute('viewBox');
+    await page.getByRole('button',{name:'Увеличить',exact:true}).click();
+    await page.waitForFunction(before => document.querySelector('.tram-map__viewport svg')?.getAttribute('viewBox') !== before, mobileView);
     assert.deepEqual(errors,[]);
     console.log(`PASS ${sourceKind} batch → API → UI → CSV; missing release and recovery, day/week/December/baseline, stale requests, MSK in non-MSK browser, 503/410/409, partial/no_data, keyboard, responsive, map remains mounted.`);
   } finally {await browser.close();}
