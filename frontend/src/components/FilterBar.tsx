@@ -3,6 +3,7 @@ import type { Network } from "../map/loadMap";
 import { groupRouteLanes } from "../map/routeSelection";
 import { useForecastData } from "../useForecast";
 import { Button, Icon } from "./ui";
+import { OVERVIEW } from "../handoff";
 import "./FilterBar.css";
 export function FilterBar({ network }: { network: Network | null }) {
   const forecast = useForecastData();
@@ -66,7 +67,8 @@ export function FilterBar({ network }: { network: Network | null }) {
           value={forecast.route}
           onChange={(e) => forecast.changeRoute(e.target.value)}
         >
-          <option value="">Все маршруты</option>
+          <option value="">Снять выбор</option>
+          {forecast.caps && <option value={OVERVIEW}>Обзор маршрутов</option>}
           {options.map((route) => (
             <option
               key={route.value}
@@ -106,7 +108,7 @@ export function FilterBar({ network }: { network: Network | null }) {
             ? "День"
             : forecast.horizon === "week"
               ? "Неделя"
-              : "Месяц"}
+              : forecast.horizon === "year" ? "Год · качественно" : "Месяц"}
         </span>
         <Icon name="chevron" />
       </button>
@@ -125,6 +127,7 @@ export function FilterBar({ network }: { network: Network | null }) {
               ["day", "День", "1 день"],
               ["week", "Неделя", "1 нед"],
               ["month", "Месяц", "1 мес"],
+              ["year", "Год · качественно", "Год · качественно"],
             ] as const
           ).map(([value, label, accessible]) => (
             <Button
@@ -133,7 +136,7 @@ export function FilterBar({ network }: { network: Network | null }) {
               aria-label={accessible}
               aria-pressed={forecast.horizon === value}
               disabled={
-                !forecast.caps?.resolutions.includes(
+                value === "year" ? !forecast.caps?.year?.qualitative_available : !forecast.caps?.resolutions.includes(
                   value === "day" ? "hour" : "day",
                 )
               }
@@ -161,7 +164,7 @@ export function FilterBar({ network }: { network: Network | null }) {
               ? "День"
               : forecast.horizon === "week"
                 ? "Неделя"
-                : "Месяц"}
+                : forecast.horizon === "year" ? "Год · качественно" : "Месяц"}
           </span>
         </span>
         <span

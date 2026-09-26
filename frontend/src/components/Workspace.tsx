@@ -4,6 +4,8 @@ import { TramMap } from "./TramMap";
 import { ForecastCard } from "./ForecastCard";
 import { TimelinePanel } from "./TimelinePanel";
 import { Button, Icon } from "./ui";
+import { DemandIndicator } from "./DispatchTools";
+import { useForecastData } from "../useForecast";
 import "./Workspace.css";
 export function Workspace({
   network,
@@ -22,10 +24,14 @@ export function Workspace({
   expanded: boolean;
   onExpandedChange: (v: boolean) => void;
 }) {
+  const forecast = useForecastData();
   const [cardOpen, setCardOpen] = useState(true);
   const reopen = useRef<HTMLButtonElement>(null);
   const expandTrigger = useRef<HTMLButtonElement>(null);
   const mapShell = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (forecast.overview || forecast.horizon === 'year') setCardOpen(true);
+  }, [forecast.overview, forecast.horizon]);
   useEffect(() => {
     if (!cardOpen) reopen.current?.focus();
   }, [cardOpen]);
@@ -42,7 +48,7 @@ export function Workspace({
   }, [expanded]);
   return (
     <div
-      className={`workspace${!cardOpen ? " workspace--map-only" : ""}`}
+      className={`workspace${!cardOpen ? " workspace--map-only" : ""}${forecast.overview || forecast.horizon === 'year' ? ' workspace--text-mode' : ''}`}
       hidden={hidden}
     >
       <div className="workspace-card" inert={expanded}>
@@ -110,6 +116,7 @@ export function Workspace({
       </div>
       <div className="workspace-timeline" inert={expanded}>
         <TimelinePanel />
+        <DemandIndicator />
       </div>
     </div>
   );

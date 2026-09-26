@@ -24,6 +24,7 @@ from backend.contracts.v2 import (
     validate_boundary,
 )
 from backend.handoff.store import Snapshot
+from backend.handoff.features import SCENARIO, YEAR
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/handoff", tags=["ML handoff v1"])
@@ -237,7 +238,9 @@ def capabilities(request: Request):
         "spatial_levels": ["route"],
         "directions_supported": False,
         "resolutions": ["hour", "day"],
-        "scenario_supported": False,
+        "scenario_supported": True,
+        "scenario": SCENARIO,
+        "year": YEAR,
         "limits": {"max_days": 31, "max_rows": 10000, "retained_runs": 1},
         "warnings": WARNINGS,
         "limitations": snapshot.limitations,

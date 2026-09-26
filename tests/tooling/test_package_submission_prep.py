@@ -78,7 +78,8 @@ class PackageTests(unittest.TestCase):
         """Exercise actual delivery selection, so omitted root overlays cannot hide in mocks."""
         with tempfile.TemporaryDirectory() as tmp:
             destination = Path(tmp) / "release"
-            with patch("sys.argv", ["package_submission_prep", "--output-dir", str(destination)]):
+            with patch("sys.argv", ["package_submission_prep", "--output-dir", str(destination),
+                     "--include-list", str(packager.ROOT / "docs/submission-final/source-allowlist.json")]):
                 packager.main()
             with ZipFile(destination / "web-handoff-preparation.zip") as z:
                 names = {n.removeprefix("tram-forecast/") for n in z.namelist()}
@@ -94,6 +95,38 @@ class PackageTests(unittest.TestCase):
                 note = z.read("tram-forecast/PREPARATION-README.md").decode()
                 self.assertIn("compose.handoff.yaml", note)
                 self.assertNotIn("Режим web: synthetic v1", note)
+
+    def test_explicit_new_sources_and_unsafe_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "repo"
+            (root / "frontend").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / "frontend/Dockerfile").write_text("FROM scratch")
+            (root / "scripts/new.py").write_text("# reviewed new source\n")
+            include = Path(tmp) / "include.json"
+            include.write_text(json.dumps(["scripts/new.py"]))
+            def git_output(command, **kwargs):
+                if "rev-parse" in command:
+                    return "a" * 40
+                if "--others" in command:
+                    return b"scripts/new.py\0"
+                if "ls-files" in command:
+                    return b"frontend/Dockerfile\0"
+                return b""
+            with patch.object(packager, "ROOT", root), patch.object(packager, "ROOT_FILES", ()), \
+                    patch.object(packager.subprocess, "check_output", side_effect=git_output):
+                with patch("sys.argv", ["pack", "--output-dir", str(Path(tmp)/"missing")]), \
+                        redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    packager.main()
+                with patch("sys.argv", ["pack", "--output-dir", str(Path(tmp)/"ok"), "--include-list", str(include)]):
+                    packager.main()
+                with ZipFile(Path(tmp)/"ok/web-handoff-preparation.zip") as z:
+                    self.assertEqual(z.read("tram-forecast/scripts/new.py"), b"# reviewed new source\n")
+                for unsafe in ["../private.py", "/tmp/private.py", "scripts/.env", "artifacts/private.json", "scripts/model.joblib"]:
+                    include.write_text(json.dumps([unsafe]))
+                    with patch("sys.argv", ["pack", "--output-dir", str(Path(tmp)/"bad"), "--include-list", str(include)]), \
+                            redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                        packager.main()
 
     def test_integrity_check_rejects_stale_content(self):
         with tempfile.TemporaryDirectory() as tmp:

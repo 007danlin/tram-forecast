@@ -35,7 +35,7 @@ export function App() {
           <Workspace
             network={network}
             mapProblem={mapProblem}
-            selectedRoute={forecast.route}
+            selectedRoute={forecast.overview ? '' : forecast.route}
             onRouteChange={forecast.changeRoute}
             hidden={view !== "map"}
             expanded={mapExpanded}

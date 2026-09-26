@@ -121,6 +121,64 @@ const { chromium, webkit } = require("playwright");
       `Bottom of MKAD must remain visible: ${kremlin.south.mkad}`);
     fs.writeFileSync(`${out}/${engine.name()}-southern-detail.png`,
       Buffer.from(kremlin.south.png, "base64"));
+    // PDF-verified gaps and ink in Pogonny Proezd. Its shaded underpaint used
+    // to become solid black in both the base map and selected label fragment.
+    const pogonny = await page.evaluate(async () => {
+      const source = await (await fetch("/map-local/schematic.svg")).text();
+      const svg = new DOMParser().parseFromString(source, "image/svg+xml").documentElement;
+      svg.setAttribute("viewBox", "742 342 72 41");
+      svg.setAttribute("width", "720");
+      svg.setAttribute("height", "410");
+      const canvas = document.createElement("canvas");
+      canvas.width = 720;
+      canvas.height = 410;
+      const ctx = canvas.getContext("2d");
+      const sample = (points) => points.map(([x, y]) => Array.from(ctx.getImageData(
+        Math.round((x - 742) * 10), Math.round((y - 342) * 10), 1, 1,
+      ).data));
+      const results = [];
+      for (const mode of ["base", "fragment"]) {
+        if (mode === "fragment") {
+          // Keep the same glyph definitions; render the group referenced by
+          // TramMap's external <use> when routes 4, 7 or 46 are selected.
+          svg.querySelector("defs").append(svg.querySelector(":scope > g"));
+          const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+          use.setAttribute("href", "#station-label-l304");
+          svg.append(use);
+        }
+        const url = URL.createObjectURL(new Blob(
+          [new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" },
+        ));
+        try {
+          const image = new Image();
+          image.src = url;
+          await image.decode();
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0);
+          results.push({
+            mode,
+            clear: sample([[783.9, 353.2], [782.6, 354.5], [775.5, 360.7],
+              [774.5, 362.9], [770.3, 367.1], [767.7, 369.7]]),
+            ink: sample([[785.3, 351.3], [780.7, 356.7], [775.4, 361.9],
+              [772.9, 364.5], [767.0, 369.8], [764.0, 372.4]]),
+            png: canvas.toDataURL("image/png").split(",")[1],
+          });
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+      return results;
+    });
+    for (const result of pogonny) {
+      for (const pixel of result.clear)
+        assert.ok(pixel[3] === 0 || Math.min(...pixel.slice(0, 3)) > 180,
+          `Pogonny Proezd ${result.mode} letter gaps must remain clear: ${pixel}`);
+      for (const pixel of result.ink)
+        assert.ok(pixel[3] === 255 && Math.max(...pixel.slice(0, 3)) < 70,
+          `Pogonny Proezd ${result.mode} must retain the original text: ${pixel}`);
+      fs.writeFileSync(`${out}/${engine.name()}-pogonny-${result.mode}.png`,
+        Buffer.from(result.png, "base64"));
+    }
     await page.getByLabel("Маршрут", { exact: true }).selectOption("50");
     assert.equal(await page.locator("path[data-selected-lane]").count(), 3);
     assert.equal(await page.locator("polyline[data-selected-lane]").count(), 0);
@@ -219,7 +277,7 @@ const { chromium, webkit } = require("playwright");
     }
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${engine.name()}: Kremlin details; complete southern labels/MKAD and camera bounds; smooth paths, TramFlow title, heart favicon, seamless paper, mobile/desktop themes.`,
+      `PASS ${engine.name()}: legible Pogonny Proezd base/selected label; Kremlin details; complete southern labels/MKAD and camera bounds; smooth paths, TramFlow title, heart favicon, seamless paper, mobile/desktop themes.`,
     );
   } finally {
     await browser.close();

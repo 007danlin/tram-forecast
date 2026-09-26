@@ -1,5 +1,11 @@
 # Backend — Толя
 
+Локальное дополнение 26.09: ручной сценарий `/api/v2/scenarios/query|export`,
+качественный год из capabilities и multi-route обзор реализованы совместимо.
+[Контракт](../docs/submission-final/contract.md), [приёмка](../docs/submission-final/verification.md).
+Ограничения базового handoff ниже остаются действующими; сценарий не меняет базу/DS.
+
+
 FastAPI предоставляет сохранённый синтетический v1 и новый API готового ML-пакета.
 Запускать из корня репозитория. Общие договорённости: [INTEGRATION.md](../INTEGRATION.md).
 

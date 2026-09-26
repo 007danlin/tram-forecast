@@ -1,0 +1,22 @@
+.dispatch-panel { padding: 20px; background: var(--panel-bg); color: var(--text-primary); border-radius: 12px; min-width: 0; overflow-wrap: anywhere; }
+.dispatch-panel h1 { font-size: 22px; margin: 0 0 12px; }
+.dispatch-panel h2 { font-size: 16px; margin: 12px 0 6px; }
+.dispatch-panel p, .scenario-panel p { font-size: 13px; line-height: 1.6; margin: 10px 0; }
+.dispatch-panel article { border-top: 1px solid var(--border-subtle); padding: 8px 0; }
+.dispatch-panel label { display: block; margin: 12px 0; font-size: 13px; }
+.dispatch-panel select { max-width: 100%; padding: 8px; background: var(--control-bg); color: var(--text-primary); border: 1px solid var(--border-subtle); border-radius: 6px; }
+.dispatch-muted { color: var(--text-secondary); }
+.scenario-panel { margin: 12px 0; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; }
+.scenario-panel summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.dispatch-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.dispatch-controls [aria-pressed="true"] { outline: 2px solid var(--chart-line); }
+.coefficient { display: grid; gap: 8px; margin: 16px 0; font-size: 13px; }
+.coefficient input { width: 100%; min-height: 32px; accent-color: var(--chart-line); }
+.scenario-comparison { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; }
+.scenario-comparison dd { margin: 4px 0; font-weight: 700; }
+.demand-indicator { margin-top: 12px; border: 1px solid var(--border-subtle); }
+.demand-indicator strong { font-size: 20px; }
+.route-overview .forecast-table { min-width: 660px; }
+.route-overview .forecast-table-wrap { max-height: none; }
+.route-overview .forecast-table caption { white-space: normal; }
+@media (max-width: 1023px) { .dispatch-panel { border-radius: 0; } }

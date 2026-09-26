@@ -4,6 +4,7 @@ import { dateLabel, intervalLabel } from "../display";
 import { ForecastLineChart, ForecastTable } from "./ForecastData";
 import { DataDetails } from "./DataDetails";
 import { Button, Icon } from "./ui";
+import { ScenarioPanel, YearView, RouteOverview } from "./DispatchTools";
 import "./ForecastCard.css";
 
 export function ForecastCard({ onClose }: { onClose: () => void }) {
@@ -23,6 +24,8 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
   const end = result?.filters.end
     ? new Date(Date.parse(result.filters.end) - 1).toISOString().slice(0, 10)
     : "";
+  if (forecast.horizon === 'year') return <YearView />;
+  if (forecast.overview) return <RouteOverview />;
   return (
     <section
       className="forecast-card"
@@ -42,11 +45,11 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
               : dateLabel(forecast.day, true)}
           </p>
         </div>
-        <p className="forecast-card__meta">Исторический прогноз · МСК</p>
+        <p className="forecast-card__meta">Исторический прогноз · МСК · {forecast.layer === 'base' ? 'База' : 'Ручной сценарий'}</p>
         <div className="forecast-card__total">
           {result ? (
-            <strong data-testid="total" data-raw-value={result.total ?? ""}>
-              {format(result.total)}
+            <strong data-testid="total" data-raw-value={forecast.displayTotal ?? ""}>
+              {format(forecast.displayTotal)}
             </strong>
           ) : (
             <strong className={busy ? "is-loading" : ""}>—</strong>
@@ -108,6 +111,7 @@ export function ForecastCard({ onClose }: { onClose: () => void }) {
           </p>
         )}
       </div>
+      <ScenarioPanel />
       <div className="forecast-card__visual" id="forecast-visual">
         <div
           className="forecast-card__view-toggle"

@@ -1,9 +1,12 @@
 import { ForecastLineChart, ForecastTable } from "./ForecastData";
 import { useForecastData } from "../useForecast";
 import { Button } from "./ui";
+import { OverviewButton, RouteOverview, ScenarioPanel, YearView, DemandIndicator } from "./DispatchTools";
 import "./AnalyticsView.css";
 export function AnalyticsView() {
   const f = useForecastData();
+  if (f.horizon === 'year') return <YearView />;
+  if (f.overview) return <RouteOverview />;
   const onSelect = (i: number) => {
     f.setPlaying(false);
     f.setSelected(i);
@@ -27,6 +30,9 @@ export function AnalyticsView() {
         Исторический прогноз · МСК. Успешные посадки не равны заполненности
         вагона.
       </p>
+      <OverviewButton />
+      <ScenarioPanel />
+      <DemandIndicator />
       {f.busy && <p role="status">Загружаем прогноз…</p>}
       {f.emptyReason && <p role="status">{f.emptyReason}</p>}
       {f.error && (

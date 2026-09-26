@@ -9,7 +9,7 @@ import json
 import math
 from pathlib import Path
 import pymupdf
-from build_reference import EXPECTED
+from build_reference import EXPECTED, LABEL_UNDERPAINT
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -25,6 +25,7 @@ def main():
     labels=network['labels'];assigned={label['id']:[] for label in labels}
     page=pymupdf.open(args.pdf)[0]
     for drawing in page.get_drawings():
+        if drawing['seqno'] in LABEL_UNDERPAINT:continue
         rect=drawing['rect'];fill=drawing.get('fill')
         if not fill or not all(c<.2 for c in fill) or not 100<rect.y0<1290 or max(rect.width,rect.height)>100:
             continue
@@ -43,7 +44,7 @@ def main():
     # Five horizontal continuation lines were omitted by the original OCR grouping.
     # Reuse only unassigned outlines that share a left edge and an ordinary line gap.
     drawings={d['seqno']:d for d in page.get_drawings()}
-    used={g for group in assigned.values() for g in group}
+    used={g for group in assigned.values() for g in group} | LABEL_UNDERPAINT
     for label in labels:
         if abs(label['angle'])>5:continue
         for glyph in list(assigned[label['id']]):
