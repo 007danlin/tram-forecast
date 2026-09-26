@@ -1,55 +1,8 @@
-.timeline-panel {
-  background: var(--panel-bg);
-  min-height: 74px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 15px 16px;
-}
-.timeline-panel__mid {
-  min-width: 0;
-  flex: 1;
-}
-.timeline-panel__label {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px 12px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.timeline-panel__label strong {
-  font-weight: 600;
-}
-.timeline-panel__label span {
-  color: var(--text-secondary);
-}
-.timeline-panel input {
-  width: 100%;
-  display: block;
-  height: 44px;
-  min-height: 44px;
-  margin: -5px 0 -13px;
-  accent-color: var(--chart-line);
-  cursor: pointer;
-}
-.timeline-panel input:disabled {
-  cursor: not-allowed;
-}
-.timeline-panel__play .icon {
-  width: 18px;
-  height: 18px;
-}
-@media (max-width: 1023px) {
-  .timeline-panel {
-    gap: 16px;
-    padding: 14px 16px;
-  }
-  .timeline-panel__label span {
-    font-size: 11px;
-  }
-}
-
+.timeline-panel { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.timeline-panel__mid { flex: 1; min-width: 0; }
+.timeline-panel input { width: 100%; min-height: 44px; margin: 0; padding: 0; cursor: pointer; }
+.timeline-panel__play .icon { width: 18px; height: 18px; }
+.timeline-panel .button { font-size: 12px; flex-shrink: 0; }
 .timeline-panel input[type="range"] {
   appearance: none;
   -webkit-appearance: none;

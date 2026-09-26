@@ -232,7 +232,7 @@ const close = (a, b) =>
     await checkRows(31);
     assert.equal(
       await page
-        .getByText("Нулевой baseline: нет успешной истории обучения.", {
+        .getByText("Нет истории обучения: модель возвращает 0.", {
           exact: false,
         })
         .count(),
@@ -269,7 +269,7 @@ const close = (a, b) =>
     );
     assert.equal(
       await page.locator(".app-shell__badge--ok").textContent(),
-      "Пакет подключён",
+      "Данные загружены",
     );
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     await page.getByRole("alert").waitFor();
@@ -319,7 +319,7 @@ const close = (a, b) =>
     await page.getByRole("alert").waitFor();
     assert.equal(
       await page.locator(".app-shell__badge--ok").textContent(),
-      "Пакет подключён",
+      "Данные загружены",
     );
     assert.equal(
       await page.getByRole("button", { name: "Скачать CSV" }).isDisabled(),
@@ -356,7 +356,7 @@ const close = (a, b) =>
         .click();
       await page
         .getByText(
-          empty ? "Нет данных (no_data):" : "Неполное покрытие (partial):",
+          empty ? "Нет данных за период." : "Есть пропуски · покрытие",
           { exact: false },
         )
         .waitFor();
@@ -368,6 +368,13 @@ const close = (a, b) =>
           .getAttribute("data-raw-value"),
         "",
       );
+      const timeControl = page.getByLabel("Точка временного ряда");
+      await timeControl.focus();
+      await timeControl.press("Home");
+      for (let i = 0; i < 12; i++) await timeControl.press("ArrowRight");
+      assert.equal(await page.getByTestId("map-demand").textContent(), "Нет данных");
+      assert.equal(await page.getByTestId("map-demand").getAttribute("data-raw-value"), "");
+      if (empty) assert.equal(await page.getByRole("button", {name:"Пик", exact:true}).isDisabled(), true);
       await page.unroute("**/handoff/query");
     }
     await page
@@ -527,12 +534,9 @@ const close = (a, b) =>
       }
     }
     await page.setViewportSize({ width: 390, height: 844 });
-    await page
-      .getByRole("button", { name: "График, таблица и сведения", exact: true })
-      .click();
+    assert.equal(await page.getByLabel("Точка временного ряда").isVisible(), true);
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     assert.equal(await page.locator(".forecast-card tbody tr").count(), 24);
-    await page.getByRole("button", { name: "Ещё", exact: false }).click();
     await setHorizon("week");
     await page.waitForFunction(
       () => document.querySelectorAll(".forecast-card tbody tr").length === 7,

@@ -29,13 +29,13 @@ export function App() {
             theme={theme}
             onThemeChange={changeTheme}
           />
-          <FilterBar network={network} />
+          {view === "analytics" && <FilterBar network={network} />}
         </div>
         <main className="app-shell__body" inert={settingsOpen}>
           <Workspace
             network={network}
             mapProblem={mapProblem}
-            selectedRoute={forecast.route}
+            selectedRoute={forecast.overview ? '' : forecast.route}
             onRouteChange={forecast.changeRoute}
             hidden={view !== "map"}
             expanded={mapExpanded}
