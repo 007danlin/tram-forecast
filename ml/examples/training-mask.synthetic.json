@@ -1,0 +1,17 @@
+{
+  "schema_version": "tramflow-training-mask-v1",
+  "mask_id": "synthetic-example-not-for-training",
+  "timestamp_basis": "organizer_tran_date_time_naive",
+  "timezone": "unconfirmed_organizer_local_time",
+  "rules": [
+    {
+      "rule_id": "synthetic-route-1-full-hour-window",
+      "route": 1,
+      "start": "2025-01-02 01:00:00",
+      "end": "2025-01-02 03:00:00",
+      "reason_code": "synthetic_example_only",
+      "source_ref": "replace-with-versioned-igor-source",
+      "verification_status": "verified"
+    }
+  ]
+}

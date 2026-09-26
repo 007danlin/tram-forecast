@@ -1,4 +1,4 @@
-"""Temporal model selection, final holdout evaluation, and slice reporting."""
+"""Temporal model selection, reused final validation, and slice reporting."""
 
 from __future__ import annotations
 
@@ -15,11 +15,13 @@ from ml.baselines import BlockMeanBaseline, ComparableWeeksMedianBaseline, Previ
 from ml.data import load_organizer_labels
 from ml.experiment_config import normalize_config
 from ml.factors import weather_coverage
-from ml.metrics import regression_metrics
+from ml.metrics import regression_metrics, round_submission_predictions
 from ml.model import HGBT_FIXED_PARAMETERS, HourlyGradientBoostingModel, build_hgbt_model
+from ml.qa import apply_training_mask, training_mask_summary
 from ml.settings import (
-    FINAL_HOLDOUT,
+    FINAL_VALIDATION,
     KEY_COLUMNS,
+    MODELED_ROUTES,
     MODEL_SCHEMA_VERSION,
     RANDOM_SEED,
     SELECTION_FOLDS,
@@ -114,6 +116,7 @@ def _merge_actual_prediction(actual: pd.DataFrame, predicted: pd.DataFrame) -> p
         raise ValueError("Prediction does not cover the complete validation grid")
     if not np.isfinite(merged["prediction"]).all() or (merged["prediction"] < 0).any():
         raise ValueError("Prediction contains invalid values")
+    merged["prediction_submission"] = round_submission_predictions(merged["prediction"])
     merged["horizon_day"] = (merged["date"] - merged["date"].min()).dt.days + 1
     merged["horizon_week"] = ((merged["horizon_day"] - 1) // 7) + 1
     merged["horizon_bucket"] = pd.cut(
@@ -133,10 +136,13 @@ def _merge_actual_prediction(actual: pd.DataFrame, predicted: pd.DataFrame) -> p
 
 
 def _metric_record(frame: pd.DataFrame, slice_name: str, slice_value: object) -> dict[str, object]:
+    raw = regression_metrics(frame[TARGET_COLUMN], frame["prediction"])
+    submission = regression_metrics(frame[TARGET_COLUMN], frame["prediction_submission"])
     return {
         "slice": slice_name,
         "value": str(slice_value),
-        **regression_metrics(frame[TARGET_COLUMN], frame["prediction"]),
+        **raw,
+        **{f"submission_{key}": value for key, value in submission.items()},
     }
 
 
@@ -163,12 +169,23 @@ def evaluate_model(
     model_name: str,
     factors: pd.DataFrame | None = None,
     experiment_config: dict | None = None,
+    training_mask: dict[str, object] | None = None,
 ) -> tuple[dict[str, object], pd.DataFrame]:
     if model_name not in MODEL_FACTORIES:
         raise KeyError(f"Unknown model: {model_name}")
-    target = load_organizer_labels(dataset_dir, fold.train_start, fold.val_end)
+    target = load_organizer_labels(
+        dataset_dir,
+        fold.train_start,
+        fold.val_end,
+        routes=MODELED_ROUTES,
+    )
     history = target[target["date"].between(pd.Timestamp(fold.train_start), pd.Timestamp(fold.train_end))].copy()
     actual = target[target["date"].between(pd.Timestamp(fold.val_start), pd.Timestamp(fold.val_end))].copy()
+    mask_summary = None
+    if training_mask is not None:
+        mask_summary = training_mask_summary(history, training_mask)
+        history = apply_training_mask(history, training_mask)
+        history = history[history["training_included"]].copy()
     model = build_hgbt_model(model_name, experiment_config) if experiment_config is not None else MODEL_FACTORIES[model_name]()
     started = time.perf_counter()
     if isinstance(model, HourlyGradientBoostingModel):
@@ -207,6 +224,15 @@ def evaluate_model(
         "model_schema_version": MODEL_SCHEMA_VERSION,
         "random_seed": RANDOM_SEED,
         "parameters": {**MODEL_PARAMETERS[model_name], **({"experiment_config": experiment_config} if experiment_config else {})},
+        "training_mask": (
+            {
+                "mask_id": training_mask["mask_id"],
+                "sha256": training_mask["sha256"],
+                "summary": mask_summary,
+            }
+            if training_mask is not None
+            else None
+        ),
         "fold": asdict(fold),
         "elapsed_seconds": elapsed,
         "metrics": slice_metrics(merged),
@@ -215,7 +241,9 @@ def evaluate_model(
 
 def _combined_metrics(predictions: list[pd.DataFrame]) -> dict[str, float | int | None]:
     combined = pd.concat(predictions, ignore_index=True)
-    return regression_metrics(combined[TARGET_COLUMN], combined["prediction"])
+    raw = regression_metrics(combined[TARGET_COLUMN], combined["prediction"])
+    submission = regression_metrics(combined[TARGET_COLUMN], combined["prediction_submission"])
+    return {**raw, **{f"submission_{key}": value for key, value in submission.items()}}
 
 
 def experiment_log_frame(report: dict[str, object]) -> pd.DataFrame:
@@ -232,7 +260,16 @@ def experiment_log_frame(report: dict[str, object]) -> pd.DataFrame:
                 continue
             slice_results.setdefault(slice_name, {})[metric["value"]] = {
                 key: metric[key]
-                for key in ("wape_score", "wape", "mae", "rows", "sum_y")
+                for key in (
+                    "wape_score",
+                    "wape",
+                    "mae",
+                    "submission_wape_score",
+                    "submission_wape",
+                    "submission_mae",
+                    "rows",
+                    "sum_y",
+                )
             }
         rows.append(
             {
@@ -259,6 +296,9 @@ def experiment_log_frame(report: dict[str, object]) -> pd.DataFrame:
                 "wape_score": overall["wape_score"],
                 "wape": overall["wape"],
                 "mae": overall["mae"],
+                "submission_wape_score": overall["submission_wape_score"],
+                "submission_wape": overall["submission_wape"],
+                "submission_mae": overall["submission_mae"],
                 "rows": overall["rows"],
                 "sum_y": overall["sum_y"],
                 "elapsed_seconds": experiment["elapsed_seconds"],
@@ -278,7 +318,7 @@ def run_full_evaluation(
     dataset_dir: str | Path,
     factors: pd.DataFrame | None = None,
 ) -> tuple[dict[str, object], dict[str, list[pd.DataFrame]]]:
-    """Select on early folds, then open the final holdout once for the chosen approach."""
+    """Select on early folds, then report the reused September-October validation window."""
     enabled_models = [name for name in MODEL_FACTORIES if name != "competition_weather_hgbt" or factors is not None]
     experiments: list[dict[str, object]] = []
     selection_predictions: dict[str, list[pd.DataFrame]] = {name: [] for name in enabled_models}
@@ -291,12 +331,12 @@ def run_full_evaluation(
     selection_summary = {name: _combined_metrics(parts) for name, parts in selection_predictions.items()}
     selected_model = max(
         selection_summary,
-        key=lambda name: float(selection_summary[name]["wape_score"] or 0.0),
+        key=lambda name: float(selection_summary[name]["submission_wape_score"] or 0.0),
     )
     for experiment in experiments:
         model_name = experiment["change"]
         if model_name == selected_model:
-            experiment["decision"] = "selected_on_combined_folds"
+            experiment["decision"] = "selected_on_combined_folds_submission_rounded"
         elif model_name == "block_mean":
             experiment["decision"] = "floor_rejected"
         elif model_name in {"previous_weekday", "median_comparable_weeks"}:
@@ -314,36 +354,45 @@ def run_full_evaluation(
     )
     interval_absolute_error_q90 = float(np.quantile(chosen_residuals, 0.90))
 
-    holdout_models = ("block_mean", "previous_weekday", "median_comparable_weeks", selected_model)
-    holdout_predictions: dict[str, list[pd.DataFrame]] = {}
+    validation_models = ("block_mean", "previous_weekday", "median_comparable_weeks", selected_model)
+    validation_predictions: dict[str, list[pd.DataFrame]] = {}
     seen: set[str] = set()
-    for model_name in holdout_models:
+    for model_name in validation_models:
         if model_name in seen:
             continue
         seen.add(model_name)
-        record, prediction = evaluate_model(dataset_dir, FINAL_HOLDOUT, model_name, factors=factors)
-        record["decision"] = "evaluated_once_after_selection"
+        record, prediction = evaluate_model(dataset_dir, FINAL_VALIDATION, model_name, factors=factors)
+        record["decision"] = "evaluated_on_reused_validation_after_current_run_selection"
         experiments.append(record)
-        holdout_predictions[model_name] = [prediction]
+        validation_predictions[model_name] = [prediction]
 
-    chosen_holdout = holdout_predictions[selected_model][0]
-    supported_holdout = chosen_holdout[chosen_holdout["status"] == "ok"]
-    lower = np.maximum(supported_holdout["prediction"].to_numpy() - interval_absolute_error_q90, 0.0)
-    upper = supported_holdout["prediction"].to_numpy() + interval_absolute_error_q90
-    y = supported_holdout[TARGET_COLUMN].to_numpy()
+    chosen_validation = validation_predictions[selected_model][0]
+    supported_validation = chosen_validation[chosen_validation["status"] == "ok"]
+    lower = np.maximum(supported_validation["prediction"].to_numpy() - interval_absolute_error_q90, 0.0)
+    upper = supported_validation["prediction"].to_numpy() + interval_absolute_error_q90
+    y = supported_validation[TARGET_COLUMN].to_numpy()
     interval_coverage = float(np.mean((y >= lower) & (y <= upper)))
 
     report = {
         "protocol": {
             "selection_folds": [asdict(fold) for fold in SELECTION_FOLDS],
-            "final_holdout": asdict(FINAL_HOLDOUT),
-            "holdout_opened_after_selection": True,
+            "reused_final_validation": asdict(FINAL_VALIDATION),
+            "period_is_pristine_holdout": False,
+            "period_reuse_history": {
+                "previous_pull_request": 2,
+                "previous_model": "calendar_hgbt",
+                "previous_reported_wape_score_raw": 0.8287,
+                "note": "September-October was evaluated before this addendum; current model selection still uses only the earlier selection folds.",
+            },
             "metric": "global WAPE-score = max(0, 1 - sum(abs(y-yhat))/sum(y))",
+            "selection_metric": "submission_wape_score after floor(prediction + 0.5)",
+            "rounding_policy": "floor(x + 0.5); identical to submission export",
             "random_split": False,
             "model_schema_version": MODEL_SCHEMA_VERSION,
             "random_seed": RANDOM_SEED,
-            "primary_61_day_validation": asdict(FINAL_HOLDOUT),
+            "primary_61_day_validation": asdict(FINAL_VALIDATION),
             "future_target_used_within_horizon": False,
+            "model_scope_routes": list(MODELED_ROUTES),
         },
         "selection_summary": selection_summary,
         "selected_model": selected_model,
@@ -351,8 +400,8 @@ def run_full_evaluation(
             "method": "symmetric absolute-residual quantile calibrated on selection folds",
             "nominal_coverage": 0.90,
             "absolute_error_q90": interval_absolute_error_q90,
-            "final_holdout_coverage": interval_coverage,
-            "coverage_scope": "supported routes only; cold-start route 5 reported separately",
+            "reused_final_validation_coverage": interval_coverage,
+            "coverage_scope": "nine-route model scope; route 5 is outside model evaluation",
         },
         "experiments": experiments,
         "external_factors": {
@@ -376,8 +425,101 @@ def run_full_evaluation(
             "traffic": {"status": "candidate", "reason": "No historical route-linked series supplied."},
         },
     }
-    all_predictions = {**selection_predictions, **{f"holdout:{k}": v for k, v in holdout_predictions.items()}}
+    all_predictions = {
+        **selection_predictions,
+        **{f"reused_validation:{key}": value for key, value in validation_predictions.items()},
+    }
     return report, all_predictions
+
+
+def run_training_mask_comparison(
+    dataset_dir: str | Path,
+    training_mask: dict[str, object],
+) -> dict[str, object]:
+    """Compare one frozen model before/after cleaning on identical validation rows."""
+    experiments: list[dict[str, object]] = []
+    predictions: dict[str, list[pd.DataFrame]] = {"unmasked": [], "masked": []}
+    folds = (*SELECTION_FOLDS, FINAL_VALIDATION)
+    for fold in folds:
+        raw_record, raw_prediction = evaluate_model(
+            dataset_dir,
+            fold,
+            "calendar_holiday_hgbt",
+        )
+        raw_record["experiment_id"] = f"{fold.name}__target_unmasked"
+        raw_record["hypothesis"] = "Keep the organizer target unchanged as the control."
+        raw_record["change"] = "target_unmasked"
+        raw_record["decision"] = "control"
+        experiments.append(raw_record)
+        predictions["unmasked"].append(raw_prediction)
+
+        clean_record, clean_prediction = evaluate_model(
+            dataset_dir,
+            fold,
+            "calendar_holiday_hgbt",
+            training_mask=training_mask,
+        )
+        if not raw_prediction[[*KEY_COLUMNS, TARGET_COLUMN]].equals(
+            clean_prediction[[*KEY_COLUMNS, TARGET_COLUMN]]
+        ):
+            raise ValueError("Training-mask comparison changed the evaluation keys or target")
+        clean_record["experiment_id"] = f"{fold.name}__target_masked"
+        clean_record["hypothesis"] = "A verified technological-validation mask improves training without changing evaluation rows."
+        clean_record["change"] = "target_masked"
+        clean_record["decision"] = "requires_owner_review"
+        experiments.append(clean_record)
+        predictions["masked"].append(clean_prediction)
+
+    complete = load_organizer_labels(
+        dataset_dir,
+        SELECTION_FOLDS[0].train_start,
+        FINAL_VALIDATION.val_end,
+        routes=MODELED_ROUTES,
+    )
+    selection_count = len(SELECTION_FOLDS)
+    selection_summary = {
+        name: _combined_metrics(parts[:selection_count])
+        for name, parts in predictions.items()
+    }
+    masked_selection = pd.concat(predictions["masked"][:selection_count], ignore_index=True)
+    supported_selection = masked_selection[masked_selection["status"] == "ok"]
+    residuals = np.abs(
+        supported_selection[TARGET_COLUMN].to_numpy(dtype=float)
+        - supported_selection["prediction"].to_numpy(dtype=float)
+    )
+    interval_absolute_error_q90 = float(np.quantile(residuals, 0.90))
+    masked_validation = predictions["masked"][-1]
+    supported_validation = masked_validation[masked_validation["status"] == "ok"]
+    lower = np.maximum(
+        supported_validation["prediction"].to_numpy(dtype=float) - interval_absolute_error_q90,
+        0.0,
+    )
+    upper = supported_validation["prediction"].to_numpy(dtype=float) + interval_absolute_error_q90
+    validation_y = supported_validation[TARGET_COLUMN].to_numpy(dtype=float)
+    interval_coverage = float(np.mean((validation_y >= lower) & (validation_y <= upper)))
+    return {
+        "protocol": {
+            "comparison": "same model and identical evaluation rows; only training rows change",
+            "model": "calendar_holiday_hgbt",
+            "selection_folds": [asdict(fold) for fold in SELECTION_FOLDS],
+            "reused_final_validation": asdict(FINAL_VALIDATION),
+            "model_scope_routes": list(MODELED_ROUTES),
+            "evaluation_target_cleaned": False,
+            "rounding_policy": "floor(x + 0.5); identical to submission export",
+        },
+        "training_mask": training_mask_summary(complete, training_mask),
+        "selection_summary": selection_summary,
+        "interval": {
+            "method": "symmetric absolute-residual quantile calibrated on masked selection folds",
+            "nominal_coverage": 0.90,
+            "absolute_error_q90": interval_absolute_error_q90,
+            "reused_final_validation_coverage": interval_coverage,
+            "coverage_scope": "nine-route masked-training comparison; evaluation target remains uncleaned",
+        },
+        "adoption_decision": "requires Igor and Daniel review; no automatic adoption",
+        "selected_model": "calendar_holiday_hgbt",
+        "experiments": experiments,
+    }
 
 
 def weather_guardrail(candidate: list[pd.DataFrame], control: list[pd.DataFrame]) -> dict:

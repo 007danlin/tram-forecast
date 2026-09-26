@@ -8,26 +8,33 @@ DS-файл — отдельные результаты. Наличие ZIP и �
 
 | Материал | Проверенное основание | Открытая часть |
 |---|---|---|
-| Формат и ключи | Полный sample: 14 640 строк, 10 маршрутов, 01.11–31.12.2025; [письменное уточнение](submission-clarification.md) сохраняет № 5 и ночь | Независимая сверка Игорем исходного sample/target |
+| Формат и ключи | Фактический sample: 14 640 строк с № 5; позднее QA задаёт 9 модельных маршрутов / 13 176 строк | Финальный scope не согласован; [QA-отчёт](../../../ml/reports/qa-addendum-2026-09-26.md) |
 | Текущий кандидат | `calendar-holiday-priority-v1`, operational без погоды; [паспорт](../../../ml/reports/model-card.md) | Новый score-improvement-v2 не считается принятым до передачи |
 | Submission и preflight | [Локальный протокол](../../verification-priority-implementation.md) подтверждает точные ключи/порядок, конечные неотрицательные целые и SHA-256 | Передавать именно проверенный файл; не переименовывать другой прогноз в этот кандидат |
-| Качество | selection 0,84008809; повторный holdout 0,82170203 raw / 0,82169780 после округления | Это локальные оценки, не независимо подтверждённый score платформы |
+| Качество | rounded selection 0,8400868; повторная validation 0,8216978 на 13 176 строках | Это локальные оценки, не независимо подтверждённый score платформы |
 | Факторы | Календарь включён; погодные группы оценены и не прошли guardrails | Маска технологических валидаций, raw timezone и дополнительные источники требуют подтверждений |
 | Отправка | Этой подготовкой попытка не расходуется | Даниэль отдельно сверяет правила, точный срок и остаток попыток на платформе |
 
-По паспорту SHA-256 проверенного submission:
+По паспорту SHA-256 sample-совместимого кандидата:
 `886487cf7882c337035fca8cb192bdaec51f4446d0f77daea7793023036549d2`.
-Он не выводится из имени файла: перед передачей вычислите checksum локальной копии.
+Девятимаршрутный кандидат: `725a8b0de3b825b72a007649f814ab1525d60f14e48e6622bdee653d25657d67`.
+Ни один структурный preflight не разрешает спорный формат автоматически.
+Checksum не выводится из имени файла: перед передачей вычислите его для локальной копии.
 Диспетчерский CSV содержит другое зерно/поля и не заменяет submission.
 Команда воспроизведения по выбранному локальному артефакту, из корня checkout
 с ML-зависимостями и разрешённым реальным sample:
 
 ```sh
 .venv/bin/python -m ml submission --artifact-dir artifacts/calendar-holiday-priority-v1 \
-  --template "$DATASET_DIR/test_submission.csv" \
+  --template "$DATASET_DIR/test_submission.csv" --scope sample \
   --output artifacts/submission-review.csv \
   --preflight-output artifacts/submission-review.preflight.json
 shasum -a 256 artifacts/submission-review.csv
+.venv/bin/python -m ml submission --artifact-dir artifacts/calendar-holiday-priority-v1 \
+  --template "$DATASET_DIR/test_submission.csv" --scope modeled_routes \
+  --output artifacts/submission-review-nine.csv \
+  --preflight-output artifacts/submission-review-nine.preflight.json
+shasum -a 256 artifacts/submission-review-nine.csv
 ```
 
 Пути результатов должны быть новыми. Сохраните вместе CSV, preflight и безопасную
@@ -98,7 +105,7 @@ timestamps записей фиксированы. Существующий ка�
 | ID | Доказательство | Статус |
 |---|---|---|
 | E-01, качество | [Паспорт модели](../../../ml/reports/model-card.md), [погодные опыты](../../../ml/reports/weather-groups-2026-09-25.md) | Локальные результаты получены; независимая приёмка и новая ML-серия открыты |
-| E-02, данные | [Аудит автора](../../../ml/reports/data-audit.md), preflight текущего пакета | Полный sample сохранён; независимая проверка target/расписания открыта |
+| E-02, данные | [Аудит автора](../../../ml/reports/data-audit.md), preflight текущего пакета | Оба scope проверяются отдельно; финальный формат и независимая проверка target/маски открыты |
 | E-03, одинаковые числа | [RUN-01/UI-01](../../verification-priority-implementation.md), текущий браузерный проход в ночном отчёте | Локально получено; приёмка владельцами отдельно |
 | E-04, нагрузка | [Протокол](../../verification-load.md), база 1e0bcf6 с финальными изменениями, сохранёнными в bac8b2c | 200 RPS локально получены; не замер VPS |
 | E-05, интерфейс | RUN/UI-протокол и скриншоты | День/неделя/месяц и ошибки проверены; новая карта/компоновка ещё не переданы |
