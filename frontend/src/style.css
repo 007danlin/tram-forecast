@@ -1,41 +1,86 @@
-:root {
-  --ink: #18243a;
-  --ink-soft: #526077;
-  --border: #c9d1de;
-  --accent: #2456ca;
-  --accent-ink: #ffffff;
-  --focus: #ffb800;
-  --surface-solid: #ffffff;
-  --surface: rgba(255, 255, 255, .88);
-  --surface-muted: #f4f6fa;
-  --overlay-blur: blur(14px);
-  --radius: 12px;
-  --radius-control: 10px;
-  --shadow: 0 8px 28px rgba(24, 36, 58, .22);
-
-  /* Plain page background behind the tram schematic (TramMap's own line
-     colours/geometry are untouched) — no decorative backdrop. */
-  --map-land: #eef0ee;
+@import "./styles/tokens.css";
+@font-face {
+  font-family: Manrope;
+  src: url("/fonts/Manrope.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
 }
-
-/* Single standard theme (light) — no prefers-color-scheme dark variant. */
-
-* { box-sizing: border-box; }
-
-html, body, #root { height: 100%; }
-
-body {
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  min-height: 100%;
   margin: 0;
-  background: var(--surface-muted);
-  color: var(--ink);
-  font-family: system-ui, sans-serif;
-  font-size: 14px;
 }
-
-button, select, input { font: inherit; color: inherit; }
-
-/* Standard visually-hidden pattern: keeps content for assistive tech
-   (e.g. TramMap's own title/note) without showing it over the full-bleed map. */
+body {
+  background: var(--app-bg);
+  color: var(--text-primary);
+  font:
+    14px/1.5 Manrope,
+    system-ui,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+a {
+  color: inherit;
+}
+button,
+a,
+input,
+select,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+input,
+select {
+  min-height: 44px;
+}
+button {
+  border: 0;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+h1,
+h2 {
+  font-weight: 700;
+  line-height: 1.4;
+}
+h1 {
+  font-size: 22px;
+}
+h2 {
+  font-size: 20px;
+}
+[hidden] {
+  display: none !important;
+}
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -47,14 +92,107 @@ button, select, input { font: inherit; color: inherit; }
   white-space: nowrap;
   border: 0;
 }
-
-.app-shell__button:focus-visible,
-.app-shell__control:focus-visible,
-.app-shell a:focus-visible,
-.app-shell button:focus-visible,
-.app-shell select:focus-visible,
-.app-shell input:focus-visible,
-.app-shell [tabindex]:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
+.icon {
+  flex: none;
+  display: block;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--control-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.57;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color 0.14s,
+    color 0.14s;
+}
+.button:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+.button--primary {
+  background: var(--brand-primary);
+  color: var(--on-brand);
+}
+.button--primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+.button--ghost {
+  background: transparent;
+}
+.icon-button {
+  width: 44px;
+  padding: 0;
+  flex: none;
+}
+summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: list-item;
+  padding-block: 12px;
+  color: var(--text-secondary);
+}
+code {
+  font:
+    12px/1.6 ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}
+.eyebrow {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.forecast-message {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--warning-text);
+  overflow-wrap: anywhere;
+  margin-top: 10px;
+}
+.forecast-message--error {
+  color: var(--danger-text);
+  overflow-wrap: anywhere;
+}
+.data-details {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.data-details p + p {
+  margin-top: 12px;
+}
+.data-details dl {
+  margin: 16px 0;
+}
+.data-details dl > div {
+  margin: 12px 0;
+}
+.data-details dt {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.data-details dd {
+  margin: 2px 0 0;
+}
+.data-details ul {
+  padding-left: 18px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,0 +1,7 @@
+{
+  "source_sha256": "13bf11ade2d5a36bd3af8b4990e505e9692cf39eacbdb91f79e419f83bcf5c6f",
+  "reviewed_at": "2026-09-26",
+  "reference_verified_lanes": ["brown-9", "brown-12", "orange-3", "amber-3", "lime-0", "green2-0", "green2-2", "teal-2", "teal-7"],
+  "exclude_stops": ["s-red-2-45", "s-orange-4-25", "s-yellow-1-22", "s-green2-0-22", "s-teal-3-18"],
+  "reason": "Five unlabeled white direction-arrow fragments near Komsomolskaya were mistaken for stops. Inferred lane numbers visually checked against the same PDF; this is not a mapping to 2025 forecast routes."
+}

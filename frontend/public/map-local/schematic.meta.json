@@ -1,0 +1,15 @@
+{
+  "source": "trammap_15_04_26-2.pdf",
+  "source_sha256": "13bf11ade2d5a36bd3af8b4990e505e9692cf39eacbdb91f79e419f83bcf5c6f",
+  "bounds": [
+    62,
+    112,
+    1065,
+    1178
+  ],
+  "paths": 11993,
+  "sha256": "96c2e6fb979c09c7651f4e58aa743a3906c8c8bbc74617fc7129076c5a240eef",
+  "raster_images": 0,
+  "optimizer": "svgo 4.0.0 --multipass",
+  "note": "Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json."
+}

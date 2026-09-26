@@ -1,15 +1,79 @@
-.forecast-chart { width: 100%; }
-.forecast-chart svg { width: 100%; display: block; }
-.forecast-chart text { font-family: system-ui, sans-serif; font-size: 11px; fill: var(--ink-soft); }
-.forecast-chart circle.forecast-chart__point { cursor: pointer; }
-.forecast-chart circle.forecast-chart__point--selected { fill: var(--accent); stroke: #fff; stroke-width: 1.5; }
-
-.forecast-table-wrap { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
-.forecast-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.forecast-table caption { text-align: left; padding: 8px 10px; color: var(--ink-soft); font-size: 12px; }
-.forecast-table th, .forecast-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-.forecast-table tbody tr { cursor: pointer; }
-.forecast-table tbody tr:hover { background: var(--surface-muted); }
-.forecast-table tbody tr[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 18%, transparent); }
-
-.forecast-table details span { overflow-wrap: anywhere; }
+.forecast-chart {
+  width: 100%;
+  min-width: 0;
+}
+.forecast-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.forecast-chart text {
+  font:
+    18px Manrope,
+    system-ui,
+    sans-serif;
+  fill: var(--text-secondary);
+}
+.forecast-chart__point {
+  cursor: pointer;
+  stroke: var(--panel-bg);
+  stroke-width: 1;
+}
+.forecast-chart__point--selected {
+  fill: var(--chart-line);
+  stroke: var(--text-primary);
+  stroke-width: 2;
+}
+.forecast-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  max-height: 350px;
+  border-radius: 8px;
+  overscroll-behavior: contain;
+}
+.forecast-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.forecast-table caption {
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 8px 0;
+}
+.forecast-table th,
+.forecast-table td {
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.forecast-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: var(--panel-bg);
+  position: sticky;
+  top: 0;
+}
+.forecast-table tr[aria-selected="true"] {
+  background: var(--control-hover);
+}
+.forecast-table summary {
+  padding: 8px 0;
+  color: var(--text-primary);
+}
+.table-select {
+  font: inherit;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  white-space: nowrap;
+  min-height: 44px;
+}
+.forecast-table td > details {
+  max-width: 200px;
+  overflow-wrap: anywhere;
+}

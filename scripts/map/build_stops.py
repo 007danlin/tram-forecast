@@ -274,6 +274,10 @@ for dt in sorted(dots, key=lambda d: (d["lane"], d["s"])):
     stops.append({"id": f"s-{ln['id']}-{n_on:02d}", "routes": ln.get("routes", []), "lane": ln["id"], "x": round(dt["pt"].x, 1), "y": round(dt["pt"].y, 1),
                   "label": remap.get(dt["label"])})
 net["labels"], net["stops"] = out_labels, stops
+# Preserve reviewed exclusions/verification on repeated authoring runs.
+from apply_review import apply_review
+net = apply_review(net)
+stops = net["stops"]
 NET.write_text(json.dumps(net, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 (ROOT / "data/tram-map/stops-report.json").write_text(json.dumps({"review": review, "unlabeled_stops": [s["id"] for s in stops if not s["label"]]}, ensure_ascii=False, indent=1), encoding="utf-8")
 print(f"подписей: {len(out_labels)}, остановок: {len(stops)}, без подписи: {sum(1 for s in stops if not s['label'])}, на проверку: {len(review)}")

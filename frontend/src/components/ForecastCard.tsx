@@ -1,117 +1,200 @@
-import { useState } from 'react';
-import './ForecastCard.css';
-import { format, useForecastData } from '../useForecast';
-import { ForecastLineChart, ForecastTable, type ForecastPoint } from './ForecastData';
+import { useState } from "react";
+import { format, useForecastData } from "../useForecast";
+import { dateLabel, intervalLabel } from "../display";
+import { ForecastLineChart, ForecastTable } from "./ForecastData";
+import { DataDetails } from "./DataDetails";
+import { Button, Icon } from "./ui";
+import "./ForecastCard.css";
 
-type Tab = 'forecast' | 'segments' | 'about';
-
-export function ForecastCard({
-  points, unit, isMock, loading, error, onRetry, fetchedAt,
-  selectedIndex, onSelectIndex, onClose,
-}: {
-  points: ForecastPoint[];
-  unit: string;
-  isMock: boolean;
-  loading: boolean;
-  error: string;
-  onRetry: () => void;
-  fetchedAt: Date | null;
-  selectedIndex: number | null;
-  onSelectIndex: (i: number) => void;
-  onClose: () => void;
-}) {
+export function ForecastCard({ onClose }: { onClose: () => void }) {
   const forecast = useForecastData();
-  const result = forecast.current;
-  const [tab, setTab] = useState<Tab>('forecast');
-  const [chartMode, setChartMode] = useState<'chart' | 'table'>('chart');
-  const hasData = points.length > 0;
-  const maxPoint = hasData ? points.reduce((a, b) => ((b.value ?? -Infinity) > (a.value ?? -Infinity) ? b : a)) : null;
-
+  const { current: result, points, busy, error } = forecast;
+  const [chartMode, setChartMode] = useState<"chart" | "table">("chart");
+  const [expanded, setExpanded] = useState(false);
+  const valid = points.filter((p) => p.value !== null);
+  const maximum = valid.length ? Math.max(...valid.map((p) => p.value!)) : null;
+  const peaks = valid.filter((p) => p.value === maximum);
+  const peak = peaks[0];
+  const daily = result?.filters.resolution === "day";
+  const onSelect = (i: number) => {
+    forecast.setPlaying(false);
+    forecast.setSelected(i);
+  };
+  const end = result?.filters.end
+    ? new Date(Date.parse(result.filters.end) - 1).toISOString().slice(0, 10)
+    : "";
   return (
-    <div
+    <section
       className="forecast-card"
-      role="dialog"
-      aria-label="Карточка прогноза" tabIndex={-1}
-      onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
+      aria-label="Карточка прогноза"
+      tabIndex={-1}
+      data-expanded={expanded}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
     >
-      <div className="forecast-card__head">
-        <img className="forecast-card__head-icon" src="/tram-icon.png" alt="" aria-hidden="true" />
-        <h2 className="forecast-card__head-title">{forecast.route ? `Маршрут № ${forecast.route}` : 'Прогноз успешных посадок'}</h2>
-        <button type="button" className="forecast-card__icon-btn" disabled title="Избранное пока недоступно" aria-label="Добавить в избранное">☆</button>
-        <button type="button" className="forecast-card__icon-btn" onClick={onClose} aria-label="Свернуть карточку">✕</button>
-      </div>
-      <div className="forecast-card__body">
-        <p className="forecast-card__meta">
-          Исторический ML-прогноз, время МСК. Линии схемы не связаны с выбранным маршрутом прогноза.
-          {hasData && <> Ряд: {points[0].timestamp.slice(0, 16).replace('T', ' ')} — {points[points.length - 1].timestamp.slice(0, 16).replace('T', ' ')} ({points[0].timestamp.slice(19)}), шаг {result?.filters.resolution === 'day' ? 'сутки' : 'час'}.</>}
-        </p>
-
+      <div className="forecast-card__summary">
+        <div className="forecast-card__head">
+          <h1>{forecast.route ? `Маршрут ${forecast.route}` : "Прогноз"}</h1>
+          <p className="forecast-card__date">
+            {result && daily
+              ? `${dateLabel(result.filters.start, true)} — ${dateLabel(end, true)}`
+              : dateLabel(forecast.day, true)}
+          </p>
+        </div>
+        <p className="forecast-card__meta">Исторический прогноз · МСК</p>
+        <div className="forecast-card__total">
+          {result ? (
+            <strong data-testid="total" data-raw-value={result.total ?? ""}>
+              {format(result.total)}
+            </strong>
+          ) : (
+            <strong className={busy ? "is-loading" : ""}>—</strong>
+          )}
+          <span>
+            {result?.total_scope === "available_only"
+              ? "Сумма доступных значений"
+              : result?.total_scope === "no_data"
+                ? "Нет данных за период"
+                : `успешных посадок ${forecast.horizon === "day" ? "за день" : "за период"}`}
+          </span>
+        </div>
         <dl className="forecast-card__stats">
-          <div className="forecast-card__stat">
-            <dt>{result?.total_scope === 'available_only' ? 'Сумма доступных значений' : result?.total_scope === 'no_data' ? 'Нет данных за период' : 'Всего успешных посадок'}</dt>
-            {result ? <dd data-testid="total" data-raw-value={result.total ?? ''}>{format(result.total)}</dd> : <dd>—</dd>}
+          <div>
+            <dt>
+              {peaks.length > 1
+                ? "Первый максимум"
+                : daily
+                  ? "Пиковый день"
+                  : "Пиковый час"}
+            </dt>
+            <dd>{peak ? intervalLabel(peak.start, peak.end, !!daily) : "—"}</dd>
           </div>
-          <div className="forecast-card__stat">
-            <dt>Единица</dt>
-            <dd style={{ fontSize: 16 }}>{unit}</dd>
-          </div>
-          <div className="forecast-card__stat">
-            <dt>Максимум ряда</dt>
-            <dd>{maxPoint ? format(maxPoint.value) : '—'}{maxPoint?.value != null && <small>{result?.filters.resolution === 'day' ? maxPoint.timestamp.slice(0, 10) : `в ${maxPoint.timestamp.slice(11, 16)}`}</small>}</dd>
-          </div>
-          <div className="forecast-card__stat forecast-card__stat--empty">
-            <dt>Сравнение с обычным уровнем</dt>
-            <dd>Нет данных</dd>
+          <div>
+            <dt>Покрытие</dt>
+            <dd>{result ? `${format(result.coverage * 100)}%` : "—"}</dd>
           </div>
         </dl>
-
-        {error && <p className="forecast-card__error" role="alert">{error}</p>}
-        <div className="forecast-card__tabs" role="tablist" aria-label="Разделы карточки">
-          <button type="button" role="tab" className="forecast-card__tab" aria-selected={tab === 'forecast'} onClick={() => setTab('forecast')}>Прогноз</button>
-          <button type="button" role="tab" className="forecast-card__tab" aria-selected={tab === 'segments'} onClick={() => setTab('segments')}>По участкам</button>
-          <button type="button" role="tab" className="forecast-card__tab" aria-selected={tab === 'about'} onClick={() => setTab('about')}>О маршруте</button>
-        </div>
-
-        {tab === 'forecast' && <div role="tabpanel">
-          {loading && <p className="forecast-card__empty">Загружаем прогноз…</p>}
-          {!loading && !error && hasData && <>
-            <div className="forecast-card__view-toggle" role="group" aria-label="Вид данных">
-              <button type="button" className="forecast-card__view-btn" aria-pressed={chartMode === 'chart'} onClick={() => setChartMode('chart')}>График</button>
-              <button type="button" className="forecast-card__view-btn" aria-pressed={chartMode === 'table'} onClick={() => setChartMode('table')}>Таблица</button>
-            </div>
-            {chartMode === 'chart'
-              ? <ForecastLineChart points={points} unit={unit} selectedIndex={selectedIndex} onSelectIndex={onSelectIndex} />
-              : <ForecastTable points={points} unit={unit} selectedIndex={selectedIndex} onSelectIndex={onSelectIndex} />}
-          </>}
-        </div>}
-
-        {tab === 'segments' && <div role="tabpanel"><p className="forecast-card__empty">Прогноз по участкам пока недоступен.</p></div>}
-        {tab === 'about' && <div role="tabpanel"><p className="forecast-card__empty">Маршрут и период прогноза получены из ML-пакета. Остановки и направления не поддержаны; линии карты не связаны с селектором.</p></div>}
-
-        <div className="forecast-card__status">
-          <p role="status">{result ? `Покрытие: ${format(result.coverage * 100)}%` : 'Прогноз не получен'}</p>
-          {forecast.caps?.routes.find(r => r.route_id === forecast.route)?.method === 'baseline' && <p>Нулевой baseline: нет успешной истории обучения. Это не означает отсутствия движения.</p>}
-          {result?.total_scope === 'available_only' && <p>Неполное покрытие (partial): пропуски не заменены нулями.</p>}
-          {result?.total_scope === 'no_data' && <p>Нет данных (no_data): выберите другой период.</p>}
-          <details>
-            <summary>Факторы и ограничения</summary>
-            <p>CSV содержит показанный прогноз без округления. Это диспетчерский экспорт, не конкурсный submission. Посадки не равны заполненности вагона.</p>
-            {result && <>
-              <p>Run: <code data-testid="run">{result.forecast_run_id}</code></p>
-              <p>Модель: <code>{result.model_version}</code></p><p>CSV SHA-256: <code>{result.csv_sha256}</code></p>
-              <p>Импорт пакета: {result.imported_at} (не время обучения).</p>
-              <p>Интервал: {result.interval_method}; номинальная граница не гарантирует покрытие. Дневные границы не равны сумме почасовых.</p>
-              <ul>{[...new Set([...result.warnings,...result.limitations])].map(w => <li key={w}>{w}</li>)}</ul>
-            </>}
-          </details>
-        </div>
+        {busy && (
+          <p className="forecast-message" role="status">
+            Загружаем прогноз…
+          </p>
+        )}
+        {error && (
+          <p className="forecast-message forecast-message--error" role="alert">
+            {error}
+          </p>
+        )}
+        {forecast.caps?.routes.find((r) => r.route_id === forecast.route)
+          ?.method === "baseline" && (
+          <p className="forecast-message">
+            Нулевой baseline: нет успешной истории обучения. Это не означает
+            отсутствия движения.
+          </p>
+        )}
+        {result?.total_scope === "available_only" && (
+          <p className="forecast-message" role="status">
+            Неполное покрытие (partial): пропуски не заменены нулями.
+          </p>
+        )}
+        {result?.total_scope === "no_data" && (
+          <p className="forecast-message" role="status">
+            Нет данных (no_data): выберите другой период.
+          </p>
+        )}
       </div>
-
+      <div className="forecast-card__visual" id="forecast-visual">
+        <div
+          className="forecast-card__view-toggle"
+          role="group"
+          aria-label="Вид данных"
+        >
+          <Button
+            variant="ghost"
+            aria-pressed={chartMode === "chart"}
+            onClick={() => setChartMode("chart")}
+          >
+            График
+          </Button>
+          <Button
+            variant="ghost"
+            aria-pressed={chartMode === "table"}
+            onClick={() => setChartMode("table")}
+          >
+            Таблица
+          </Button>
+        </div>
+        {!!points.length &&
+          (chartMode === "chart" ? (
+            <ForecastLineChart
+              points={points}
+              unit="успешные посадки"
+              selectedIndex={forecast.selected}
+              onSelectIndex={onSelect}
+            />
+          ) : (
+            <ForecastTable
+              points={points}
+              unit="успешные посадки"
+              selectedIndex={forecast.selected}
+              onSelectIndex={onSelect}
+            />
+          ))}
+        {!points.length && (
+          <div className="chart-placeholder" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+      </div>
       <div className="forecast-card__actions">
-        <button type="button" className="forecast-card__action forecast-card__action--primary" onClick={onRetry} disabled={loading || forecast.exporting} aria-label={forecast.errorStatus === 410 ? 'Обновить доступные данные' : error ? 'Повторить запрос' : 'Обновить прогноз'}>Обновить</button>
-        <button type="button" className="forecast-card__action" disabled={!result || loading || !!error || forecast.exporting} onClick={() => void forecast.download()} aria-label="Скачать CSV">{forecast.exporting ? '…' : 'CSV'}</button>
-        <button type="button" className="forecast-card__action" disabled title="После согласования коэффициентов сценария">Сценарий</button>
+        <Button
+          variant="primary"
+          disabled={!result || busy || !!error || forecast.exporting}
+          onClick={() => void forecast.download()}
+          aria-label="Скачать CSV"
+        >
+          {forecast.exporting ? "Скачиваем…" : "Скачать CSV"}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={forecast.retry}
+          disabled={busy || forecast.exporting}
+          aria-label={
+            forecast.errorStatus === 410
+              ? "Обновить доступные данные"
+              : error
+                ? "Повторить запрос"
+                : "Обновить прогноз"
+          }
+        >
+          {error ? "Повторить" : "Обновить"}
+        </Button>
       </div>
-    </div>
+      <Button
+        variant="ghost"
+        className="forecast-card__expand"
+        aria-expanded={expanded}
+        aria-controls="forecast-visual forecast-details"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {expanded ? "Свернуть подробности" : "График, таблица и сведения"}
+        <Icon name="chevron" />
+      </Button>
+      <div className="forecast-card__footer">
+        <details id="forecast-details" className="forecast-card__details">
+          <summary>Данные и ограничения</summary>
+          <DataDetails />
+        </details>
+        <button
+          className="card-close"
+          onClick={onClose}
+          aria-label="Свернуть карточку"
+        >
+          <Icon name="close" />
+        </button>
+      </div>
+    </section>
   );
 }

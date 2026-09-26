@@ -1,152 +1,159 @@
 .filter-bar {
-  flex: none;
-  display: inline-flex;
-  padding: 8px 14px;
-  background: var(--surface-solid);
-  border-bottom: 1px solid var(--border);
-}
-
-/* Floating over the full-bleed map (Карта view): compact glass strip that
-   only takes the width its content needs, not the full screen width. */
-.filter-bar--overlay {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: auto;
-  max-width: calc(100% - 32px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  background: var(--surface);
-  backdrop-filter: var(--overlay-blur);
-  -webkit-backdrop-filter: var(--overlay-blur);
-  z-index: 20;
-}
-
-.filter-bar__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.filter-bar__field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.filter-bar__field-icon { width: 12px; height: 12px; object-fit: contain; flex: none; }
-
-.filter-bar__field label {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  line-height: 1.2;
-  color: var(--ink-soft);
-  font-weight: 600;
-  white-space: nowrap;
+  gap: 8px;
+  padding: 15px 16px;
+  min-height: 74px;
+  position: relative;
+  z-index: 5;
+  background: var(--header-bg);
+  flex-wrap: wrap;
 }
-
-.filter-bar__control {
-  min-height: 36px;
-  width: 128px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface-solid);
-  font-size: 12px;
-  color: var(--ink);
+.filter-field {
+  min-width: 0;
 }
-
-.filter-bar__control--date { width: 108px; }
-
-.filter-bar__control:disabled { color: var(--ink-soft); background: var(--surface-muted); cursor: not-allowed; }
-
+.filter-field select,
+.filter-field input {
+  width: 100%;
+  min-height: 44px;
+  height: auto;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--control-bg);
+  font-size: 14px;
+}
+.filter-field select:hover,
+.filter-field input:hover {
+  border-color: var(--control-border);
+}
+.route-field {
+  width: 110px;
+}
+.date-field {
+  width: 190px;
+}
+.filter-extras {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .filter-bar__horizon {
   display: flex;
-  gap: 2px;
-  padding: 2px;
-  height: 36px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface-muted);
+  gap: 8px;
 }
-
-.filter-bar__horizon-btn {
-  min-height: 30px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
+.filter-status {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.filter-bar__horizon-btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
-.filter-bar__horizon-btn:disabled { color: var(--ink-soft); cursor: not-allowed; }
-
-.filter-bar__more { position: relative; align-self: flex-end; }
-
-.filter-bar__more-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface-solid);
-  color: var(--ink-soft);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.filter-bar__more-btn[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
-
-.filter-bar__popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-left: 6px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  width: max-content;
-  max-width: 260px;
-  padding: 12px;
-  background: var(--surface-solid);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
 }
-
-.filter-bar__popover .filter-bar__control { width: 100%; }
-
-.filter-bar__reset {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface-muted);
+.connection-status {
+  font-size: 11px;
+}
+.app-shell__badge--error {
+  color: var(--danger-text);
+}
+.connection-status::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 6px;
+}
+.app-shell__badge--ok {
+  color: var(--success-text);
+}
+.more-filters,
+.mobile-period {
+  display: none;
+}
+.reset-filters {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  cursor: not-allowed;
+  color: var(--text-secondary);
+}
+@media (max-width: 1023px) {
+  .filter-bar {
+    min-height: 66px;
+    padding: 11px 12px;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .route-field {
+    width: 88px;
+    flex-shrink: 0;
+  }
+  .date-field {
+    width: auto;
+    flex: 1;
+  }
+  .filter-field select,
+  .filter-field input {
+    padding: 9px 10px;
+    font-size: 13px;
+    min-width: 0;
+  }
+  .more-filters {
+    display: inline-flex;
+    padding: 10px;
+    gap: 4px;
+  }
+  .more-filters .icon {
+    width: 14px;
+  }
+  .filter-status {
+    display: none;
+  }
+  .filter-extras {
+    display: none;
+    position: absolute;
+    right: 12px;
+    top: 61px;
+    background: var(--panel-bg);
+    padding: 16px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    max-width: calc(100vw - 24px);
+  }
+  .filter-extras.is-open {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .filter-bar__horizon {
+    flex-wrap: wrap;
+  }
+  .reset-filters {
+    align-self: flex-start;
+  }
 }
 
-.filter-bar__note { margin: 0; font-size: 11px; color: var(--ink-soft); max-width: 220px; }
-
-@media (max-width: 900px) {
-  .filter-bar--overlay { top: 12px; padding: 6px 10px; max-width: calc(100% - 24px); }
-  .filter-bar__control { width: 108px; }
-  .filter-bar__control--date { width: 92px; }
+.more-period {
+  display: none;
 }
-
-@media (max-width: 620px) {
-  .filter-bar__row { row-gap: 6px; }
+@media (max-width: 1023px) {
+  .more-filters {
+    position: relative;
+    display: grid;
+    gap: 0;
+    justify-items: start;
+    padding: 3px 25px 3px 10px;
+    min-width: 74px;
+  }
+  .more-filters .icon {
+    position: absolute;
+    right: 8px;
+    top: 12px;
+  }
+  .more-period {
+    display: block;
+    font-size: 9px;
+    line-height: 1.333;
+    color: var(--text-secondary);
+  }
 }
