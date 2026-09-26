@@ -24,6 +24,7 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByRole('button',{name:'Повторить запрос',exact:true}).click();
     await page.getByTestId('total').waitFor();
     await page.getByRole('button',{name:'Таблица',exact:true}).click();
+    await page.getByRole('button',{name:'Свернуть карточку'}).click();
     await page.locator('.tram-map__viewport svg').waitFor();
     await page.locator('.tram-map__viewport').evaluate(el => el.qaIdentity = 'persistent');
     const mapViewport = page.locator('.tram-map__viewport');
@@ -44,7 +45,7 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
         for (const point of line.points) {
           const x = (point.x - box.x) / box.width * rect.width;
           const y = (point.y - box.y) / box.height * rect.height;
-          if (x < 50 || x > rect.width - 100 || y < 50 || y > rect.height - 60) continue;
+          if (x < 50 || x > rect.width - 100 || y < 180 || y > rect.height - 60) continue;
           // Avoid a junction where two lanes legitimately have the same point.
           const shared = lines.some(other => other !== line && [...other.points].some(p => Math.hypot(p.x-point.x,p.y-point.y) < .5));
           if (!shared) return {x:rect.x+x,y:rect.y+y,points:line.getAttribute('points')};
@@ -54,10 +55,15 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     });
     await page.mouse.click(lineTarget.x,lineTarget.y);
     await page.waitForFunction(points => document.querySelector('.tram-map__viewport polyline[stroke-width="5"]')?.getAttribute('points') === points, lineTarget.points);
+    await page.getByRole('button',{name:'Открыть прогноз'}).click();
+    await page.getByRole('button',{name:'Таблица',exact:true}).click();
+    const horizonLabels = {day:'1 день',week:'1 нед',month:'1 мес'};
+    async function setHorizon(value) {await page.getByRole('button',{name:horizonLabels[value],exact:true}).click();}
     async function checkRows(count) {
       const selectedRoute=await page.getByLabel('Маршрут',{exact:true}).inputValue();
       const selectedDay=await page.getByLabel('Дата (МСК)').inputValue();
-      const selectedHorizon=await page.getByLabel('Период',{exact:true}).inputValue();
+      const horizonText=await page.locator('.filter-bar__horizon [aria-pressed=true]').textContent();
+      const selectedHorizon=Object.keys(horizonLabels).find(key => horizonLabels[key] === horizonText);
       const firstDay=selectedHorizon === 'month' ? selectedDay.slice(0,7)+'-01' : selectedDay;
       const expectedRows=Array.from({length:count},(_,i) => {
         const stamp=new Date(Date.parse(firstDay+'T00:00:00Z')+i*(selectedHorizon==='day'?3600000:86400000));
@@ -85,8 +91,8 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
       assert.equal(await mapSvg.locator('polyline[stroke-width="5"]').getAttribute('points'),lineTarget.points);
     }
     await checkRows(24);
-    await page.getByLabel('Период',{exact:true}).selectOption('week'); await checkRows(7);
-    await page.getByLabel('Период',{exact:true}).selectOption('month'); await checkRows(30);
+    await setHorizon('week'); await checkRows(7);
+    await setHorizon('month'); await checkRows(30);
     await page.getByLabel('Дата (МСК)').fill('2025-12-01'); await checkRows(31);
     const downloaded = page.waitForEvent('download'); await page.getByRole('button',{name:'Скачать CSV'}).click();
     const download = await downloaded; const csv = fs.readFileSync(await download.path(),'utf8').replace(/^\uFEFF/,'').trim().split(/\r?\n/);
@@ -109,11 +115,11 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.waitForFunction(() => document.querySelector('tbody tr')?.dataset.route === '7'); await checkRows(31);
     await page.unroute('**/handoff/query');
     // Out-of-range weeks are explained and cannot be exported.
-    await page.getByLabel('Период',{exact:true}).selectOption('week');
+    await setHorizon('week');
     await page.getByLabel('Дата (МСК)').fill('2025-12-29');
     await page.getByRole('alert').waitFor(); assert.equal(await page.getByRole('button',{name:'Скачать CSV'}).isDisabled(),true);
     await page.getByLabel('Дата (МСК)').fill('2025-11-01');
-    await page.getByLabel('Период',{exact:true}).selectOption('day'); await checkRows(24);
+    await setHorizon('day'); await checkRows(24);
     for (const status of [503,410]) {
       await page.route('**/handoff/query',route => route.fulfill({status,contentType:'application/json',body:'{"error":{"code":"fixture"}}'}));
       await page.getByRole('button',{name:'Обновить прогноз',exact:true}).click(); await page.getByRole('alert').waitFor();
@@ -142,7 +148,17 @@ const close = (a,b) => assert.ok(Math.abs(a-b) <= 1e-9 + 1e-12*Math.abs(b), `${a
     await page.getByRole('button',{name:'Обновить прогноз',exact:true}).click(); await checkRows(24);
     await page.getByRole('button',{name:'График',exact:true}).click();
     await page.screenshot({path:output+'/desktop.png',fullPage:true});
-    await page.getByRole('button',{name:'Свернуть прогноз'}).click(); await page.getByRole('button',{name:'Открыть прогноз'}).click();
+    const retainedView = await mapSvg.getAttribute('viewBox');
+    await page.getByRole('button',{name:'Аналитика',exact:true}).click();
+    assert.equal(await page.locator('.analytics-view tbody tr').count(),24);
+    await page.getByRole('button',{name:'Карта',exact:true}).click();
+    assert.equal(await mapSvg.getAttribute('viewBox'),retainedView);
+    assert.equal(await mapViewport.evaluate(el => el.qaIdentity),'persistent');
+    await page.getByRole('button',{name:'Настройки',exact:true}).click();
+    await page.getByRole('dialog',{name:'Настройки',exact:true}).waitFor();
+    await page.getByRole('dialog',{name:'Настройки',exact:true}).press('Escape');
+    assert.equal(await page.getByRole('button',{name:'Настройки',exact:true}).getAttribute('aria-expanded'),'false');
+    await page.getByRole('button',{name:'Свернуть карточку'}).click(); await page.getByRole('button',{name:'Открыть прогноз'}).click();
     await page.locator('.forecast-card').press('Escape');
     await page.waitForFunction(() => document.activeElement?.textContent === 'Открыть прогноз');
     await page.getByRole('button',{name:'Открыть прогноз'}).click();

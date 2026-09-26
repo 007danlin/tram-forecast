@@ -19,7 +19,7 @@ ROOT_FILES = (
     "compose.handoff.yaml", "compose.load.yaml",
     "frontend/README.md", "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",
     "frontend/tsconfig.json", "frontend/vite.config.js",
-    "frontend/public/map-local/network.json", "data/README.md",
+    "frontend/public/map-local/network.json", "frontend/public/tram-icon.png", "data/README.md",
     "ml/reports/experiment-log.csv",
 )
 SOURCE_DIRS = (

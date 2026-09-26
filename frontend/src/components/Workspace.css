@@ -1,0 +1,99 @@
+.workspace {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace__map-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+/* Full-bleed map background: the map fills the whole workspace behind the
+   floating panels, edge to edge, no card/border/padding of its own. Still only
+   .tram-map and .tram-map__stage are touched (allowed: width/height/position),
+   and TramMap.tsx itself is untouched. */
+.workspace__map-wrap .tram-map {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workspace__map-wrap .tram-map__stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+/* TramMap's own heading/disclaimer text stays available to assistive tech but
+   isn't shown over the full-bleed map (per product decision: only
+   filters/card/timeline/zoom appear as visible chrome). */
+.workspace__map-wrap .tram-map > h2,
+.workspace__map-wrap .tram-map__note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Each line is already labelled on the map itself, so the separate colour
+   legend is redundant chrome here (product decision) rather than something
+   users need to reach. */
+.workspace__map-wrap .tram-map__legend {
+  display: none;
+}
+
+.workspace__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.workspace__overlay > * { pointer-events: auto; }
+
+/* top+bottom (rather than bottom+max-height) reserves a band clear of the
+   filters panel above, so the card can never grow up into it regardless of
+   viewport height. --filters-height is measured live from the actual FilterBar
+   element (see App.tsx) since its wrapped height varies a lot with viewport
+   width (one row on desktop, a tall stack on narrow phones) — a fixed guess
+   either wasted space or let the two panels collide. justify-content: flex-end
+   keeps the card (or the compact reopen button) anchored to the bottom of that
+   band, with the card's own internal scroll handling anything taller than it. */
+.workspace__overlay-card,
+.workspace__overlay-reopen {
+  position: absolute;
+  left: 20px;
+  top: calc(16px + var(--filters-height, 200px) + 20px);
+  bottom: 52px;
+  width: min(400px, calc(100% - 40px));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.workspace__overlay-card .forecast-card { max-height: 100%; }
+
+.workspace__overlay-timeline {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  left: 440px;
+}
+
+@media (max-width: 900px) {
+  .workspace__overlay-timeline { left: 20px; }
+  .workspace__overlay-card,
+  .workspace__overlay-reopen { bottom: 92px; }
+}
