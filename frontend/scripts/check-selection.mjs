@@ -83,18 +83,54 @@ for (const group of groups)
     assert.deepEqual(
       features.labels.map((l) => l.id),
       network.labels
-        .filter((l) => l.lanes.some((id) => ids.has(id)))
+        .filter((l) => l.lanes.some((id) => ids.has(id)) ||
+          features.stationSymbols.some((g) => g.labels.includes(l.id)))
         .map((l) => l.id),
     );
+    assert.deepEqual(
+      features.stationSymbols.map((g) => g.id),
+      network.stationSymbols.filter((g) => g.lanes.some((id) => ids.has(id)))
+        .map((g) => g.id),
+    );
+    for (const label of features.labels)
+      for (const group of network.stationSymbols.filter((g) => g.labels.includes(label.id)))
+        assert.ok(features.stationSymbols.includes(group), `Missing station symbols: ${label.text}`);
   }
 for (const number of ["", "not-on-map"]) {
   const features = routeFeatures(network, number);
   assert.equal(features.selection, undefined);
   assert.deepEqual(features.stops, []);
   assert.deepEqual(features.labels, []);
+  assert.deepEqual(features.stationSymbols, []);
+}
+const symbols = (number) => routeFeatures(network, number).stationSymbols.map((g) => g.id);
+for (const route of ["1", "16"]) {
+  assert.ok(symbols(route).includes("transfer-275")); // Southern Chertanovskaya
+  assert.ok(!symbols(route).includes("transfer-273")); // T2 terminal is separate
+}
+assert.ok(symbols("Т2").includes("transfer-273"));
+assert.ok(!symbols("Т2").includes("transfer-275"));
+assert.ok(symbols("50").includes("transfer-108")); // Terminal Novoslobodskaya
+assert.ok(symbols("13").includes("transfer-109")); // MCD at Three Stations
+assert.ok(!symbols("13").includes("transfer-023")); // Adjacent terminus belongs to 4/7
+// Printed terminal plates restore station associations missed by OCR.
+for (const [number, labelId, groupId] of [
+  ["10", "l068", "transfer-038"],
+  ["28", "l067", "transfer-039"],
+  ["12", "l340", "transfer-199"],
+]) {
+  const features = routeFeatures(network, number);
+  assert.ok(features.labels.some((l) => l.id === labelId), `Faded terminal name ${number}`);
+  assert.ok(features.stationSymbols.some((g) => g.id === groupId), `Missing terminal plates ${number}`);
+}
+for (const number of ["4", "7"]) {
+  const rokossovskogo = routeFeatures(network, number).stationSymbols
+    .find((g) => g.id === "transfer-023");
+  // PDF paths for both 4 and 7; selection must not filter the other number out.
+  assert.ok([14148, 14150].every((id) => rokossovskogo.originalPaths.includes(id)));
 }
 console.log(
-  "PASS every route selects its stops and labels; clear/unknown routes select nothing.",
+  "PASS every route selects its stops, labels and station symbols; separate same-name stations, clear/unknown selections.",
 );
 
 // Smooth paths retain all reviewed knots/endpoints and stay in the same corridor.

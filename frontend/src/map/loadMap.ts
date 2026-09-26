@@ -36,6 +36,14 @@ export type Stop = {
   y: number;
   label: string | null;
 };
+export type StationSymbols = {
+  id: string;
+  name: string;
+  labels: string[];
+  lanes: string[];
+  originalPaths: number[];
+  bounds: [number, number, number, number];
+};
 export type Network = {
   source: string;
   sha256: string;
@@ -45,6 +53,7 @@ export type Network = {
   labels?: MapLabel[];
   landmarks?: (IconGroup & { h: number })[];
   metro?: IconGroup[];
+  stationSymbols?: StationSymbols[];
   legend?: Record<string, string>; // номер маршрута → цвет
 };
 

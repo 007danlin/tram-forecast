@@ -72,6 +72,25 @@ try {
       if (!svg.includes(`id="glyph-${id}"`))
         throw new Error(`Нет контура подписи ${id}`);
   }
+  if (!map.stationSymbols?.length ||
+      reference.station_symbol_count !== map.stationSymbols.length)
+    throw new Error("Отсутствуют проверенные значки станций");
+  const laneIds = new Set(map.lanes.map((lane) => lane.id));
+  const labelIds = new Set(map.labels.map((label) => label.id));
+  const symbolIds = new Set();
+  for (const group of map.stationSymbols) {
+    if (symbolIds.has(group.id) || !group.lanes.length ||
+        group.lanes.some((id) => !laneIds.has(id)) ||
+        group.labels.some((id) => !labelIds.has(id)) ||
+        group.bounds.length !== 4 || !group.bounds.every(Number.isFinite) ||
+        group.bounds[2] <= group.bounds[0] || group.bounds[3] <= group.bounds[1] ||
+        !group.originalPaths.length || !svg.includes(`id="station-symbol-${group.id}"`))
+      throw new Error(`Неполные значки станции ${group.id}`);
+    symbolIds.add(group.id);
+    for (const id of group.originalPaths)
+      if (!svg.includes(`id="glyph-${id}"`))
+        throw new Error(`Нет исходного контура значка ${id}`);
+  }
   console.log(
     "Карта присутствует: " +
       ["lanes", "stops", "labels", "landmarks", "metro"]

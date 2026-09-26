@@ -41,11 +41,17 @@ export function routeFeatures(
     group.routes.includes(route),
   );
   const laneIds = new Set(selection?.lanes.map((lane) => lane.id) ?? []);
+  const stationSymbols = (network.stationSymbols ?? []).filter((group) =>
+    group.lanes.some((id) => laneIds.has(id)),
+  );
+  // Reviewed terminal plates also recover station associations missed by OCR.
+  const stationLabelIds = new Set(stationSymbols.flatMap((group) => group.labels));
   return {
     selection,
     stops: (network.stops ?? []).filter((stop) => laneIds.has(stop.lane)),
     labels: (network.labels ?? []).filter((label) =>
-      label.lanes.some((id) => laneIds.has(id)),
+      label.lanes.some((id) => laneIds.has(id)) || stationLabelIds.has(label.id),
     ),
+    stationSymbols,
   };
 }

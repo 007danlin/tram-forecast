@@ -141,6 +141,10 @@ export const TramMap = memo(function TramMap({
     if (!selection || !size.w || !size.h) return;
     const points = selection.lanes.flatMap((lane) => lane.points);
     for (const stop of features?.stops ?? []) points.push([stop.x, stop.y]);
+    for (const group of features?.stationSymbols ?? []) {
+      const [x0, y0, x1, y1] = group.bounds;
+      points.push([x0, y0], [x1, y1]);
+    }
     for (const label of features?.labels ?? []) {
       const angle = (label.angle * Math.PI) / 180;
       for (const line of label.lines)
@@ -414,6 +418,14 @@ export const TramMap = memo(function TramMap({
                     cy={stop.y}
                     r="0.8"
                     fill="#fff"
+                    stroke="none"
+                  />
+                ))}
+                {features?.stationSymbols.map((group) => (
+                  <use
+                    key={group.id}
+                    data-selected-symbol={group.id}
+                    href={`${MAP_BASE}schematic.svg#station-symbol-${group.id}`}
                     stroke="none"
                   />
                 ))}

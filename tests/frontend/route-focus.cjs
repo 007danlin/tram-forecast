@@ -105,7 +105,7 @@ const { chromium, webkit } = require("playwright");
     assert.equal(
       await page
         .locator(
-          "[data-selected-lane],[data-selected-stop],[data-selected-label]",
+          "[data-selected-lane],[data-selected-stop],[data-selected-label],[data-selected-symbol]",
         )
         .count(),
       0,

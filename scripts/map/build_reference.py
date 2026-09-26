@@ -68,6 +68,9 @@ def main():
     labels=[label for label in network['labels'] if label.get('originalGlyphs')]
     glyphs={seq for label in labels for seq in label['originalGlyphs']}
     label_defs=''.join('<g id="station-label-'+label['id']+'">'+''.join(f'<use href="#glyph-{seq}"/>' for seq in label['originalGlyphs'])+'</g>' for label in labels)
+    symbols = network.get('stationSymbols', [])
+    glyphs.update(seq for group in symbols for seq in group['originalPaths'])
+    symbol_defs = ''.join('<g id="station-symbol-'+group['id']+'">'+''.join(f'<use href="#glyph-{seq}"/>' for seq in group['originalPaths'])+'</g>' for group in symbols)
     # get_drawings() normalizes rectangles in PyMuPDF 1.28.2, losing part of
     # their winding information (e.g. the white frame around the Kremlin).
     drawings = page.get_cdrawings()
@@ -86,12 +89,13 @@ def main():
         identifier=f' id="glyph-{d["seqno"]}"' if d['seqno'] in glyphs else ''
         elements.append(f'<path{identifier} fill="{color}"{rule}{opacity} d="{path(d["items"])}"/>')
     width,height=number(page.rect.width),number(page.rect.height)
-    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}"><title>Трамваи Москвы — векторная схема</title><defs><clipPath id="map"><rect x="62" y="112" width="1065" height="1178"/></clipPath>{label_defs}</defs><g clip-path="url(#map)">' + ''.join(elements) + '</g></svg>'
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}"><title>Трамваи Москвы — векторная схема</title><defs><clipPath id="map"><rect x="62" y="112" width="1065" height="1178"/></clipPath>{label_defs}{symbol_defs}</defs><g clip-path="url(#map)">' + ''.join(elements) + '</g></svg>'
     out=ROOT/'frontend/public/map-local/schematic.svg'
     out.write_text(svg)
     subprocess.run(['npx', '--yes', '--package=svgo@4.0.0', '--', 'svgo', str(out), '-o', str(out), '--multipass', '--config', str(ROOT/'scripts/map/svgo-reference.mjs')], check=True)
     svg = out.read_text()
     metadata={'source':args.pdf.name,'source_sha256':digest,'bounds':BOUNDS,'paths':len(elements),'sha256':hashlib.sha256(svg.encode()).hexdigest(),'raster_images':0,'excluded_poster_paths':sorted(EXCLUDE),'favicon_sha256':hashlib.sha256(favicon.read_bytes()).hexdigest(),'station_label_count':len(labels),'optimizer':'svgo 4.0.0 --multipass','path_extraction':'get_cdrawings; signed rectangle coordinates preserve compound-path winding','note':'Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.'}
+    metadata['station_symbol_count'] = len(symbols)
     (out.parent/'schematic.meta.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
     print(f'{len(elements)} vector paths; {out.stat().st_size} bytes; no images/scripts/external links')
 
