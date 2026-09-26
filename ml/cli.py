@@ -132,7 +132,30 @@ def command_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_improve_score(args: argparse.Namespace) -> int:
+    from ml.score_improvement import run_study
+    result = run_study(args.dataset_dir, args.config, args.baseline_artifact,
+                       args.baseline_submission, args.output_dir, args.resume)
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
+
+
+def command_score_v3(args: argparse.Namespace) -> int:
+    from ml.score_v3_study import run_study
+
+    result = run_study(
+        args.dataset_dir,
+        args.config,
+        args.output_dir,
+        resume=args.resume,
+    )
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
+
+
 def command_forecast(args: argparse.Namespace) -> int:
+    if Path(args.output).exists():
+        raise ValueError("Forecast exists; choose a new output")
     prediction = predict_artifact(args.artifact_dir, args.start, args.end)
     destination = Path(args.output)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -142,6 +165,9 @@ def command_forecast(args: argparse.Namespace) -> int:
 
 
 def command_submission(args: argparse.Namespace) -> int:
+    preflight_path = Path(args.preflight_output) if args.preflight_output else Path(args.output).with_suffix(".preflight.json")
+    if Path(args.output).exists() or preflight_path.exists():
+        raise ValueError("Submission/preflight exists; choose new outputs")
     prediction = predict_artifact(args.artifact_dir, FORECAST_START, FORECAST_END)
     output = write_submission(prediction, args.template, args.output, scope=args.scope)
     preflight = submission_preflight(output, args.template, scope=args.scope)
@@ -293,6 +319,22 @@ def command_year_scenario(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="TramFlow reproducible ML batch pipeline")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    improve = subparsers.add_parser("improve-score", help="Run the bounded score-improvement-v2 study")
+    improve.add_argument("--dataset-dir", required=True)
+    improve.add_argument("--config", required=True)
+    improve.add_argument("--baseline-artifact", required=True)
+    improve.add_argument("--baseline-submission", required=True)
+    improve.add_argument("--output-dir", required=True)
+    improve.add_argument("--resume", action="store_true")
+    improve.set_defaults(func=command_improve_score)
+
+    score_v3 = subparsers.add_parser("score-v3", help="Run the bounded origin-safe score-v3 study")
+    score_v3.add_argument("--dataset-dir", required=True)
+    score_v3.add_argument("--config", default="ml/experiments/score-v3.json")
+    score_v3.add_argument("--output-dir", required=True)
+    score_v3.add_argument("--resume", action="store_true")
+    score_v3.set_defaults(func=command_score_v3)
 
     verify = subparsers.add_parser("verify-target", help="Rebuild labels from raw CSV in chunks")
     verify.add_argument("--dataset-dir", required=True)
