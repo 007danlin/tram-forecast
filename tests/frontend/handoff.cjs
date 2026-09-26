@@ -4,6 +4,18 @@ const fs = require("node:fs");
 const { chromium } = require("playwright");
 const close = (a, b) =>
   assert.ok(Math.abs(a - b) <= 1e-9 + 1e-12 * Math.abs(b), `${a} != ${b}`);
+async function settleMapLayout(page, mapSvg) {
+  let previous = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    const current = await mapSvg.getAttribute("viewBox");
+    if (current === previous) return;
+    previous = current;
+  }
+  throw new Error("map viewBox did not settle after viewport resize");
+}
 (async () => {
   const { baseURL, forecast, output, sourceKind } = JSON.parse(
     fs.readFileSync(0, "utf8"),
@@ -424,6 +436,7 @@ const close = (a, b) =>
     );
     // Theme changes retain context, camera, point selection and result without network.
     await page.setViewportSize({ width: 1280, height: 800 });
+    await settleMapLayout(page, mapSvg);
     await setTheme(page, "dark");
     const totalBefore = await page
       .getByTestId("total")

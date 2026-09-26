@@ -6,6 +6,10 @@
 в [README](README.md), [frontend](frontend/README.md), [backend](backend/README.md)
 и [серверной инструкции](deploy/README.md).
 
+Browser contract после смены mobile viewport ожидает стабилизации `ResizeObserver`
+карты перед фиксацией камеры. Это устраняет гонку теста и не меняет интерфейс или
+контракты API.
+
 ## ML-аудит G0/G2 и отрицательный G1 — 26.09.2026
 
 Дополнительный локальный пакет `artifacts/champion-b2-g0-g2-20260926-final-v2.zip`
