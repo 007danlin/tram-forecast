@@ -10,8 +10,9 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "prebuild": "node scripts/check-map.mjs",
-    "check:map": "node scripts/check-map.mjs"
+    "prebuild": "node scripts/check-map.mjs && npm run check:selection",
+    "check:map": "node scripts/check-map.mjs",
+    "check:selection": "node --experimental-strip-types scripts/check-selection.mjs"
   },
   "dependencies": {
     "react": "19.1.0",

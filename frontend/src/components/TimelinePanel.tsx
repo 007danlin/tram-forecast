@@ -1,55 +1,72 @@
-import './TimelinePanel.css';
-import { format, useForecastData } from '../useForecast';
-import type { ForecastPoint } from './ForecastData';
-
-export function TimelinePanel({
-  points, selectedIndex, onSelectIndex, playing, onTogglePlay,
-}: {
-  points: ForecastPoint[];
-  selectedIndex: number | null;
-  onSelectIndex: (i: number) => void;
-  playing: boolean;
-  onTogglePlay: () => void;
-}) {
-  const forecast = useForecastData();
-  const hasData = points.length > 0;
-  const index = selectedIndex ?? 0;
-  const current = points[index];
-
+import type { CSSProperties } from "react";
+import "./TimelinePanel.css";
+import { format, useForecastData } from "../useForecast";
+import { intervalLabel } from "../display";
+import { Button, Icon } from "./ui";
+export function TimelinePanel() {
+  const f = useForecastData(),
+    current = f.points[f.selected];
+  const hasData = f.points.length > 0 && !f.busy;
+  const label = current
+    ? intervalLabel(
+        current.start,
+        current.end,
+        f.current?.filters.resolution === "day",
+      )
+    : "";
   return (
-    <div className="timeline-panel">
-      <button
-        type="button"
-        className="timeline-panel__play"
-        onClick={onTogglePlay}
+    <section className="timeline-panel" aria-label="Временная панель">
+      <Button
+        variant="ghost"
+        className="timeline-panel__play icon-button"
         disabled={!hasData}
-        aria-label={playing ? 'Пауза' : 'Воспроизвести'}
-        aria-pressed={playing}
+        aria-label={f.playing ? "Пауза" : "Воспроизвести"}
+        aria-pressed={f.playing}
+        onClick={() => {
+          if (f.selected >= f.points.length - 1) f.setSelected(0);
+          f.setPlaying((v) => !v);
+        }}
       >
-        {playing ? '⏸' : '▶'}
-      </button>
+        <Icon name={f.playing ? "pause" : "play"} />
+      </Button>
       <div className="timeline-panel__mid">
+        <div className="timeline-panel__label">
+          {current ? (
+            <>
+              <strong>{label} · МСК</strong>
+              <span>
+                {current.value === null
+                  ? "Нет данных"
+                  : `${format(current.value)} посадок`}
+              </span>
+            </>
+          ) : (
+            "Нет доступных точек"
+          )}
+        </div>
         <input
+          style={
+            {
+              "--progress": `${(f.selected / Math.max(1, f.points.length - 1)) * 100}%`,
+            } as CSSProperties
+          }
           type="range"
-          className="timeline-panel__slider"
           min={0}
-          max={Math.max(0, points.length - 1)}
-          value={index}
+          max={Math.max(0, f.points.length - 1)}
+          value={f.selected}
           disabled={!hasData}
-          onChange={e => onSelectIndex(Number(e.target.value))}
           aria-label="Точка временного ряда"
-          aria-valuetext={current ? `${current.timestamp.slice(0, 10)} ${current.timestamp.slice(11, 16)}, ${current.value}` : undefined}
+          aria-valuetext={
+            current
+              ? `${label}, МСК, ${format(current.value)} успешных посадок`
+              : "Нет данных"
+          }
+          onChange={(e) => {
+            f.setPlaying(false);
+            f.setSelected(Number(e.target.value));
+          }}
         />
-        <span className="timeline-panel__label">
-          {current
-            ? <>Дата <strong>{current.timestamp.slice(0, 10)}</strong>, время <strong>{current.timestamp.slice(11, 16)}</strong> ({current.timestamp.slice(19)}) — {format(current.value)}</>
-            : 'Нет доступных точек'}
-        </span>
       </div>
-      <div className="timeline-panel__step">
-        <label htmlFor="timeline-step">Шаг</label>
-        <select id="timeline-step" disabled value={forecast.current?.filters.resolution ?? 'hour'}><option value="hour">1 ч · МСК</option><option value="day">1 сутки · МСК</option></select>
-      </div>
-    </div>
+    </section>
   );
 }

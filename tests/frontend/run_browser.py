@@ -59,6 +59,8 @@ def main():
                 output.mkdir(parents=True, exist_ok=True)
                 subprocess.run([sys.executable, '-m', 'backend.handoff.check', '--base-url', base, '--release', str(release)], cwd=ROOT, env=env, check=True)
                 result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/handoff.cjs')], input=json.dumps({'baseURL': base, 'forecast': str(forecast), 'output': str(output), 'sourceKind': source_kind}), text=True, cwd=ROOT, env=env)
+                if result.returncode == 0:
+                    result = subprocess.run([os.environ.get('QA_NODE', 'node'), str(ROOT / 'tests/frontend/map-continuity.cjs'), base], cwd=ROOT, env=env)
                 if result.returncode:
                     log.seek(0)
                     print(log.read()[-5000:])

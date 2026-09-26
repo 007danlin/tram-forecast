@@ -85,7 +85,10 @@ class PackageTests(unittest.TestCase):
                 self.assertTrue(set(REQUIRED).issubset(names), sorted(set(REQUIRED) - names))
                 for name in ("compose.yaml", "compose.handoff.yaml", "compose.load.yaml",
                              "backend/handoff/install.py", "backend/requirements.txt",
-                             "frontend/public/map-local/network.json", "frontend/public/tram-icon.png", "tests/load/handoff.js"):
+                             "frontend/public/map-local/network.json", "frontend/public/tram-icon.png", "tests/load/handoff.js",
+                             "frontend/public/map-local/schematic.svg", "frontend/public/map-local/schematic.meta.json",
+                             "frontend/public/fonts/Manrope.woff2", "frontend/public/fonts/OFL-Manrope.txt",
+                             "frontend/public/theme-init.js", "frontend/public/theme-base.css"):
                     self.assertIn(name, names)
                 self.assertFalse(any(packager.local_only(name) for name in names))
                 note = z.read("tram-forecast/PREPARATION-README.md").decode()

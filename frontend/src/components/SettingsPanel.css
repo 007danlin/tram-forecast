@@ -1,30 +1,32 @@
-.settings-overlay {
+.settings-panel {
   position: fixed;
   inset: 0;
-  background: rgba(24, 36, 58, .35);
-  display: flex;
-  justify-content: flex-end;
-  z-index: 40;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  padding: 24px;
+  overflow: auto;
+  box-shadow: var(--shadow);
 }
-
-.settings-panel {
-  width: min(360px, 92vw);
-  height: 100%;
-  background: var(--surface-solid);
-  color: var(--ink);
-  box-shadow: -8px 0 24px rgba(24, 36, 58, .2);
-  padding: 16px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.settings-panel::backdrop {
+  background: #08131bb3;
 }
-
-.settings-panel__head { display: flex; align-items: center; justify-content: space-between; }
-.settings-panel__head h2 { margin: 0; font-size: 17px; }
-.settings-panel__close { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-solid); color: var(--ink); cursor: pointer; }
-
-.settings-panel section { margin: 0; }
-.settings-panel h3 { margin: 0 0 6px; font-size: 13px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
-.settings-panel p { margin: 0 0 8px; font-size: 14px; }
-.settings-panel ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 6px; }
+.settings-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.settings-panel > p {
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+}
+@media (max-width: 767px) {
+  .settings-panel {
+    padding: 18px;
+  }
+}

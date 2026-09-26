@@ -1,0 +1,43 @@
+:root {
+  color-scheme: dark;
+  --app-bg: #132330;
+  --header-bg: #132330;
+  --panel-bg: #1d3343;
+  --control-bg: #1d3343;
+  --control-hover: #294556;
+  --text-primary: #f2f6f8;
+  --text-secondary: #bdc9d1;
+  --border-subtle: #365062;
+  --control-border: #758a99;
+  --brand-primary: #e4000d;
+  --brand-hover: #c9000b;
+  --on-brand: #fff;
+  --accent-text: #ff6470;
+  --chart-line: #ff6470;
+  --focus-ring: #ff6470;
+  --map-paper: #fff;
+  --danger-text: #ffb4ba;
+  --warning-text: #f4d58d;
+  --success-text: #9cd8bb;
+  --radius: 12px;
+  --radius-control: 8px;
+  --shadow: 0 10px 30px #0002;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --app-bg: #f5f6f7;
+  --header-bg: #fff;
+  --panel-bg: #fff;
+  --control-bg: #f0f2f4;
+  --control-hover: #e7ebee;
+  --text-primary: #19252d;
+  --text-secondary: #596773;
+  --border-subtle: #dde3e8;
+  --control-border: #75838e;
+  --accent-text: #c9000b;
+  --chart-line: #e4000d;
+  --focus-ring: #e4000d;
+  --danger-text: #b0000b;
+  --warning-text: #795400;
+  --success-text: #216548;
+}

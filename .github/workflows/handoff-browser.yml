@@ -30,4 +30,6 @@ jobs:
         if: always()
         with:
           name: synthetic-ui-screenshots
-          path: artifacts/verification/ui-synthetic/
+          path: |
+            artifacts/verification/ui-synthetic/
+            artifacts/verification/map-continuity/

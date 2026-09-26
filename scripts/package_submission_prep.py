@@ -19,6 +19,13 @@ ROOT_FILES = (
     "compose.handoff.yaml", "compose.load.yaml",
     "frontend/README.md", "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",
     "frontend/tsconfig.json", "frontend/vite.config.js",
+    "frontend/public/map-local/schematic.svg",
+    "frontend/public/map-local/schematic.meta.json",
+    "frontend/public/fonts/Manrope.woff2",
+    "frontend/public/fonts/OFL-Manrope.txt",
+    "frontend/public/fonts/README.md",
+    "frontend/public/theme-init.js",
+    "frontend/public/theme-base.css",
     "frontend/public/map-local/network.json", "frontend/public/tram-icon.png", "data/README.md",
     "ml/reports/experiment-log.csv",
 )

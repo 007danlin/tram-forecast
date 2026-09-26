@@ -1,0 +1,8 @@
+:root {
+  background: #132330;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  background: #f5f6f7;
+  color-scheme: light;
+}

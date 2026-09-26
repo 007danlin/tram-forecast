@@ -1,20 +1,61 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 try {
-  const map = JSON.parse(readFileSync(new URL('../public/map-local/network.json', import.meta.url), 'utf8'));
-  if (!Array.isArray(map.viewBox) || map.viewBox.length !== 4 ||
-      !map.viewBox.every(Number.isFinite) || map.viewBox[2] <= 0 || map.viewBox[3] <= 0) {
-    throw new Error('Некорректный viewBox карты');
+  const map = JSON.parse(
+    readFileSync(
+      new URL("../public/map-local/network.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  if (
+    !Array.isArray(map.viewBox) ||
+    map.viewBox.length !== 4 ||
+    !map.viewBox.every(Number.isFinite) ||
+    map.viewBox[2] <= 0 ||
+    map.viewBox[3] <= 0
+  ) {
+    throw new Error("Некорректный viewBox карты");
   }
-  for (const key of ['lanes', 'stops', 'labels', 'landmarks', 'metro']) {
+  for (const key of ["lanes", "stops", "labels", "landmarks", "metro"]) {
     if (!Array.isArray(map[key]) || map[key].length === 0) {
-      throw new Error(`Карта неполная: отсутствует ${key}. Нужен итоговый файл после всех шагов подготовки.`);
+      throw new Error(
+        `Карта неполная: отсутствует ${key}. Нужен итоговый файл после всех шагов подготовки.`,
+      );
     }
   }
-  if (!map.legend || Object.keys(map.legend).length === 0) throw new Error('Отсутствует легенда маршрутов');
-  console.log('Карта присутствует: ' + ['lanes', 'stops', 'labels', 'landmarks', 'metro'].map(k => `${k}=${map[k].length}`).join(', '));
+  if (!map.legend || Object.keys(map.legend).length === 0)
+    throw new Error("Отсутствует легенда маршрутов");
+  const vector = readFileSync(
+    new URL("../public/map-local/schematic.svg", import.meta.url),
+  );
+  const reference = JSON.parse(
+    readFileSync(
+      new URL("../public/map-local/schematic.meta.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  if (
+    reference.source_sha256 !== map.sha256 ||
+    createHash("sha256").update(vector).digest("hex") !== reference.sha256
+  )
+    throw new Error(
+      "Векторная схема не соответствует проверенному источнику/контрольной сумме",
+    );
+  if (/<(?:image|script)\b|(?:href|src)=[\"\']https?:/i.test(vector.toString()))
+    throw new Error(
+      "Векторная схема не должна содержать растр, скрипты или внешние ресурсы",
+    );
+  console.log(
+    "Карта присутствует: " +
+      ["lanes", "stops", "labels", "landmarks", "metro"]
+        .map((k) => `${k}=${map[k].length}`)
+        .join(", "),
+  );
 } catch (error) {
-  console.error('Сборка остановлена: ' + error.message);
-  console.error('Добавьте готовый frontend/public/map-local/network.json в тот же PR, что и изменения карты. Получателям достаточно git pull; PDF и OCR не нужны.');
+  console.error("Сборка остановлена: " + error.message);
+  console.error(
+    "Добавьте готовый frontend/public/map-local/network.json в тот же PR, что и изменения карты. Получателям достаточно git pull; PDF и OCR не нужны.",
+  );
   process.exitCode = 1;
 }
