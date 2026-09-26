@@ -14,8 +14,9 @@ import pymupdf
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED = '13bf11ade2d5a36bd3af8b4990e505e9692cf39eacbdb91f79e419f83bcf5c6f'
-# Original map field; excludes the poster title, printed route legend and footer.
-BOUNDS = [62, 112, 1065, 1178]
+# Southern labels/arrows end at y=1307.553; the printed legend starts at 1310.05.
+# Keep the complete MKAD and southern metro/MCD labels with a small clear margin.
+BOUNDS = [62, 112, 1065, 1198]
 # Poster decorations in this checksum-locked source; no network/station shapes.
 HEART = tuple(range(14726, 14733))
 HEART_BACK = 14608
@@ -89,7 +90,8 @@ def main():
         identifier=f' id="glyph-{d["seqno"]}"' if d['seqno'] in glyphs else ''
         elements.append(f'<path{identifier} fill="{color}"{rule}{opacity} d="{path(d["items"])}"/>')
     width,height=number(page.rect.width),number(page.rect.height)
-    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}"><title>Трамваи Москвы — векторная схема</title><defs><clipPath id="map"><rect x="62" y="112" width="1065" height="1178"/></clipPath>{label_defs}{symbol_defs}</defs><g clip-path="url(#map)">' + ''.join(elements) + '</g></svg>'
+    clip = ' '.join(f'{key}="{number(value)}"' for key, value in zip(('x', 'y', 'width', 'height'), BOUNDS))
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}"><title>Трамваи Москвы — векторная схема</title><defs><clipPath id="map"><rect {clip}/></clipPath>{label_defs}{symbol_defs}</defs><g clip-path="url(#map)">' + ''.join(elements) + '</g></svg>'
     out=ROOT/'frontend/public/map-local/schematic.svg'
     out.write_text(svg)
     subprocess.run(['npx', '--yes', '--package=svgo@4.0.0', '--', 'svgo', str(out), '-o', str(out), '--multipass', '--config', str(ROOT/'scripts/map/svgo-reference.mjs')], check=True)

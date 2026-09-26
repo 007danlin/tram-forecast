@@ -13,7 +13,7 @@ type View = { cx: number; cy: number; zoom: number };
 const DEFAULT_CENTER = { cx: 562.3, cy: 646.4 },
   DEFAULT_ZOOM = 4,
   MAX_ZOOM = 14;
-const BOUNDS = { x: 62, y: 112, w: 1065, h: 1178 };
+const BOUNDS = { x: 62, y: 112, w: 1065, h: 1198 };
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 function distance(px: number, py: number, points: [number, number][]) {

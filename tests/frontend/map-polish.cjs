@@ -72,6 +72,33 @@ const { chromium, webkit } = require("playwright");
         ctx.drawImage(image, 0, 0);
         result.brown = [[124, 334.1], [129.5, 329], [132.5, 325.4]]
           .map(([x, y]) => sample(x, y, 116, 315));
+        // PDF-verified southern edge: these names and the MKAD used to be
+        // clipped at y=1290 even though their outlines continue to y=1307.553.
+        URL.revokeObjectURL(url);
+        svg.setAttribute("viewBox", "480 1278 190 32");
+        svg.setAttribute("width", "760");
+        svg.setAttribute("height", "128");
+        url = URL.createObjectURL(new Blob(
+          [new XMLSerializer().serializeToString(svg)],
+          { type: "image/svg+xml" },
+        ));
+        image.src = url;
+        await image.decode();
+        canvas.width = 760;
+        canvas.height = 128;
+        ctx.drawImage(image, 0, 0);
+        result.south = {
+          labels: [[558, 1301, 16, 7], [591, 1301, 31, 7], [633, 1304, 17, 4]]
+            .map(([x, y, w, h]) => {
+              const data = ctx.getImageData((x - 480) * 4, (y - 1278) * 4, w * 4, h * 4).data;
+              let count = 0;
+              for (let i = 0; i < data.length; i += 4)
+                if (data[i + 3] === 255 && Math.max(...data.slice(i, i + 3)) < 190) count++;
+              return count;
+            }),
+          mkad: Array.from(ctx.getImageData((520 - 480) * 4, (1291.5 - 1278) * 4, 1, 1).data),
+          png: canvas.toDataURL("image/png").split(",")[1],
+        };
         return result;
       } finally {
         URL.revokeObjectURL(url);
@@ -88,6 +115,12 @@ const { chromium, webkit } = require("playwright");
         `Bratsevo facade ${i} must retain mixed-path cutouts: ${pixel}`);
     fs.writeFileSync(`${out}/${engine.name()}-kremlin-detail.png`,
       Buffer.from(kremlin.png, "base64"));
+    for (const [i, count] of kremlin.south.labels.entries())
+      assert.ok(count > 20, `Southern station label ${i} must not be clipped: ${count}`);
+    assert.ok(kremlin.south.mkad.every((c) => c > 245),
+      `Bottom of MKAD must remain visible: ${kremlin.south.mkad}`);
+    fs.writeFileSync(`${out}/${engine.name()}-southern-detail.png`,
+      Buffer.from(kremlin.south.png, "base64"));
     await page.getByLabel("Маршрут", { exact: true }).selectOption("50");
     assert.equal(await page.locator("path[data-selected-lane]").count(), 3);
     assert.equal(await page.locator("polyline[data-selected-lane]").count(), 0);
@@ -114,6 +147,10 @@ const { chromium, webkit } = require("playwright");
           .click();
         const svg = page.locator(".tram-map__viewport svg");
         const before = await svg.getAttribute("viewBox");
+        const [vx, vy, vw, vh] = before.split(" ").map(Number);
+        assert.ok(vx <= 62.001 && vx + vw >= 1126.999 &&
+          vy <= 112.001 && vy + vh >= 1309.999,
+          "Whole-map camera must include the complete southern edge");
         await page
           .getByRole("button", { name: "Уменьшить", exact: true })
           .click();
@@ -147,6 +184,7 @@ const { chromium, webkit } = require("playwright");
       ["emblem-removed", 1018, 200, 4],
       ["footer-removed", 210, 1287, 4],
       ["kremlin-restored", 544, 684, 12],
+      ["southern-edge", 604, 1300, 6],
     ]) {
       await page
         .getByRole("button", { name: "Вся схема", exact: true })
@@ -169,11 +207,19 @@ const { chromium, webkit } = require("playwright");
         const e = document.querySelector(".tram-map__viewport svg");
         return e.getBoundingClientRect().width / e.viewBox.baseVal.width > s;
       }, info.scale * 1.1);
+      if (name === "southern-edge") {
+        for (let i = 0; i < 4; i++)
+          await page.locator(".tram-map__viewport").press("ArrowDown");
+        const bottom = await page.locator(".tram-map__viewport svg")
+          .evaluate((svg) => svg.viewBox.baseVal.y + svg.viewBox.baseVal.height);
+        assert.ok(Math.abs(bottom - 1310) < .001,
+          `Panning must reach the full southern edge: ${bottom}`);
+      }
       await page.screenshot({ path: `${out}/${engine.name()}-${name}.png` });
     }
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${engine.name()}: Kremlin walls, seven windows and borders; smooth selected paths, TramFlow title, local heart favicon, seamless paper at minimum zoom, mobile/desktop themes.`,
+      `PASS ${engine.name()}: Kremlin details; complete southern labels/MKAD and camera bounds; smooth paths, TramFlow title, heart favicon, seamless paper, mobile/desktop themes.`,
     );
   } finally {
     await browser.close();
