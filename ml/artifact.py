@@ -44,7 +44,12 @@ def sha256_file(path: str | Path) -> str:
 
 
 def _versions() -> dict[str, str]:
-    return {name: importlib.metadata.version(name) for name in ("numpy", "pandas", "scikit-learn", "joblib")}
+    result = {name: importlib.metadata.version(name) for name in ("numpy", "pandas", "scikit-learn", "joblib")}
+    try:
+        result["catboost"] = importlib.metadata.version("catboost")
+    except importlib.metadata.PackageNotFoundError:
+        pass
+    return result
 
 
 def _write_artifact(
@@ -133,8 +138,11 @@ def _write_artifact(
             )
             if enabled
         ],
-        "random_seed": RANDOM_SEED,
-        "model_parameters": getattr(
+        "random_seed": config.get("seed", RANDOM_SEED) if config else RANDOM_SEED,
+        "model_parameters": {
+            "config": config,
+            "fit_details": getattr(model, "fit_details_", {}),
+        } if model_name.startswith("score_") else getattr(
             model,
             "parameter_manifest",
             {
@@ -184,7 +192,7 @@ def _write_artifact(
     feature_schema = {
         "schema_version": MODEL_SCHEMA_VERSION,
         "keys": {"route": "int", "date": "YYYY-MM-DD", "hour": "int[0,23]"},
-        "calendar_features": ["route", "hour", "weekday", "month", "is_weekend", "day_of_year_sin", "day_of_year_cos"],
+        "calendar_features": getattr(model, "feature_columns_", ["route", "hour", "weekday", "month", "is_weekend", "day_of_year_sin", "day_of_year_cos"]),
         "official_calendar_features": list(HOLIDAY_MODEL_COLUMNS) if model.include_official_calendar else [],
         "weather_features": list(model.selected_weather_columns) if model.include_weather else [],
         "experiment_config": config,
@@ -313,6 +321,8 @@ def write_submission(
     *,
     scope: str = "sample",
 ) -> Path:
+    if Path(output_path).exists():
+        raise ValueError("Submission exists; choose a new output")
     template = pd.read_csv(template_path, sep=";")
     expected_columns = ["route", "date", "hour", "prediction"]
     if list(template.columns) != expected_columns:

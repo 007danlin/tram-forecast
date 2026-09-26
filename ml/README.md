@@ -16,8 +16,18 @@
 Маршрут 5 исключён из обучения, target-отчёта и области применения по позднему
 QA-дополнению. Однако фактический sample всё ещё содержит его: 14 640 строк,
 SHA-256 `71c8126bb51068c936462a170da885bad860fc91a58b3d2ac731876d324d7ec3`.
-Поэтому адаптер готовит отдельные 10- и 9-маршрутные кандидаты; финальный формат
-не выбирается без согласования. Неизвестные маршруты не поддерживаются.
+26.09.2026 Даниэль подтвердил разрешение организаторов на нули либо придуманные
+значения № 5. Принято сохранять полный sample и нулевой fallback: 14 640 строк.
+Адаптер поддерживает оба scope; девятимаршрутный экспорт теперь диагностический.
+Устаревший статус конфликта в metadata/preflight ещё не обновлён в коде;
+исправление предусмотрено [ТЗ v3](../docs/team-specs/georgy-score-v3.md).
+Неизвестные маршруты не поддерживаются.
+
+Аудит следующей серии: [повторённые измерения](reports/score-audit-2026-09-26.md)
+и [источники](../docs/team-specs/score-v3-sources.md). На общем протоколе четырёх
+61-дневных окон текущий ансамбль даёт 0,84484148; на повторной диагностике
+сентября–октября — 0,82900943. Это не score платформы: последний результат
+0,83732 подтверждён Даниэлем. Аудит не заменял final model, CSV или серверный release.
 
 ## Установка
 
@@ -292,3 +302,88 @@ python -m scripts.package_ml_handoff --artifact-dir artifacts/quality-085/calend
 Manifest, CSV и полная сетка 14 640 ключей проверяются до публикации. ZIP и
 `.zip.sha256` не перезаписываются; симлинки и лишние файлы отклоняются.
 Результаты текущего повторения и ограничения: `docs/verification-priority-implementation.md`.
+
+## Серия score-improvement-v2
+
+Команда `improve-score` реализует отдельный протокол из
+[ТЗ](../docs/team-specs/score-improvement-v2.md). Старые `SELECTION_FOLDS`, имена
+моделей и формат handoff остаются прежними. Новые модели имеют имена
+`score_profile_v2`, `score_level_v2`, `score_hgbt_v2`, `score_catboost_v2`,
+`score_blend_v2`, `score_direct_v2`; их конфигурации принимает общий factory,
+`train --evaluation-report` и обычный batch/export.
+
+Используйте Python 3.12. CatBoost — отдельная необязательная зависимость:
+
+```sh
+python3.12 -m venv artifacts/.score-venv
+artifacts/.score-venv/bin/python -m pip install -r ml/requirements-score.txt
+export DATASET_DIR="/absolute/path/to/unpacked/dataset"
+export SCORE_RUN="artifacts/experiments/score-improvement-v2-run01"
+LOKY_MAX_CPU_COUNT=4 OMP_NUM_THREADS=4 artifacts/.score-venv/bin/python -m ml improve-score \
+  --dataset-dir "$DATASET_DIR" --config ml/experiments/score-improvement-v2.json \
+  --baseline-artifact artifacts/calendar-holiday-priority-v1 \
+  --baseline-submission artifacts/submission-calendar-holiday-priority-v1.csv \
+  --output-dir "$SCORE_RUN"
+```
+
+Config фиксирует четыре 61-дневных окна S1–S4, конечную сетку опытов, seed,
+пороговые значения, четыре CPU-потока и buffered weather snapshot. Проверяются
+свежие 28/56-дневные профили и смеси, поправка уровня, три HGBT без категории
+месяца, восемь CatBoost MAE, разрешённые пары ансамбля, W02 и его смеси. D-direct
+запускается только при отсутствии допущенного улучшения P1 и доступном CatBoost.
+Недоступные зависимости/источники отмечаются явно. F-events — отдельное исследование
+официальных источников с локальными snapshots; runner не назначает коэффициенты
+неподтверждённым событиям. T-clean требует проверенной маски технологических валидаций.
+
+Профили используют `день недели × официальный рабочий/нерабочий день`; менее трёх
+сопоставимых дат ведут к fallback по официальному типу дня, затем к W00. Нулевой
+маршрут сохраняется. H1–H3 и CatBoost определяют число итераций по последним
+28 дням внутри train и переобучаются на всей доступной части. Для W00 сохранена
+исходная реализация sklearn, включая внутреннюю случайную проверку; внешний
+fold ей недоступен. Поэтому сравнение H с W00 включает также изменение внутренней
+процедуры остановки, это не чистая оценка эффекта удаления месяца. У CatBoost
+финальное число итераций — медиана внутренних результатов четырёх folds.
+
+`folds/` хранит модели, полные OOF и время/пик RSS процесса; `experiments/` — OOF
+всех смесей, метрики до/после округления, срезы и причины допуска/отказа.
+`experiment-log.csv` ссылается на полные записи. Метрика суммирует ошибки и target
+по всем прогнозным задачам; повторные даты разных origins учитываются отдельно.
+Bootstrap переносит одинаковые семидневные календарные блоки совместно между
+folds. Это зависимые, ранее исследованные окна, а не новый независимый тест.
+
+Повторный запуск требует другого каталога. `--resume` разрешает только точное
+совпадение config, исходников ML, файлов данных, зависимостей, baseline и погоды;
+готовые fold-файлы проверяются по checksum. Завершённые опыты не перезаписываются.
+После изменения исходников используйте новое имя run. Незавершённые `.pending-*`
+не используются как кэш. Данные, OOF, модели и snapshots остаются в `artifacts/`.
+
+`selection.json` фиксируется до повторной диагностической оценки сентября–октября.
+`diagnostic.json` запрещает рекомендацию при ухудшении более 0.003; другой кандидат
+по этой диагностике не выбирается. `stability.json` содержит повтор с seed 20250926,
+который не участвует в выборе. `complete.json` сообщает итоговое решение. Платформенный
+score нового результата остаётся `null` до независимой проверки на платформе.
+
+Только после проверки решения создайте новый release; при отказе сохраните
+исходный baseline, а исследовательский CSV обозначьте как нерекомендованный:
+
+```sh
+export SCORE_MODEL="artifacts/score-improvement-v2-run01"
+artifacts/.score-venv/bin/python -m ml train --dataset-dir "$DATASET_DIR" \
+  --evaluation-report "$SCORE_RUN/selection.json" --artifact-dir "$SCORE_MODEL"
+artifacts/.score-venv/bin/python -m ml submission --artifact-dir "$SCORE_MODEL" \
+  --template "$DATASET_DIR/test_submission.csv" \
+  --output "$SCORE_RUN/submission-score-improvement-v2.csv" \
+  --preflight-output "$SCORE_RUN/submission-score-improvement-v2.preflight.json"
+artifacts/.score-venv/bin/python -m ml forecast --artifact-dir "$SCORE_MODEL" \
+  --start 2025-11-01 --end 2025-12-31 --output "$SCORE_RUN/forecast-for-backend.csv"
+python -m scripts.package_ml_handoff --artifact-dir "$SCORE_MODEL" \
+  --forecast "$SCORE_RUN/forecast-for-backend.csv" --output "$SCORE_RUN/ml-handoff.zip"
+```
+
+Если selection включает осадки, передайте `train --weather-factors` из того же
+snapshot, checksum которого записан в selection. Компоненты ансамбля, профили,
+погода и q90 финального ансамбля сохраняются в `model.joblib`; manifest по-прежнему
+содержит ровно три model-файла. Backend получает готовый CSV и не исполняет модель.
+Готовые submission, preflight и forecast больше не перезаписываются.
+
+Фактические результаты серии: [отчёт](reports/score-improvement-v2.md).

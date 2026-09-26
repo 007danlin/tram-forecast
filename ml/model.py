@@ -60,6 +60,13 @@ def build_hgbt_model(model_name: str, experiment_config: dict | None = None) -> 
         if experiment_config is not None:
             raise ValueError("Interaction ensemble does not accept a weather experiment config")
         return CalendarInteractionEnsembleModel()
+
+    if model_name.startswith("score_"):
+        from ml.score_models import ScoreModel
+        model = ScoreModel(experiment_config)
+        if model.name != model_name:
+            raise ValueError("Model name and score config disagree")
+        return model
     variants = {
         "calendar_hgbt": dict(include_lags=False),
         "lagged_hgbt": dict(include_lags=True),
@@ -83,6 +90,8 @@ def build_hgbt_model(model_name: str, experiment_config: dict | None = None) -> 
         if model_name != config["model_name"]:
             raise ValueError("Model name and experiment config disagree")
         options.update(weather_columns=tuple(config["weather_columns"]), experiment_config=config)
+        if "seed" in config:
+            options["random_seed"] = config["seed"]
     return HourlyGradientBoostingModel(**options)
 
 
@@ -169,7 +178,7 @@ def make_training_features(
     return data[columns], data[TARGET_COLUMN].to_numpy(dtype=float)
 
 
-def _pipeline(numeric_columns: tuple[str, ...], *, max_iter: int, max_leaf_nodes: int) -> Pipeline:
+def _pipeline(numeric_columns: tuple[str, ...], *, max_iter: int, max_leaf_nodes: int, random_seed: int = RANDOM_SEED) -> Pipeline:
     preprocessing = ColumnTransformer(
         [
             ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), list(CATEGORICAL_COLUMNS)),
@@ -181,7 +190,7 @@ def _pipeline(numeric_columns: tuple[str, ...], *, max_iter: int, max_leaf_nodes
         **HGBT_FIXED_PARAMETERS,
         max_iter=max_iter,
         max_leaf_nodes=max_leaf_nodes,
-        random_state=RANDOM_SEED,
+        random_state=random_seed,
     )
     return Pipeline([("preprocessing", preprocessing), ("regressor", regressor)])
 
@@ -198,6 +207,7 @@ class HourlyGradientBoostingModel:
     experiment_config: dict | None = None
     max_iter: int = 220
     max_leaf_nodes: int = 31
+    random_seed: int = RANDOM_SEED
 
     @property
     def selected_weather_columns(self):
@@ -233,7 +243,7 @@ class HourlyGradientBoostingModel:
             numeric += self.selected_weather_columns
         if self.include_lags:
             numeric += LAG_NUMERIC_COLUMNS
-        self.pipeline_ = _pipeline(numeric, max_iter=self.max_iter, max_leaf_nodes=self.max_leaf_nodes)
+        self.pipeline_ = _pipeline(numeric, max_iter=self.max_iter, max_leaf_nodes=self.max_leaf_nodes, random_seed=self.random_seed)
         self.pipeline_.fit(features, target)
         self.history_ = ordered[["route", "date", "hour", "timestamp", TARGET_COLUMN]].copy()
         self.history_start_ = ordered["date"].min()

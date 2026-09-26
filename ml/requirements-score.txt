@@ -1,0 +1,3 @@
+-r requirements.txt
+# Optional CPU experiments; installed and smoke-tested with Python 3.12.
+catboost==1.2.8

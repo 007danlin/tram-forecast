@@ -10,7 +10,10 @@ GROUPS = {
 
 
 def normalize_config(config):
-    if not isinstance(config,dict) or set(config) - {'id','weather_groups','alignment','weather_columns','model_name','information_mode'}:
+    if isinstance(config, dict) and config.get('schema') == 'score-improvement-v2':
+        from ml.score_models import normalize_score_config
+        return normalize_score_config(config)
+    if not isinstance(config,dict) or set(config) - {'id','weather_groups','alignment','weather_columns','model_name','information_mode','seed'}:
         raise ValueError('Unexpected experiment configuration fields')
     groups=config.get('weather_groups',[])
     if not isinstance(groups,list) or not all(isinstance(group,str) for group in groups) or len(set(groups)) != len(groups) or set(groups)-set(GROUPS):
@@ -29,4 +32,8 @@ def normalize_config(config):
     for key in ('weather_columns','model_name','information_mode'):
         if key in config and config[key] != result[key]:
             raise ValueError(f'Experiment {key} disagrees with weather groups')
+    if 'seed' in config:
+        if type(config['seed']) is not int:
+            raise ValueError('Seed must be an integer')
+        result['seed'] = config['seed']
     return result
