@@ -38,6 +38,21 @@ def make_archive(root, *, missing=False, defect=None):
     }
     if defect == "version":
         metadata["schema_version"] = "unsupported"
+    if defect == "interval_null":
+        metadata["interval"] = None
+    if defect == "interval_missing":
+        metadata.pop("interval")
+    if defect == "method_missing":
+        metadata["interval"] = {}
+    for label, value in (
+        ("method_null", None),
+        ("method_number", 12),
+        ("method_list", []),
+        ("method_blank", "  "),
+        ("method_empty", ""),
+    ):
+        if defect == label:
+            metadata["interval"]["method"] = value
     files = {
         "model.joblib": b"Not a pickle: must never be deserialized",
         "metadata.json": json.dumps(metadata).encode(),
@@ -170,6 +185,14 @@ class HandoffTests(unittest.TestCase):
             "status",
             "unknown",
             "duplicate",
+            "interval_null",
+            "interval_missing",
+            "method_missing",
+            "method_null",
+            "method_number",
+            "method_list",
+            "method_blank",
+            "method_empty",
         ):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
@@ -208,6 +231,60 @@ class HandoffTests(unittest.TestCase):
 
 
 class HandoffHttpTests(unittest.TestCase):
+    def test_live_responses_match_documented_models(self):
+        from backend.handoff.api import (
+            HandoffReady,
+            HandoffCapabilities,
+            HandoffErrorResponse,
+            HandoffValidationResponse,
+        )
+
+        schema = app.openapi()
+        prefix = "/api/v2/handoff"
+        cases = [
+            ("/ready", None, 200, HandoffReady),
+            ("/capabilities", None, 200, HandoffCapabilities),
+            ("/query", {}, 422, HandoffValidationResponse),
+            (
+                "/query",
+                day_query(route_ids=["999"]).model_dump(mode="json"),
+                404,
+                HandoffErrorResponse,
+            ),
+            (
+                "/query",
+                day_query(forecast_run_id="old").model_dump(mode="json"),
+                410,
+                HandoffErrorResponse,
+            ),
+        ]
+        for path, body, expected, model in cases:
+            with self.subTest(path=path, status=expected):
+                status, headers, raw = self.call(prefix + path, body)
+                self.assertEqual(status, expected)
+                payload = json.loads(raw)
+                model.model_validate(payload)
+                operation = schema["paths"][prefix + path][
+                    "get" if body is None else "post"
+                ]
+                ref = operation["responses"][str(status)]["content"][
+                    "application/json"
+                ]["schema"]["$ref"]
+                self.assertEqual(ref, "#/components/schemas/" + model.__name__)
+                if status != 200:
+                    self.assertEqual(
+                        payload["error"]["request_id"], headers["X-Request-Id"]
+                    )
+        for path in ("/query", "/export"):
+            responses = schema["paths"][prefix + path]["post"]["responses"]
+            self.assertTrue({"404", "410", "413", "422", "503"}.issubset(responses))
+        self.assertIn("409", schema["paths"][prefix + "/export"]["post"]["responses"])
+        with patch.object(app.state, "handoff_snapshot", None):
+            for path in ("/ready", "/capabilities"):
+                status, _, raw = self.call(prefix + path)
+                self.assertEqual(status, 503)
+                HandoffErrorResponse.model_validate_json(raw)
+
     def test_parallel_clients_do_not_share_filters(self):
         def fetch(route):
             status, _, raw = self.call(
