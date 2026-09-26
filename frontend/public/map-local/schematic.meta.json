@@ -1,0 +1,31 @@
+{
+  "source": "trammap_15_04_26-2.pdf",
+  "source_sha256": "13bf11ade2d5a36bd3af8b4990e505e9692cf39eacbdb91f79e419f83bcf5c6f",
+  "bounds": [
+    62,
+    112,
+    1065,
+    1198
+  ],
+  "paths": 11998,
+  "sha256": "9e2b0ac42f8dbd22ab1572993cc1d1c9c154a6d59806ad1036d9fb27f0c1fb46",
+  "raster_images": 0,
+  "excluded_poster_paths": [
+    3058,
+    14608,
+    14609,
+    14726,
+    14727,
+    14728,
+    14729,
+    14730,
+    14731,
+    14732
+  ],
+  "favicon_sha256": "93a7707716105f720badccdccd66f1304af06cbae6518737aa3e9979f6388f5a",
+  "station_label_count": 424,
+  "optimizer": "svgo 4.0.0 --multipass",
+  "path_extraction": "get_cdrawings; signed rectangle coordinates preserve compound-path winding",
+  "note": "Original vector outlines; PDF raster shadows omitted. Interactive lane geometry stays in network.json.",
+  "station_symbol_count": 99
+}

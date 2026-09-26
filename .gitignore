@@ -37,3 +37,6 @@ models/
 # Runtime map is shipped with the frontend; PDF/OCR scratch files remain local.
 frontend/public/map-local/*
 !frontend/public/map-local/network.json
+
+!frontend/public/map-local/schematic.svg
+!frontend/public/map-local/schematic.meta.json

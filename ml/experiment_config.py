@@ -10,6 +10,9 @@ GROUPS = {
 
 
 def normalize_config(config):
+    if isinstance(config, dict) and config.get('schema') == 'score-v3':
+        from ml.score_v3 import normalize_v3_config
+        return normalize_v3_config(config)
     if isinstance(config, dict) and config.get('schema') == 'score-improvement-v2':
         from ml.score_models import normalize_score_config
         return normalize_score_config(config)

@@ -1,0 +1,32 @@
+.settings-panel {
+  position: fixed;
+  inset: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  padding: 24px;
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+.settings-panel::backdrop {
+  background: #08131bb3;
+}
+.settings-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.settings-panel > p {
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+}
+@media (max-width: 767px) {
+  .settings-panel {
+    padding: 18px;
+  }
+}

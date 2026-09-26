@@ -140,6 +140,19 @@ def command_improve_score(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_score_v3(args: argparse.Namespace) -> int:
+    from ml.score_v3_study import run_study
+
+    result = run_study(
+        args.dataset_dir,
+        args.config,
+        args.output_dir,
+        resume=args.resume,
+    )
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
+
+
 def command_forecast(args: argparse.Namespace) -> int:
     if Path(args.output).exists():
         raise ValueError("Forecast exists; choose a new output")
@@ -315,6 +328,13 @@ def build_parser() -> argparse.ArgumentParser:
     improve.add_argument("--output-dir", required=True)
     improve.add_argument("--resume", action="store_true")
     improve.set_defaults(func=command_improve_score)
+
+    score_v3 = subparsers.add_parser("score-v3", help="Run the bounded origin-safe score-v3 study")
+    score_v3.add_argument("--dataset-dir", required=True)
+    score_v3.add_argument("--config", default="ml/experiments/score-v3.json")
+    score_v3.add_argument("--output-dir", required=True)
+    score_v3.add_argument("--resume", action="store_true")
+    score_v3.set_defaults(func=command_score_v3)
 
     verify = subparsers.add_parser("verify-target", help="Rebuild labels from raw CSV in chunks")
     verify.add_argument("--dataset-dir", required=True)

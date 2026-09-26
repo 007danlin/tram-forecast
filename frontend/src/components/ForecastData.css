@@ -1,0 +1,79 @@
+.forecast-chart {
+  width: 100%;
+  min-width: 0;
+}
+.forecast-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.forecast-chart text {
+  font:
+    18px Manrope,
+    system-ui,
+    sans-serif;
+  fill: var(--text-secondary);
+}
+.forecast-chart__point {
+  cursor: pointer;
+  stroke: var(--panel-bg);
+  stroke-width: 1;
+}
+.forecast-chart__point--selected {
+  fill: var(--chart-line);
+  stroke: var(--text-primary);
+  stroke-width: 2;
+}
+.forecast-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  max-height: 350px;
+  border-radius: 8px;
+  overscroll-behavior: contain;
+}
+.forecast-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.forecast-table caption {
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 8px 0;
+}
+.forecast-table th,
+.forecast-table td {
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.forecast-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: var(--panel-bg);
+  position: sticky;
+  top: 0;
+}
+.forecast-table tr[aria-selected="true"] {
+  background: var(--control-hover);
+}
+.forecast-table summary {
+  padding: 8px 0;
+  color: var(--text-primary);
+}
+.table-select {
+  font: inherit;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  white-space: nowrap;
+  min-height: 44px;
+}
+.forecast-table td > details {
+  max-width: 200px;
+  overflow-wrap: anywhere;
+}

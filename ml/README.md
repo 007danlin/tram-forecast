@@ -19,8 +19,8 @@ SHA-256 `71c8126bb51068c936462a170da885bad860fc91a58b3d2ac731876d324d7ec3`.
 26.09.2026 Даниэль подтвердил разрешение организаторов на нули либо придуманные
 значения № 5. Принято сохранять полный sample и нулевой fallback: 14 640 строк.
 Адаптер поддерживает оба scope; девятимаршрутный экспорт теперь диагностический.
-Устаревший статус конфликта в metadata/preflight ещё не обновлён в коде;
-исправление предусмотрено [ТЗ v3](../docs/team-specs/georgy-score-v3.md).
+Metadata/preflight фиксируют `full_sample_route_5_zero_fallback_approved_by_team`;
+`cold_start_zero_baseline` не означает доказанное отсутствие движения.
 Неизвестные маршруты не поддерживаются.
 
 Аудит следующей серии: [повторённые измерения](reports/score-audit-2026-09-26.md)
@@ -28,6 +28,10 @@ SHA-256 `71c8126bb51068c936462a170da885bad860fc91a58b3d2ac731876d324d7ec3`.
 61-дневных окон текущий ансамбль даёт 0,84484148; на повторной диагностике
 сентября–октября — 0,82900943. Это не score платформы: последний результат
 0,83732 подтверждён Даниэлем. Аудит не заменял final model, CSV или серверный release.
+Серия [score v3](reports/score-v3-2026-09-26.md) выполнена: лучший новый
+результат F1-B2 равен 0,84544143, но не прошёл заранее заданный порог +0,002 и
+устойчивость по folds. Решение — `no_improvement`, действующий B2 сохранён;
+новый artifact/submission не создан.
 
 ## Установка
 
@@ -302,6 +306,28 @@ python -m scripts.package_ml_handoff --artifact-dir artifacts/quality-085/calend
 Manifest, CSV и полная сетка 14 640 ключей проверяются до публикации. ZIP и
 `.zip.sha256` не перезаписываются; симлинки и лишние файлы отклоняются.
 Результаты текущего повторения и ограничения: `docs/verification-priority-implementation.md`.
+
+## Серия score v3
+
+`score-v3` запускает отдельный origin-safe протокол с точными S1–S4,
+обязательными control B0/B1/B2, direct CatBoost, daily level × normalized hourly
+share, past-only regime и проверенным T01. Все метрики считаются до и после
+`floor(x + 0.5)`; выбор выполняется по rounded.
+
+```sh
+OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 .venv/bin/python -m ml score-v3 \
+  --dataset-dir "$DATASET_DIR" \
+  --config ml/experiments/score-v3.json \
+  --output-dir artifacts/score-v3-<new-run>
+```
+
+Каталог run нельзя перезаписывать. `--resume` требует полного совпадения
+fingerprint. `selection.json` записывается до повторной диагностики D; если ни
+один кандидат не проходит guardrails, D не используется для перебора замен.
+OOF, модели, journal и реальные targets остаются в игнорируемом `artifacts/`.
+Итог `r02`: 12 новых fit-конфигураций из лимита 24 и шесть OOF-смесей;
+ни одна не допущена. Подробности и ограничения — в
+[отчёте](reports/score-v3-2026-09-26.md).
 
 ## Серия score-improvement-v2
 

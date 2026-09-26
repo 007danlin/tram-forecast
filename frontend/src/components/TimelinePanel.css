@@ -1,0 +1,93 @@
+.timeline-panel {
+  background: var(--panel-bg);
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 15px 16px;
+}
+.timeline-panel__mid {
+  min-width: 0;
+  flex: 1;
+}
+.timeline-panel__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.timeline-panel__label strong {
+  font-weight: 600;
+}
+.timeline-panel__label span {
+  color: var(--text-secondary);
+}
+.timeline-panel input {
+  width: 100%;
+  display: block;
+  height: 44px;
+  min-height: 44px;
+  margin: -5px 0 -13px;
+  accent-color: var(--chart-line);
+  cursor: pointer;
+}
+.timeline-panel input:disabled {
+  cursor: not-allowed;
+}
+.timeline-panel__play .icon {
+  width: 18px;
+  height: 18px;
+}
+@media (max-width: 1023px) {
+  .timeline-panel {
+    gap: 16px;
+    padding: 14px 16px;
+  }
+  .timeline-panel__label span {
+    font-size: 11px;
+  }
+}
+
+.timeline-panel input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+}
+.timeline-panel input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(
+    to right,
+    var(--chart-line) 0 var(--progress),
+    var(--app-bg) var(--progress) 100%
+  );
+}
+.timeline-panel input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border: 2px solid var(--panel-bg);
+  border-radius: 50%;
+  background: var(--chart-line);
+}
+.timeline-panel input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--app-bg);
+}
+.timeline-panel input[type="range"]::-moz-range-progress {
+  height: 4px;
+  background: var(--chart-line);
+}
+.timeline-panel input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--panel-bg);
+  background: var(--chart-line);
+  border-radius: 50%;
+}

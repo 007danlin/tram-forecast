@@ -25,11 +25,13 @@ class SubmissionTests(unittest.TestCase):
 
             prediction = full_hourly_grid("2025-11-01", "2025-12-31")
             prediction["prediction"] = 2.5
+            prediction.loc[prediction["route"].eq(5), "prediction"] = 0.0
             write_submission(prediction, template_path, output_path)
             result = pd.read_csv(output_path, sep=";")
             self.assertEqual(list(result.columns), ["route", "date", "hour", "prediction"])
             self.assertEqual(len(result), 14_640)
-            self.assertEqual(set(result.prediction), {3})
+            self.assertEqual(set(result.prediction), {0, 3})
+            self.assertEqual(int(result.loc[result.route.eq(5), "prediction"].sum()), 0)
             self.assertTrue(
                 result[["route", "date", "hour"]].equals(template[["route", "date", "hour"]])
             )
@@ -40,7 +42,18 @@ class SubmissionTests(unittest.TestCase):
             self.assertEqual(preflight["checks"]["date_min"], "2025-11-01")
             self.assertEqual(preflight["checks"]["date_max"], "2025-12-31")
             self.assertEqual(preflight["submission_scope"], "sample")
-            self.assertIn("route_5_conflicts", preflight["contract_status"])
+            self.assertTrue(preflight["checks"]["route_5_zero_fallback"])
+            self.assertEqual(
+                preflight["contract_status"],
+                "full_sample_route_5_zero_fallback_approved_by_team",
+            )
+            self.assertIn("route excluded from model training", preflight["route_5_fallback_policy"])
+
+            result.loc[result.route.eq(5), "prediction"] = 1
+            result.to_csv(output_path, sep=";", index=False)
+            invalid = submission_preflight(output_path, template_path)
+            self.assertFalse(invalid["passed"])
+            self.assertFalse(invalid["checks"]["route_5_zero_fallback"])
 
     def test_modeled_route_candidate_excludes_route_five_but_keeps_template_order(self):
         with tempfile.TemporaryDirectory() as directory:
