@@ -20,6 +20,7 @@ REQUIRED = (
     "ml/requirements.txt", "frontend/package.json", "frontend/package-lock.json",
     "frontend/Dockerfile", "frontend/src/main.tsx", "frontend/src/App.tsx",
     "frontend/src/useForecast.ts", "frontend/src/handoff.ts", "frontend/public/tram-icon.png",
+    "frontend/public/favicon.svg",
     "frontend/public/map-local/schematic.svg",
     "frontend/public/map-local/schematic.meta.json",
     "frontend/public/fonts/Manrope.woff2",

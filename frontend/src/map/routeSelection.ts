@@ -31,3 +31,27 @@ export function groupRouteLanes(lanes: Lane[]): RouteSelection[] {
 
 export const routeSelectionName = (selection: RouteSelection) =>
   `${selection.routes.length ? selection.routes.map((n) => "№ " + n).join(", ") : "Линия"}${selection.unverified ? " · номер уточняется" : ""}`;
+
+/** UI association by printed number, not historical stop/topology equivalence. */
+export function routeFeatures(
+  network: import("./loadMap").Network,
+  route: string,
+) {
+  const selection = groupRouteLanes(network.lanes).find((group) =>
+    group.routes.includes(route),
+  );
+  const laneIds = new Set(selection?.lanes.map((lane) => lane.id) ?? []);
+  const stationSymbols = (network.stationSymbols ?? []).filter((group) =>
+    group.lanes.some((id) => laneIds.has(id)),
+  );
+  // Reviewed terminal plates also recover station associations missed by OCR.
+  const stationLabelIds = new Set(stationSymbols.flatMap((group) => group.labels));
+  return {
+    selection,
+    stops: (network.stops ?? []).filter((stop) => laneIds.has(stop.lane)),
+    labels: (network.labels ?? []).filter((label) =>
+      label.lanes.some((id) => laneIds.has(id)) || stationLabelIds.has(label.id),
+    ),
+    stationSymbols,
+  };
+}

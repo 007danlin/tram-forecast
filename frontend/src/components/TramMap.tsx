@@ -1,14 +1,19 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loadNetwork, MAP_BASE, type Network } from "../map/loadMap";
+import { MAP_BASE, type Network } from "../map/loadMap";
+import { smoothRoute } from "../map/smoothRoutes";
 import { Icon } from "./ui";
-import { groupRouteLanes, routeSelectionName } from "../map/routeSelection";
+import {
+  groupRouteLanes,
+  routeFeatures,
+  routeSelectionName,
+} from "../map/routeSelection";
 import "./tram-map.css";
 
 type View = { cx: number; cy: number; zoom: number };
 const DEFAULT_CENTER = { cx: 562.3, cy: 646.4 },
   DEFAULT_ZOOM = 4,
   MAX_ZOOM = 14;
-const BOUNDS = { x: 62, y: 112, w: 1065, h: 1178 };
+const BOUNDS = { x: 62, y: 112, w: 1065, h: 1198 };
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 function distance(px: number, py: number, points: [number, number][]) {
@@ -28,34 +33,34 @@ function distance(px: number, py: number, points: [number, number][]) {
   return best;
 }
 
-export const TramMap = memo(function TramMap() {
-  const [map, setMap] = useState<Network | null>(null),
-    [problem, setProblem] = useState(""),
-    [visualReady, setVisualReady] = useState(false);
+type Props = {
+  map: Network | null;
+  mapProblem: string;
+  selectedRoute: string;
+  onRouteChange: (route: string) => void;
+};
+export const TramMap = memo(function TramMap({
+  map,
+  mapProblem,
+  selectedRoute,
+  onRouteChange,
+}: Props) {
+  const [visualProblem, setVisualProblem] = useState("");
+  const problem = mapProblem || visualProblem;
+  const [visualReady, setVisualReady] = useState(false);
   const [size, setSize] = useState({ w: 0, h: 0 }),
     [view, setView] = useState<View>({ ...DEFAULT_CENTER, zoom: DEFAULT_ZOOM });
-  const [selected, setSelected] = useState<string | null>(null),
-    [candidates, setCandidates] = useState<string[]>([]),
-    [listOpen, setListOpen] = useState(false);
+  const [candidates, setCandidates] = useState<string[]>([]);
   const viewportRef = useRef<HTMLDivElement>(null),
     pointers = useRef(new Map<number, { x: number; y: number }>());
   const down = useRef<{ x: number; y: number } | null>(null),
     moved = useRef(false),
     gesture = useRef<{ dist: number; zoom: number } | null>(null);
-  useEffect(() => {
-    const c = new AbortController();
-    loadNetwork(c.signal)
-      .then(setMap)
-      .catch((e) => {
-        if (!c.signal.aborted)
-          setProblem(
-            e.message === "MISSING"
-              ? "Карта временно недоступна. Прогноз и CSV продолжают работать."
-              : e.message,
-          );
-      });
-    return () => c.abort();
-  }, []);
+  const features = useMemo(
+    () => (map ? routeFeatures(map, selectedRoute) : null),
+    [map, selectedRoute],
+  );
+  const selection = features?.selection;
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -132,7 +137,57 @@ export const TramMap = memo(function TramMap() {
   }, [zoomAround]);
   const step = (factor: number) =>
     setView((v) => zoomAround(v, factor, size.w / 2, size.h / 2));
-  const reset = () => setView({ ...DEFAULT_CENTER, zoom: DEFAULT_ZOOM });
+  const focusRoute = useCallback(() => {
+    if (!selection || !size.w || !size.h) return;
+    const points = selection.lanes.flatMap((lane) => lane.points);
+    for (const stop of features?.stops ?? []) points.push([stop.x, stop.y]);
+    for (const group of features?.stationSymbols ?? []) {
+      const [x0, y0, x1, y1] = group.bounds;
+      points.push([x0, y0], [x1, y1]);
+    }
+    for (const label of features?.labels ?? []) {
+      const angle = (label.angle * Math.PI) / 180;
+      for (const line of label.lines)
+        for (const dx of [-line.w / 2, line.w / 2])
+          for (const dy of [-label.fs / 2, label.fs / 2]) {
+            const x = line.dx + dx,
+              y = line.dy + dy;
+            points.push([
+              label.x + x * Math.cos(angle) - y * Math.sin(angle),
+              label.y + x * Math.sin(angle) + y * Math.cos(angle),
+            ]);
+          }
+    }
+    const xs = points.map((p) => p[0]),
+      ys = points.map((p) => p[1]);
+    const x = Math.min(...xs),
+      y = Math.min(...ys),
+      w = Math.max(...xs) - x,
+      h = Math.max(...ys) - y;
+    setView(
+      constrain({
+        cx: x + w / 2,
+        cy: y + h / 2,
+        zoom:
+          Math.min(
+            Math.max(1, size.w - 112) / (w + 18),
+            Math.max(1, size.h - 100) / (h + 18),
+          ) / fit,
+      }),
+    );
+  }, [selection, features, size, constrain, fit]);
+  const lastFocused = useRef<string | null>(null);
+  useEffect(() => {
+    if (!map || !size.w || !size.h || lastFocused.current === selectedRoute)
+      return;
+    lastFocused.current = selectedRoute;
+    setCandidates([]);
+    focusRoute();
+  }, [map, size, selectedRoute, focusRoute]);
+  const reset = () =>
+    selection
+      ? focusRoute()
+      : setView({ ...DEFAULT_CENTER, zoom: DEFAULT_ZOOM });
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     if (!pointers.current.size) {
@@ -185,6 +240,15 @@ export const TramMap = memo(function TramMap() {
     }
   };
   const routeGroups = useMemo(() => groupRouteLanes(map?.lanes ?? []), [map]);
+  const curves = useMemo(
+    () =>
+      new Map(
+        routeGroups
+          .flatMap((group) => smoothRoute(group.lanes))
+          .map((lane) => [lane.id, lane]),
+      ),
+    [routeGroups],
+  );
   const groupsByLane = useMemo(
     () =>
       new Map(
@@ -211,7 +275,9 @@ export const TramMap = memo(function TramMap() {
       .map((group) => ({
         id: group.id,
         d:
-          Math.min(...group.lanes.map((l) => distance(x, y, l.points))) * scale,
+          Math.min(
+            ...group.lanes.map((l) => distance(x, y, curves.get(l.id)!.points)),
+          ) * scale,
       }))
       .filter((l) => l.d <= radius)
       .sort((a, b) => a.d - b.d);
@@ -223,7 +289,12 @@ export const TramMap = memo(function TramMap() {
       return;
     }
     setCandidates([]);
-    setSelected(hits[0]?.id ?? null);
+    const hit = groupsByLane.get(hits[0]?.id);
+    onRouteChange(
+      hit?.routes.includes(selectedRoute)
+        ? selectedRoute
+        : (hit?.routes[0] ?? ""),
+    );
   };
   const onKeyDown = (e: React.KeyboardEvent) => {
     const pan = 60 / (fit * view.zoom);
@@ -238,7 +309,7 @@ export const TramMap = memo(function TramMap() {
       reset();
     } else if (e.key === "Escape") {
       if (e.currentTarget.closest("[aria-modal=true]")) return;
-      setSelected(null);
+      onRouteChange("");
       setCandidates([]);
     } else if (
       ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)
@@ -257,21 +328,20 @@ export const TramMap = memo(function TramMap() {
       );
     }
   };
-  const selection = selected ? groupsByLane.get(selected) : undefined;
   const hitLines = useMemo(
     () =>
       map?.lanes.map((l) => (
-        <polyline
+        <path
           key={l.id}
           data-lane={l.id}
-          points={l.points.join(" ")}
+          d={curves.get(l.id)!.d}
           fill="none"
           stroke="transparent"
           strokeWidth="12"
           vectorEffect="non-scaling-stroke"
         />
       )),
-    [map],
+    [map, curves],
   );
   return (
     <section className="tram-map" aria-labelledby="tram-map-title">
@@ -284,7 +354,7 @@ export const TramMap = memo(function TramMap() {
           className="tram-map__viewport"
           tabIndex={0}
           role="application"
-          aria-label="Схема трамваев. Стрелки — перемещение, плюс и минус — масштаб, 0 — исходный вид. Выбор линии также доступен в списке."
+          aria-label="Схема трамваев. Стрелки — перемещение, плюс и минус — масштаб, 0 — исходный вид. Выбор маршрута также доступен в верхнем списке."
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -296,7 +366,10 @@ export const TramMap = memo(function TramMap() {
             preserveAspectRatio="xMidYMid meet"
             aria-hidden="true"
           >
-            <g className="map-layer map-layer--reference">
+            <g
+              className="map-layer map-layer--reference"
+              data-focused={!!selection}
+            >
               <image
                 href={`${MAP_BASE}schematic.svg`}
                 x="0"
@@ -305,7 +378,7 @@ export const TramMap = memo(function TramMap() {
                 height={pageH}
                 onLoad={() => setVisualReady(true)}
                 onError={() =>
-                  setProblem(
+                  setVisualProblem(
                     "Не удалось загрузить векторную схему. Обновите страницу; прогноз остаётся доступен.",
                   )
                 }
@@ -321,20 +394,47 @@ export const TramMap = memo(function TramMap() {
               >
                 {/* All halos first: an end cap must not erase the next segment. */}
                 {selection.lanes.map((lane) => (
-                  <polyline
+                  <path
                     key={`halo-${lane.id}`}
-                    points={lane.points.join(" ")}
+                    d={curves.get(lane.id)!.d}
                     stroke="#fff"
                     strokeWidth="4.6"
                   />
                 ))}
                 {selection.lanes.map((lane) => (
-                  <polyline
+                  <path
                     key={lane.id}
                     data-selected-lane={lane.id}
-                    points={lane.points.join(" ")}
+                    d={curves.get(lane.id)!.d}
                     stroke={lane.color}
                     strokeWidth="3.2"
+                  />
+                ))}
+                {features?.stops.map((stop) => (
+                  <circle
+                    key={stop.id}
+                    data-selected-stop={stop.id}
+                    cx={stop.x}
+                    cy={stop.y}
+                    r="0.8"
+                    fill="#fff"
+                    stroke="none"
+                  />
+                ))}
+                {features?.stationSymbols.map((group) => (
+                  <use
+                    key={group.id}
+                    data-selected-symbol={group.id}
+                    href={`${MAP_BASE}schematic.svg#station-symbol-${group.id}`}
+                    stroke="none"
+                  />
+                ))}
+                {features?.labels.map((label) => (
+                  <use
+                    key={label.id}
+                    data-selected-label={label.id}
+                    href={`${MAP_BASE}schematic.svg#station-label-${label.id}`}
+                    stroke="none"
                   />
                 ))}
               </g>
@@ -385,42 +485,6 @@ export const TramMap = memo(function TramMap() {
                 <Icon name="expand" />
               </button>
             </div>
-            <div className="tram-map__selection-tools">
-              <button
-                className="map-list-toggle"
-                aria-expanded={listOpen}
-                aria-controls="map-line-list"
-                onClick={() => setListOpen((v) => !v)}
-              >
-                Линии схемы <Icon name="chevron" />
-              </button>
-              {listOpen && (
-                <div className="tram-map__list" id="map-line-list">
-                  <label>
-                    Выбрать линию
-                    <select
-                      aria-label="Выбрать линию"
-                      value={selection?.id ?? ""}
-                      onChange={(e) => {
-                        setSelected(e.target.value || null);
-                        setCandidates([]);
-                      }}
-                    >
-                      <option value="">Без выделения</option>
-                      {routeGroups.map((group) => (
-                        <option key={group.id} value={group.id}>
-                          {routeSelectionName(group)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <p>
-                    Схема 2026 года. Выделяется весь маршрут. Выбор пока не
-                    связан с прогнозом.
-                  </p>
-                </div>
-              )}
-            </div>
             {!!candidates.length && (
               <div
                 className="tram-map__candidates"
@@ -434,7 +498,11 @@ export const TramMap = memo(function TramMap() {
                     <button
                       key={id}
                       onClick={() => {
-                        setSelected(id);
+                        onRouteChange(
+                          group.routes.includes(selectedRoute)
+                            ? selectedRoute
+                            : group.routes[0],
+                        );
                         setCandidates([]);
                       }}
                     >
@@ -450,7 +518,7 @@ export const TramMap = memo(function TramMap() {
                 {routeSelectionName(selection)}
                 <button
                   aria-label="Снять выделение линии"
-                  onClick={() => setSelected(null)}
+                  onClick={() => onRouteChange("")}
                 >
                   <Icon name="close" />
                 </button>

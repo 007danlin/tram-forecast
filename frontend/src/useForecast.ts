@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, ApiError, buildFilters, exportResult, getCapabilities, getResult, sameFilters } from './handoff';
 import type { Capabilities, Horizon, Result } from './handoff';
 export const format = (value: number | null) => value === null ? 'Нет данных' : value.toLocaleString('ru-RU', {maximumFractionDigits: 2});
@@ -22,17 +22,22 @@ export function useForecast() {
   const [playing, setPlaying] = useState(false);
   const exportController = useRef<AbortController | null>(null);
   const generation = useRef(0);
+  const explicitRoute = useRef(false);
+  const routeUnavailable = !!caps && !!route && !caps.routes.some(r => r.route_id === route);
+  const emptyReason = routeUnavailable ? 'Для этого маршрута нет прогноза в подключённом пакете.'
+    : caps && !route ? 'Выберите маршрут на карте или в списке.' : '';
   const filtersState = useMemo(() => {
-    if (!caps) return {filters: null, problem: ''};
+    if (!caps || !route || routeUnavailable) return {filters: null, problem: ''};
     try { return {filters: buildFilters(caps, route, day, horizon), problem: ''}; }
     catch (e) { return {filters: null, problem: message(e)}; }
-  }, [caps, route, day, horizon]);
+  }, [caps, route, day, horizon, routeUnavailable]);
   const filters = filtersState.filters;
   const current = result && filters && sameFilters(result.filters, filters) ? result : null;
   const busy = loadingCaps || loading;
-  const changeContext = () => {
+  const changeContext = useCallback(() => {
     generation.current += 1; exportController.current?.abort(); setPlaying(false); setExporting(false);
-  };
+  }, []);
+  const changeRoute = useCallback((value: string) => {explicitRoute.current = true; changeContext(); setRoute(value);}, [changeContext]);
   const showError = (e: unknown) => {setError(message(e)); setErrorStatus(e instanceof ApiError ? e.status : 0);};
 
   useEffect(() => {
@@ -41,7 +46,7 @@ export function useForecast() {
     setLoadingCaps(true); setCaps(null); setResult(null); setError(''); setErrorStatus(0);
     void getCapabilities(controller.signal).then(value => {
       if (!active) return;
-      setCaps(value); setRoute((value.routes.find(r => r.method === 'model') ?? value.routes[0]).route_id);
+      setCaps(value); if (!explicitRoute.current) setRoute((value.routes.find(r => r.method === 'model') ?? value.routes[0]).route_id);
       setDay(value.start.slice(0, 10)); setHorizon(value.resolutions.includes('hour') ? 'day' : 'week');
     }).catch(e => {if (active) showError(e);}).finally(() => {window.clearTimeout(timeout); if (active) setLoadingCaps(false);});
     return () => {active = false; controller.abort(); window.clearTimeout(timeout);};
@@ -49,7 +54,7 @@ export function useForecast() {
 
   useEffect(() => {
     const controller = new AbortController(); let active = true;
-    setResult(null); setSelected(0); setPlaying(false); setLoading(false);
+    setResult(null); setSelected(0); setPlaying(false); setLoading(false); setError(''); setErrorStatus(0);
     if (!filters) return;
     const timeout = window.setTimeout(() => controller.abort(), 10000);
     setLoading(true); setError(''); setErrorStatus(0);
@@ -93,9 +98,9 @@ export function useForecast() {
   const points = useMemo(() => usable?.rows.map(row => ({...row, timestamp: row.start})) ?? [], [usable]);
   // Filter validation and CSV conflicts do not imply a disconnected backend.
   const connection: 'checking' | 'ok' | 'error' = loadingCaps ? 'checking' : caps && (!error || errorStatus === 409) ? 'ok' : 'error';
-  return {caps, route, day, horizon, connection, current: usable, points, busy, error: error || filtersState.problem,
+  return {caps, route, day, horizon, routeUnavailable, emptyReason, connection, current: usable, points, busy, error: error || filtersState.problem,
     errorStatus, exporting, retry, download, selected, setSelected, playing, setPlaying,
-    changeRoute: (value: string) => {changeContext(); setRoute(value);},
+    changeRoute,
     changeDay: (value: string) => {changeContext(); setDay(value);},
     changeHorizon: (value: Horizon) => {changeContext(); setHorizon(value);},
     reset: () => {if(caps) {changeContext(); setRoute((caps.routes.find(r => r.method === 'model') ?? caps.routes[0]).route_id); setDay(caps.start.slice(0,10)); setHorizon(caps.resolutions.includes('hour') ? 'day' : 'week');}},

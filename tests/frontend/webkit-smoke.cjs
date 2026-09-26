@@ -75,15 +75,8 @@ const { webkit } = require("playwright");
       () =>
         document.activeElement.getAttribute("aria-label") === "Открыть меню",
     );
-    await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
-      .click();
-    await page
-      .getByLabel("Выбрать линию", { exact: true })
-      .selectOption("brown-9");
-    await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
-      .click();
+    await page.getByLabel("Маршрут", { exact: true }).selectOption("11");
+    await page.getByTestId("total").waitFor();
     await page
       .getByRole("button", { name: "Увеличить область схемы", exact: true })
       .click();

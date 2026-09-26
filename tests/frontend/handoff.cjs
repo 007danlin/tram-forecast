@@ -64,6 +64,10 @@ const close = (a, b) =>
       .evaluate((el) => (el.qaIdentity = "persistent"));
     const mapViewport = page.locator(".tram-map__viewport");
     const mapSvg = mapViewport.locator("svg");
+    const network = await (
+      await page.request.get(baseURL + "/map-local/network.json")
+    ).json();
+    await mapViewport.press("0");
     const initialView = await mapSvg.getAttribute("viewBox");
     await mapViewport.focus();
     await mapViewport.press("ArrowRight");
@@ -83,46 +87,7 @@ const close = (a, b) =>
           .getAttribute("viewBox") === initial,
       initialView,
     );
-    // Select a visible real line away from controls. A DOM hit corridor may overlap
-    // its neighbour: selection must match the clicked geometry, not paint order.
-    const lineTarget = await mapSvg.evaluate((svg) => {
-      const box = svg.viewBox.baseVal,
-        rect = svg.getBoundingClientRect();
-      const lines = [...svg.querySelectorAll("polyline[data-lane]")];
-      for (const line of lines) {
-        for (const point of line.points) {
-          const x = ((point.x - box.x) / box.width) * rect.width;
-          const y = ((point.y - box.y) / box.height) * rect.height;
-          if (x < 50 || x > rect.width - 100 || y < 180 || y > rect.height - 60)
-            continue;
-          // Avoid a junction where two lanes legitimately have the same point.
-          const shared = lines.some(
-            (other) =>
-              other !== line &&
-              [...other.points].some(
-                (p) => Math.hypot(p.x - point.x, p.y - point.y) < 0.5,
-              ),
-          );
-          if (!shared)
-            return {
-              x: rect.x + x,
-              y: rect.y + y,
-              points: line.getAttribute("points"),
-            };
-        }
-      }
-      throw new Error("No visible route geometry available for acceptance");
-    });
-    await page.mouse.click(lineTarget.x, lineTarget.y);
-    await page.waitForFunction(
-      (points) =>
-        [
-          ...document.querySelectorAll(
-            ".tram-map__viewport [data-selected-lane]",
-          ),
-        ].some((line) => line.getAttribute("points") === points),
-      lineTarget.points,
-    );
+    // All 45 map hit targets are exercised by map-continuity.cjs.
     await page.getByRole("button", { name: "Открыть прогноз" }).click();
     await page.getByRole("button", { name: "Таблица", exact: true }).click();
     const horizonLabels = { day: "1 день", week: "1 нед", month: "1 мес" };
@@ -215,14 +180,16 @@ const close = (a, b) =>
           .evaluate((el) => el.qaIdentity),
         "persistent",
       );
-      assert.ok(
+      assert.deepEqual(
         await mapSvg
           .locator("[data-selected-lane]")
-          .evaluateAll(
-            (lines, points) =>
-              lines.some((line) => line.getAttribute("points") === points),
-            lineTarget.points,
+          .evaluateAll((lines) =>
+            lines.map((l) => l.dataset.selectedLane).sort(),
           ),
+        network.lanes
+          .filter((l) => l.routes.includes(selectedRoute))
+          .map((l) => l.id)
+          .sort(),
       );
     }
     await checkRows(24);
@@ -615,21 +582,14 @@ const close = (a, b) =>
     assert.ok((await exported).suggestedFilename().endsWith(".csv"));
     await page.unroute("**/handoff/export");
     // Existing selection survives a drag returning to its origin and a two-finger pinch.
-    await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
-      .click();
-    await page
-      .getByLabel("Выбрать линию", { exact: true })
-      .selectOption("brown-9");
-    await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
-      .click();
+    await page.getByLabel("Маршрут", { exact: true }).selectOption("11");
+    await page.getByTestId("total").waitFor();
     const chosen = await mapSvg
       .locator("[data-selected-lane]")
       .evaluateAll((lines) =>
         lines.map((line) => [
           line.dataset.selectedLane,
-          line.getAttribute("points"),
+          line.getAttribute("d"),
         ]),
       );
     const box = await mapViewport.boundingBox(),
@@ -646,7 +606,7 @@ const close = (a, b) =>
         .evaluateAll((lines) =>
           lines.map((line) => [
             line.dataset.selectedLane,
-            line.getAttribute("points"),
+            line.getAttribute("d"),
           ]),
         ),
       chosen,
@@ -676,7 +636,7 @@ const close = (a, b) =>
         .evaluateAll((lines) =>
           lines.map((line) => [
             line.dataset.selectedLane,
-            line.getAttribute("points"),
+            line.getAttribute("d"),
           ]),
         ),
       chosen,

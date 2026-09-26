@@ -1,0 +1,1763 @@
+{
+  "source_sha256": "13bf11ade2d5a36bd3af8b4990e505e9692cf39eacbdb91f79e419f83bcf5c6f",
+  "note": "Reviewed original PDF station symbols, station names and all terminal route-number plates. Each full plate row belongs to its station, independently of the selected route number; repeated station names remain separate.",
+  "groups": [
+    {
+      "id": "transfer-001",
+      "name": "Бабушкинская",
+      "labels": [
+        {
+          "id": "l303",
+          "text": "Бабушкинская"
+        }
+      ],
+      "seedPaths": [
+        10321,
+        10322
+      ]
+    },
+    {
+      "id": "transfer-003",
+      "name": "Михалково",
+      "labels": [
+        {
+          "id": "l046",
+          "text": "Михалково"
+        }
+      ],
+      "seedPaths": [
+        9001
+      ],
+      "routePlateNumbers": [
+        "23",
+        "29",
+        "30"
+      ],
+      "routePlatePaths": [
+        14116,
+        14118,
+        14120
+      ]
+    },
+    {
+      "id": "transfer-004",
+      "name": "Сходненская",
+      "labels": [
+        {
+          "id": "l008",
+          "text": "Сходненская"
+        }
+      ],
+      "seedPaths": [
+        8809,
+        8810,
+        8811
+      ]
+    },
+    {
+      "id": "transfer-005",
+      "name": "Ростокино",
+      "labels": [
+        {
+          "id": "l219",
+          "text": "Ростокино"
+        }
+      ],
+      "seedPaths": [
+        11997,
+        11998
+      ]
+    },
+    {
+      "id": "transfer-015",
+      "name": "вднх",
+      "labels": [
+        {
+          "id": "l180",
+          "text": "вднх"
+        }
+      ],
+      "seedPaths": [
+        11993,
+        11994
+      ]
+    },
+    {
+      "id": "transfer-017",
+      "name": "Войковская",
+      "labels": [
+        {
+          "id": "l055",
+          "text": "Войковская"
+        }
+      ],
+      "seedPaths": [
+        14248,
+        14249,
+        14250
+      ],
+      "routePlateNumbers": [
+        "27",
+        "31"
+      ],
+      "routePlatePaths": [
+        14114,
+        14122
+      ]
+    },
+    {
+      "id": "transfer-021",
+      "name": "1-й Новоподмосковный пер.",
+      "labels": [
+        {
+          "id": "l056",
+          "text": "1-й Новоподмосковный пер."
+        }
+      ],
+      "seedPaths": [
+        13061,
+        13062
+      ]
+    },
+    {
+      "id": "transfer-023",
+      "name": "Бульвар Рокоссовского",
+      "labels": [],
+      "seedPaths": [
+        11802,
+        11803,
+        11804
+      ],
+      "routes": [
+        "4",
+        "7"
+      ],
+      "textBounds": [
+        840.5,
+        383.1,
+        897,
+        389.5
+      ],
+      "routePlateNumbers": [
+        "4",
+        "7"
+      ],
+      "routePlatePaths": [
+        14148,
+        14150
+      ]
+    },
+    {
+      "id": "transfer-028",
+      "name": "Улица Костякова",
+      "labels": [
+        {
+          "id": "l103",
+          "text": "Улица Костякова"
+        }
+      ],
+      "seedPaths": [
+        13055,
+        13057
+      ]
+    },
+    {
+      "id": "transfer-029",
+      "name": "Стрешнево",
+      "labels": [
+        {
+          "id": "l062",
+          "text": "Стрешнево"
+        }
+      ],
+      "seedPaths": [
+        11945,
+        11946,
+        11948
+      ]
+    },
+    {
+      "id": "transfer-032",
+      "name": "Первомайская",
+      "labels": [
+        {
+          "id": "l390",
+          "text": "Первомайская"
+        }
+      ],
+      "seedPaths": [
+        10370,
+        10371
+      ]
+    },
+    {
+      "id": "transfer-035",
+      "name": "Строгинский бульвар",
+      "labels": [
+        {
+          "id": "l028",
+          "text": "Строгинский бульвар"
+        }
+      ],
+      "seedPaths": [
+        8643
+      ]
+    },
+    {
+      "id": "transfer-036",
+      "name": "Преображенская пл.",
+      "labels": [
+        {
+          "id": "l313",
+          "text": "Преображенская пл."
+        }
+      ],
+      "seedPaths": [
+        11826,
+        11827
+      ]
+    },
+    {
+      "id": "transfer-038",
+      "name": "цукинская",
+      "labels": [
+        {
+          "id": "l068",
+          "text": "цукинская"
+        }
+      ],
+      "seedPaths": [
+        11938,
+        11939,
+        11940
+      ],
+      "routePlateNumbers": [
+        "10",
+        "21"
+      ],
+      "routePlatePaths": [
+        14125,
+        14128
+      ],
+      "routes": [
+        "10"
+      ],
+      "note": "Printed terminal number confirms a station association missed by the earlier OCR lane mapping."
+    },
+    {
+      "id": "transfer-039",
+      "name": "Сокол",
+      "labels": [
+        {
+          "id": "l067",
+          "text": "Сокол"
+        }
+      ],
+      "seedPaths": [
+        14411,
+        14412
+      ],
+      "routePlateNumbers": [
+        "6",
+        "15",
+        "23",
+        "28"
+      ],
+      "routePlatePaths": [
+        14399,
+        14402,
+        14404,
+        14406
+      ],
+      "routes": [
+        "28"
+      ],
+      "note": "Printed terminal number confirms a station association missed by the earlier OCR lane mapping."
+    },
+    {
+      "id": "transfer-041",
+      "name": "Дмитровская",
+      "labels": [],
+      "seedPaths": [
+        12017,
+        12018,
+        12019
+      ],
+      "routes": [
+        "27",
+        "29"
+      ],
+      "textBounds": [
+        487.5,
+        450.8,
+        520,
+        457
+      ],
+      "routePlateNumbers": [
+        "27",
+        "29"
+      ],
+      "routePlatePaths": [
+        14143,
+        14146
+      ]
+    },
+    {
+      "id": "transfer-048",
+      "name": "Строгино",
+      "labels": [
+        {
+          "id": "l034",
+          "text": "Строгино"
+        }
+      ],
+      "seedPaths": [
+        11934,
+        11935
+      ]
+    },
+    {
+      "id": "transfer-051",
+      "name": "Партизанская",
+      "labels": [
+        {
+          "id": "l354",
+          "text": "Партизанская"
+        }
+      ],
+      "seedPaths": [
+        11960,
+        11961,
+        11962,
+        11966
+      ],
+      "routePlateNumbers": [
+        "32"
+      ],
+      "routePlatePaths": [
+        11956
+      ]
+    },
+    {
+      "id": "transfer-053",
+      "name": "Сокольники",
+      "labels": [
+        {
+          "id": "l229",
+          "text": "Сокольники"
+        }
+      ],
+      "seedPaths": [
+        7124,
+        7125,
+        7126
+      ],
+      "routePlateNumbers": [
+        "25",
+        "43"
+      ],
+      "routePlatePaths": [
+        14575,
+        14577
+      ]
+    },
+    {
+      "id": "transfer-055",
+      "name": "Рижская",
+      "labels": [],
+      "seedPaths": [
+        13830,
+        13836,
+        13837,
+        13838
+      ],
+      "routes": [
+        "5"
+      ],
+      "textBounds": [
+        600.9,
+        503.5,
+        621,
+        508.4
+      ],
+      "routePlateNumbers": [
+        "5"
+      ],
+      "routePlatePaths": [
+        13840
+      ]
+    },
+    {
+      "id": "transfer-056",
+      "name": "Рижская · вокзал",
+      "labels": [],
+      "seedPaths": [
+        13842,
+        13843
+      ],
+      "routes": [
+        "5"
+      ]
+    },
+    {
+      "id": "transfer-059",
+      "name": "Сокольники",
+      "labels": [
+        {
+          "id": "l231",
+          "text": "Сокольники"
+        }
+      ],
+      "seedPaths": [
+        11705,
+        11706,
+        11707
+      ]
+    },
+    {
+      "id": "transfer-061",
+      "name": "Митьково",
+      "labels": [
+        {
+          "id": "l232",
+          "text": "Митьково"
+        }
+      ],
+      "seedPaths": [
+        13175,
+        13176
+      ]
+    },
+    {
+      "id": "transfer-065",
+      "name": "Семёновская",
+      "labels": [
+        {
+          "id": "l358",
+          "text": "Семёновская"
+        }
+      ],
+      "seedPaths": [
+        11952,
+        11953
+      ]
+    },
+    {
+      "id": "transfer-066",
+      "name": "Лесная улица",
+      "labels": [
+        {
+          "id": "l075",
+          "text": "Лесная улица"
+        }
+      ],
+      "seedPaths": [
+        13103
+      ]
+    },
+    {
+      "id": "transfer-067",
+      "name": "Улица Достоевского",
+      "labels": [
+        {
+          "id": "l109",
+          "text": "Улица Достоевского"
+        }
+      ],
+      "seedPaths": [
+        10819
+      ]
+    },
+    {
+      "id": "transfer-070",
+      "name": "МФЦ Перово",
+      "labels": [
+        {
+          "id": "l401",
+          "text": "МФЦ Перово"
+        }
+      ],
+      "seedPaths": [
+        13662
+      ]
+    },
+    {
+      "id": "transfer-074",
+      "name": "Менделеевская",
+      "labels": [
+        {
+          "id": "l111",
+          "text": "Менделеевская"
+        }
+      ],
+      "seedPaths": [
+        13367,
+        13368
+      ]
+    },
+    {
+      "id": "transfer-078",
+      "name": "Белорусская",
+      "labels": [
+        {
+          "id": "l078",
+          "text": "Белорусская"
+        }
+      ],
+      "seedPaths": [
+        11642,
+        11643
+      ]
+    },
+    {
+      "id": "transfer-079",
+      "name": "Красносельская",
+      "labels": [
+        {
+          "id": "l280",
+          "text": "Красносельская"
+        }
+      ],
+      "seedPaths": [
+        11665,
+        11666
+      ]
+    },
+    {
+      "id": "transfer-080",
+      "name": "Новогиреево",
+      "labels": [
+        {
+          "id": "l402",
+          "text": "Новогиреево"
+        }
+      ],
+      "seedPaths": [
+        13658,
+        13659
+      ]
+    },
+    {
+      "id": "transfer-081",
+      "name": "Новогиреево",
+      "labels": [
+        {
+          "id": "l404",
+          "text": "Новогиреево"
+        }
+      ],
+      "seedPaths": [
+        13645,
+        13646
+      ]
+    },
+    {
+      "id": "transfer-092",
+      "name": "Белорусский вокзал",
+      "labels": [
+        {
+          "id": "l079",
+          "text": "Белорусский вокзал"
+        }
+      ],
+      "seedPaths": [
+        14489,
+        14490,
+        14513,
+        14533,
+        14535,
+        14537,
+        14540,
+        14542,
+        14544
+      ],
+      "routePlateNumbers": [
+        "5",
+        "7"
+      ],
+      "routePlatePaths": [
+        14598,
+        14601
+      ]
+    },
+    {
+      "id": "transfer-093",
+      "name": "Новослободская",
+      "labels": [
+        {
+          "id": "l112",
+          "text": "Новослободская"
+        }
+      ],
+      "seedPaths": [
+        12035,
+        12037
+      ]
+    },
+    {
+      "id": "transfer-105",
+      "name": "Проспект Мира",
+      "labels": [
+        {
+          "id": "l143",
+          "text": "Проспект Мира"
+        }
+      ],
+      "seedPaths": [
+        11899,
+        11900
+      ]
+    },
+    {
+      "id": "transfer-108",
+      "name": "Новослободская · конечная",
+      "labels": [],
+      "seedPaths": [
+        14208,
+        14210
+      ],
+      "routes": [
+        "50"
+      ],
+      "textBounds": [
+        453,
+        599.3,
+        500,
+        605
+      ],
+      "routePlateNumbers": [
+        "50"
+      ],
+      "routePlatePaths": [
+        14213
+      ]
+    },
+    {
+      "id": "transfer-109",
+      "name": "Площадь трёх вокзалов",
+      "labels": [],
+      "seedPaths": [
+        13387,
+        13512,
+        13610,
+        13614,
+        13615,
+        13618
+      ],
+      "routes": [
+        "Т1",
+        "13",
+        "7",
+        "50",
+        "Т2"
+      ],
+      "textBounds": [
+        603.8,
+        599.0,
+        642.8,
+        604.2
+      ]
+    },
+    {
+      "id": "transfer-110",
+      "name": "Комсомольская",
+      "labels": [
+        {
+          "id": "l233",
+          "text": "Комсомольская"
+        }
+      ],
+      "seedPaths": [
+        12071,
+        12073,
+        12076,
+        12078,
+        12079
+      ]
+    },
+    {
+      "id": "transfer-112",
+      "name": "Шоссе Энтузиастов",
+      "labels": [
+        {
+          "id": "l416",
+          "text": "Шоссе Энтузиастов"
+        }
+      ],
+      "seedPaths": [
+        13632,
+        13633
+      ]
+    },
+    {
+      "id": "transfer-116",
+      "name": "Новогиреево · конечная",
+      "labels": [],
+      "seedPaths": [
+        13137,
+        13138
+      ],
+      "routes": [
+        "Т2",
+        "36"
+      ],
+      "textBounds": [
+        1009,
+        606.5,
+        1053,
+        611.5
+      ],
+      "routePlateNumbers": [
+        "Т2",
+        "36"
+      ],
+      "routePlatePaths": [
+        14158,
+        14604,
+        14605
+      ]
+    },
+    {
+      "id": "transfer-118",
+      "name": "Шоссе Энтузиастов",
+      "labels": [
+        {
+          "id": "l417",
+          "text": "Шоссе Энтузиастов"
+        }
+      ],
+      "seedPaths": [
+        11970,
+        11971,
+        11972
+      ]
+    },
+    {
+      "id": "transfer-121",
+      "name": "Лефортово",
+      "labels": [
+        {
+          "id": "l327",
+          "text": "Лефортово"
+        }
+      ],
+      "seedPaths": [
+        12295,
+        12296
+      ]
+    },
+    {
+      "id": "transfer-123",
+      "name": "Спорткомплекс «Олимпийский»",
+      "labels": [
+        {
+          "id": "l139",
+          "text": "Спорткомплекс «Олимпийский»"
+        }
+      ],
+      "seedPaths": [
+        9464
+      ]
+    },
+    {
+      "id": "transfer-128",
+      "name": "Бауманская",
+      "labels": [
+        {
+          "id": "l284",
+          "text": "Бауманская"
+        }
+      ],
+      "seedPaths": [
+        10365,
+        10367,
+        10368
+      ]
+    },
+    {
+      "id": "transfer-133",
+      "name": "Авиа- / моторная",
+      "labels": [
+        {
+          "id": "l366",
+          "text": "Авиа-"
+        },
+        {
+          "id": "l367",
+          "text": "моторная"
+        }
+      ],
+      "seedPaths": [
+        13254,
+        13255
+      ]
+    },
+    {
+      "id": "transfer-136",
+      "name": "Чистые пруды",
+      "labels": [
+        {
+          "id": "l144",
+          "text": "Чистые пруды"
+        }
+      ],
+      "seedPaths": [
+        14470,
+        14472,
+        14475,
+        14478,
+        14482
+      ],
+      "routePlateNumbers": [
+        "А",
+        "39"
+      ],
+      "routePlatePaths": [
+        14484,
+        14487
+      ]
+    },
+    {
+      "id": "transfer-147",
+      "name": "Авиамоторная · конечная",
+      "labels": [],
+      "seedPaths": [
+        12086,
+        12087
+      ],
+      "routes": [
+        "38",
+        "50"
+      ],
+      "textBounds": [
+        886,
+        655.3,
+        926,
+        660
+      ]
+    },
+    {
+      "id": "transfer-157",
+      "name": "Авиамоторная",
+      "labels": [
+        {
+          "id": "l421",
+          "text": "Авиамоторная"
+        }
+      ],
+      "seedPaths": [
+        12090,
+        12092,
+        12094
+      ]
+    },
+    {
+      "id": "transfer-160",
+      "name": "Курский вокзал",
+      "labels": [
+        {
+          "id": "l286",
+          "text": "Курский вокзал"
+        }
+      ],
+      "seedPaths": [
+        14389,
+        14391,
+        14392,
+        14393,
+        14394,
+        14395,
+        14396
+      ],
+      "routePlateNumbers": [
+        "2",
+        "4",
+        "32"
+      ],
+      "routePlatePaths": [
+        14335,
+        14338,
+        14341
+      ]
+    },
+    {
+      "id": "transfer-164",
+      "name": "Москва-Товарная",
+      "labels": [
+        {
+          "id": "l372",
+          "text": "Москва-Товарная"
+        }
+      ],
+      "seedPaths": [
+        13203,
+        13207,
+        13208,
+        13211
+      ]
+    },
+    {
+      "id": "transfer-166",
+      "name": "Площадь Ильича",
+      "labels": [
+        {
+          "id": "l373",
+          "text": "Площадь Ильича"
+        }
+      ],
+      "seedPaths": [
+        13194,
+        13196,
+        13197,
+        13200,
+        13202
+      ]
+    },
+    {
+      "id": "transfer-168",
+      "name": "Новокузнецкая",
+      "labels": [
+        {
+          "id": "l191",
+          "text": "Новокузнецкая"
+        }
+      ],
+      "seedPaths": [
+        12711,
+        12713
+      ]
+    },
+    {
+      "id": "transfer-171",
+      "name": "Третьяковская",
+      "labels": [
+        {
+          "id": "l192",
+          "text": "Третьяковская"
+        }
+      ],
+      "seedPaths": [
+        12771,
+        12772,
+        12773
+      ]
+    },
+    {
+      "id": "transfer-174",
+      "name": "Калитники",
+      "labels": [],
+      "seedPaths": [
+        14566,
+        14570,
+        14571,
+        14574
+      ],
+      "routes": [
+        "А",
+        "46"
+      ],
+      "textBounds": [
+        889.9,
+        751.9,
+        922,
+        757.5
+      ],
+      "routePlateNumbers": [
+        "А",
+        "46"
+      ],
+      "routePlatePaths": [
+        14550,
+        14553
+      ]
+    },
+    {
+      "id": "transfer-178",
+      "name": "Павелецкая",
+      "labels": [
+        {
+          "id": "l194",
+          "text": "Павелецкая"
+        }
+      ],
+      "seedPaths": [
+        12689,
+        12691,
+        12693
+      ]
+    },
+    {
+      "id": "transfer-185",
+      "name": "Павелецкий / вокзал",
+      "labels": [
+        {
+          "id": "l244",
+          "text": "Павелецкий"
+        },
+        {
+          "id": "l245",
+          "text": "вокзал"
+        }
+      ],
+      "seedPaths": [
+        12676,
+        12677
+      ]
+    },
+    {
+      "id": "transfer-186",
+      "name": "Павелецкий / вокзал",
+      "labels": [
+        {
+          "id": "l244",
+          "text": "Павелецкий"
+        },
+        {
+          "id": "l245",
+          "text": "вокзал"
+        }
+      ],
+      "seedPaths": [
+        12671,
+        12674,
+        12675
+      ]
+    },
+    {
+      "id": "transfer-187",
+      "name": "Павелецкий вокзал",
+      "labels": [
+        {
+          "id": "l195",
+          "text": "Павелецкий вокзал"
+        }
+      ],
+      "seedPaths": [
+        12555,
+        12558,
+        12559
+      ]
+    },
+    {
+      "id": "transfer-188",
+      "name": "Павелецкий вокзал",
+      "labels": [
+        {
+          "id": "l195",
+          "text": "Павелецкий вокзал"
+        }
+      ],
+      "seedPaths": [
+        12560,
+        12561
+      ]
+    },
+    {
+      "id": "transfer-189",
+      "name": "Пролетарская",
+      "labels": [
+        {
+          "id": "l339",
+          "text": "Пролетарская"
+        }
+      ],
+      "seedPaths": [
+        13077,
+        13080,
+        13081,
+        13083
+      ]
+    },
+    {
+      "id": "transfer-193",
+      "name": "Октябрьская",
+      "labels": [
+        {
+          "id": "l113",
+          "text": "Октябрьская"
+        }
+      ],
+      "seedPaths": [
+        14224,
+        14225,
+        14226
+      ],
+      "routePlateNumbers": [
+        "14",
+        "26",
+        "47"
+      ],
+      "routePlatePaths": [
+        14228,
+        14231,
+        14234
+      ]
+    },
+    {
+      "id": "transfer-194",
+      "name": "Угрешская",
+      "labels": [
+        {
+          "id": "l379",
+          "text": "Угрешская"
+        }
+      ],
+      "seedPaths": [
+        10379,
+        10380
+      ],
+      "routePlateNumbers": [
+        "43"
+      ],
+      "routePlatePaths": [
+        14216
+      ]
+    },
+    {
+      "id": "transfer-199",
+      "name": "Дубровка",
+      "labels": [
+        {
+          "id": "l340",
+          "text": "Дубровка"
+        }
+      ],
+      "seedPaths": [
+        10384,
+        10385
+      ],
+      "routePlateNumbers": [
+        "12"
+      ],
+      "routePlatePaths": [
+        14555
+      ],
+      "routes": [
+        "12"
+      ],
+      "note": "Printed terminal number confirms a station association missed by the earlier OCR lane mapping."
+    },
+    {
+      "id": "transfer-200",
+      "name": "Дубровка",
+      "labels": [
+        {
+          "id": "l297",
+          "text": "Дубровка"
+        }
+      ],
+      "seedPaths": [
+        10390,
+        10391
+      ]
+    },
+    {
+      "id": "transfer-203",
+      "name": "Шаболовская",
+      "labels": [
+        {
+          "id": "l115",
+          "text": "Шаболовская"
+        }
+      ],
+      "seedPaths": [
+        13158,
+        13159
+      ]
+    },
+    {
+      "id": "transfer-220",
+      "name": "(северный вестибюль)",
+      "labels": [
+        {
+          "id": "l119",
+          "text": "(северный вестибюль)"
+        }
+      ],
+      "seedPaths": [
+        13314,
+        13316,
+        13318
+      ]
+    },
+    {
+      "id": "transfer-226",
+      "name": "Университет",
+      "labels": [
+        {
+          "id": "l041",
+          "text": "Университет"
+        }
+      ],
+      "seedPaths": [
+        13122,
+        13123
+      ],
+      "routePlateNumbers": [
+        "Т1",
+        "14",
+        "26",
+        "39"
+      ],
+      "routePlatePaths": [
+        14588,
+        14590,
+        14592,
+        14594,
+        14595
+      ]
+    },
+    {
+      "id": "transfer-227",
+      "name": "Тульская",
+      "labels": [
+        {
+          "id": "l149",
+          "text": "Тульская"
+        }
+      ],
+      "seedPaths": [
+        11661,
+        11662
+      ]
+    },
+    {
+      "id": "transfer-228",
+      "name": "Ленинский проспект (южный вестибюль)",
+      "labels": [
+        {
+          "id": "l080",
+          "text": "Ленинский проспект (южный вестибюль)"
+        }
+      ],
+      "seedPaths": [
+        13360,
+        13362,
+        13364
+      ]
+    },
+    {
+      "id": "transfer-230",
+      "name": "Платформа Тульская",
+      "labels": [
+        {
+          "id": "l150",
+          "text": "Платформа Тульская"
+        }
+      ],
+      "seedPaths": [
+        10394,
+        10395
+      ]
+    },
+    {
+      "id": "transfer-243",
+      "name": "Ленинский проспект",
+      "labels": [
+        {
+          "id": "l043",
+          "text": "Ленинский проспект"
+        }
+      ],
+      "seedPaths": [
+        10071
+      ]
+    },
+    {
+      "id": "transfer-245",
+      "name": "Верхние Котлы",
+      "labels": [
+        {
+          "id": "l154",
+          "text": "Верхние Котлы"
+        }
+      ],
+      "seedPaths": [
+        10448
+      ]
+    },
+    {
+      "id": "transfer-246",
+      "name": "Верхние Котлы",
+      "labels": [
+        {
+          "id": "l154",
+          "text": "Верхние Котлы"
+        }
+      ],
+      "seedPaths": [
+        10450,
+        10452
+      ]
+    },
+    {
+      "id": "transfer-250",
+      "name": "Нагатинская",
+      "labels": [
+        {
+          "id": "l155",
+          "text": "Нагатинская"
+        }
+      ],
+      "seedPaths": [
+        13002,
+        13003,
+        13005
+      ]
+    },
+    {
+      "id": "transfer-254",
+      "name": "Коломенская",
+      "labels": [
+        {
+          "id": "l257",
+          "text": "Коломенская"
+        }
+      ],
+      "seedPaths": [
+        11545,
+        11546
+      ]
+    },
+    {
+      "id": "transfer-255",
+      "name": "Коломенская",
+      "labels": [
+        {
+          "id": "l256",
+          "text": "Коломенская"
+        }
+      ],
+      "seedPaths": [
+        13117,
+        13119
+      ]
+    },
+    {
+      "id": "transfer-256",
+      "name": "Платформа Нагатинская",
+      "labels": [
+        {
+          "id": "l156",
+          "text": "Платформа Нагатинская"
+        }
+      ],
+      "seedPaths": [
+        10396,
+        10397
+      ]
+    },
+    {
+      "id": "transfer-260",
+      "name": "Загородное шоссе",
+      "labels": [
+        {
+          "id": "l158",
+          "text": "Загородное шоссе"
+        }
+      ],
+      "seedPaths": [
+        13037,
+        13619
+      ]
+    },
+    {
+      "id": "transfer-262",
+      "name": "Профсоюзная",
+      "labels": [
+        {
+          "id": "l089",
+          "text": "Профсоюзная"
+        }
+      ],
+      "seedPaths": [
+        13143,
+        13144
+      ]
+    },
+    {
+      "id": "transfer-269",
+      "name": "Каховская",
+      "labels": [
+        {
+          "id": "l162",
+          "text": "Каховская"
+        }
+      ],
+      "seedPaths": [
+        11651,
+        11652,
+        11653
+      ]
+    },
+    {
+      "id": "transfer-273",
+      "name": "Чертановская",
+      "labels": [
+        {
+          "id": "l163",
+          "text": "Чертановская"
+        }
+      ],
+      "seedPaths": [
+        11646,
+        11647
+      ],
+      "routePlateNumbers": [
+        "Т2"
+      ],
+      "routePlatePaths": [
+        13844,
+        13845
+      ]
+    },
+    {
+      "id": "transfer-275",
+      "name": "Чертановская",
+      "labels": [
+        {
+          "id": "l164",
+          "text": "Чертановская"
+        }
+      ],
+      "seedPaths": [
+        11656,
+        11657
+      ]
+    },
+    {
+      "id": "plates-000",
+      "name": "Северное Медведково",
+      "labels": [
+        {
+          "id": "l214",
+          "text": "Северное Медведково"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "17"
+      ],
+      "routePlatePaths": [
+        14152
+      ]
+    },
+    {
+      "id": "plates-002",
+      "name": "Братцево",
+      "labels": [
+        {
+          "id": "l011",
+          "text": "Братцево"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "6",
+        "6к"
+      ],
+      "routePlatePaths": [
+        14108,
+        14112
+      ]
+    },
+    {
+      "id": "plates-003",
+      "name": "Метрогородок",
+      "labels": [
+        {
+          "id": "l383",
+          "text": "Метрогородок"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "Т1",
+        "13",
+        "36",
+        "46"
+      ],
+      "routePlatePaths": [
+        14579,
+        14581,
+        14583,
+        14585,
+        14586
+      ]
+    },
+    {
+      "id": "plates-004",
+      "name": "Восточный мост",
+      "labels": [
+        {
+          "id": "l015",
+          "text": "Восточный мост"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "6к"
+      ],
+      "routePlatePaths": [
+        14110
+      ]
+    },
+    {
+      "id": "plates-007",
+      "name": "Усадьба Останкино",
+      "labels": [
+        {
+          "id": "l185",
+          "text": "Усадьба Останкино"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "11",
+        "17",
+        "25"
+      ],
+      "routePlatePaths": [
+        14295,
+        14297,
+        14300
+      ]
+    },
+    {
+      "id": "plates-008",
+      "name": "Восточное Измайлово",
+      "labels": [
+        {
+          "id": "l393",
+          "text": "Восточное"
+        },
+        {
+          "id": "l394",
+          "text": "Измайлово"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "11",
+        "12"
+      ],
+      "routePlatePaths": [
+        14154,
+        14156
+      ]
+    },
+    {
+      "id": "plates-009",
+      "name": "Таллинская улица",
+      "labels": [
+        {
+          "id": "l031",
+          "text": "Таллинская улица"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "15",
+        "21"
+      ],
+      "routePlatePaths": [
+        14134,
+        14140
+      ]
+    },
+    {
+      "id": "plates-013",
+      "name": "Улица Кулакова",
+      "labels": [
+        {
+          "id": "l032",
+          "text": "Улица Кулакова"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "10",
+        "30"
+      ],
+      "routePlatePaths": [
+        14136,
+        14138
+      ]
+    },
+    {
+      "id": "plates-017",
+      "name": "3-я Владимирская улица",
+      "labels": [
+        {
+          "id": "l397",
+          "text": "3-я Владимирская"
+        },
+        {
+          "id": "l399",
+          "text": "улица"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "2"
+      ],
+      "routePlatePaths": [
+        14547
+      ]
+    },
+    {
+      "id": "plates-018",
+      "name": "Проспект Маршала Жукова",
+      "labels": [
+        {
+          "id": "l040",
+          "text": "Проспект"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "28",
+        "31"
+      ],
+      "routePlatePaths": [
+        14130,
+        14132
+      ]
+    },
+    {
+      "id": "plates-019",
+      "name": "Каланчёвская улица",
+      "labels": [
+        {
+          "id": "l186",
+          "text": "Каланчёвская"
+        },
+        {
+          "id": "l187",
+          "text": "улица"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "13"
+      ],
+      "routePlatePaths": [
+        14511
+      ]
+    },
+    {
+      "id": "plates-025",
+      "name": "ДК «Компрессор»",
+      "labels": [
+        {
+          "id": "l420",
+          "text": "ДК «Компрессор»"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "38",
+        "50"
+      ],
+      "routePlatePaths": [
+        14272,
+        14275
+      ]
+    },
+    {
+      "id": "plates-032",
+      "name": "Даниловская мануфактура",
+      "labels": [
+        {
+          "id": "l151",
+          "text": "Даниловская"
+        },
+        {
+          "id": "l152",
+          "text": "мануфактура"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "16",
+        "49"
+      ],
+      "routePlatePaths": [
+        14242,
+        14244
+      ]
+    },
+    {
+      "id": "plates-033",
+      "name": "Нагатино",
+      "labels": [
+        {
+          "id": "l298",
+          "text": "Нагатино"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "47",
+        "49"
+      ],
+      "routePlatePaths": [
+        14289,
+        14291
+      ]
+    },
+    {
+      "id": "plates-034",
+      "name": "Черёмушки",
+      "labels": [
+        {
+          "id": "l128",
+          "text": "Черёмушки"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "38"
+      ],
+      "routePlatePaths": [
+        10498
+      ]
+    },
+    {
+      "id": "plates-035",
+      "name": "Москворецкий рынок",
+      "labels": [
+        {
+          "id": "l207",
+          "text": "Москворецкий рынок"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "1"
+      ],
+      "routePlatePaths": [
+        10488
+      ]
+    },
+    {
+      "id": "plates-037",
+      "name": "Чертаново Южное",
+      "labels": [
+        {
+          "id": "l213",
+          "text": "Чертаново Южное"
+        }
+      ],
+      "seedPaths": [],
+      "routePlateNumbers": [
+        "1",
+        "16"
+      ],
+      "routePlatePaths": [
+        14236,
+        14238
+      ]
+    }
+  ]
+}

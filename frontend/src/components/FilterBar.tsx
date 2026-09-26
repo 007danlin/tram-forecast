@@ -1,9 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Network } from "../map/loadMap";
+import { groupRouteLanes } from "../map/routeSelection";
 import { useForecastData } from "../useForecast";
 import { Button, Icon } from "./ui";
 import "./FilterBar.css";
-export function FilterBar() {
+export function FilterBar({ network }: { network: Network | null }) {
   const forecast = useForecastData();
+  const options = useMemo(() => {
+    const routes = new Map(
+      groupRouteLanes(network?.lanes ?? []).map((group) => [
+        group.routes[0],
+        {
+          value: group.routes[0],
+          label: group.routes.join(" / "),
+          method: "",
+          forecast: false,
+        },
+      ]),
+    );
+    for (const route of forecast.caps?.routes ?? []) {
+      const existing = routes.get(route.route_id);
+      routes.set(route.route_id, {
+        value: route.route_id,
+        label: existing?.label ?? route.route_id,
+        method: route.method,
+        forecast: true,
+      });
+    }
+    return [...routes.values()].sort((a, b) =>
+      a.value.localeCompare(b.value, "ru", { numeric: true }),
+    );
+  }, [network, forecast.caps]);
   const [moreOpen, setMoreOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -35,15 +62,20 @@ export function FilterBar() {
         <span className="sr-only">Маршрут</span>
         <select
           aria-label="Маршрут"
-          disabled={!forecast.caps}
+          disabled={!options.length}
           value={forecast.route}
           onChange={(e) => forecast.changeRoute(e.target.value)}
         >
-          {!forecast.caps && <option value="">Маршрут</option>}
-          {forecast.caps?.routes.map((route) => (
-            <option key={route.route_id} value={route.route_id}>
-              № {route.route_id}
+          <option value="">Все маршруты</option>
+          {options.map((route) => (
+            <option
+              key={route.value}
+              value={route.value}
+              data-forecast={route.forecast}
+            >
+              № {route.label}
               {route.method === "baseline" ? " · baseline" : ""}
+              {forecast.caps && !route.forecast ? " · только схема" : ""}
             </option>
           ))}
         </select>

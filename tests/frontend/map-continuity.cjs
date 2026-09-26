@@ -20,10 +20,6 @@ const { chromium, webkit } = require("playwright");
     const network = await (
       await page.request.get(base + "/map-local/network.json")
     ).json();
-    await page
-      .getByRole("button", { name: "Увеличить область схемы", exact: true })
-      .click();
-    await page.getByRole("button", { name: "Вся схема", exact: true }).click();
     const selected = () =>
       page
         .locator("[data-selected-lane]")
@@ -37,33 +33,68 @@ const { chromium, webkit } = require("playwright");
         )
         .map((l) => l.id)
         .sort();
-    await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
-      .click();
-    const options = await page
-      .getByLabel("Выбрать линию", { exact: true })
-      .locator("option")
-      .evaluateAll((es) =>
-        es
-          .filter((e) => e.value)
-          .map((e) => ({ id: e.value, name: e.textContent })),
-      );
-    assert.equal(options.length, 35);
-    for (const option of options) {
+    const dropdown = page.getByLabel("Маршрут", { exact: true });
+    assert.equal(
       await page
-        .getByLabel("Выбрать линию", { exact: true })
-        .selectOption(option.id);
+        .getByRole("button", { name: "Линии схемы", exact: true })
+        .count(),
+      0,
+    );
+    const options = [
+      ...new Map(
+        network.lanes.map((lane) => [
+          JSON.stringify([...lane.routes].sort()),
+          lane,
+        ]),
+      ).values(),
+    ];
+    assert.equal(options.length, 35);
+    for (const lane of options) {
+      await dropdown.selectOption(lane.routes[0]);
+      assert.deepEqual(await selected(), expected(lane), lane.routes.join("/"));
+      const ids = new Set(expected(lane));
       assert.deepEqual(
-        await selected(),
-        expected(network.lanes.find((l) => l.id === option.id)),
-        option.name,
+        await page
+          .locator("[data-selected-stop]")
+          .evaluateAll((es) => es.map((e) => e.dataset.selectedStop).sort()),
+        network.stops
+          .filter((s) => ids.has(s.lane))
+          .map((s) => s.id)
+          .sort(),
+      );
+      assert.deepEqual(
+        await page
+          .locator("[data-selected-label]")
+          .evaluateAll((es) => es.map((e) => e.dataset.selectedLabel).sort()),
+        network.labels
+          .filter((l) => l.lanes.some((id) => ids.has(id)) ||
+            network.stationSymbols.some((g) => g.labels.includes(l.id) &&
+              g.lanes.some((id) => ids.has(id))))
+          .map((l) => l.id)
+          .sort(),
+      );
+      assert.equal(
+        await page
+          .locator(".map-layer--reference")
+          .evaluate((e) => getComputedStyle(e).opacity),
+        "0.4",
+      );
+      assert.deepEqual(
+        await page.locator("[data-selected-symbol]")
+          .evaluateAll((es) => es.map((e) => e.dataset.selectedSymbol).sort()),
+        network.stationSymbols.filter((g) => g.lanes.some((id) => ids.has(id)))
+          .map((g) => g.id).sort(),
+        `Station symbols ${lane.routes.join("/")}`,
       );
     }
     await page
-      .getByRole("button", { name: "Линии схемы", exact: true })
+      .getByRole("button", { name: "Увеличить область схемы", exact: true })
       .click();
     // Every original fragment is still hittable and selects all of its route, not its colour.
     for (const lane of network.lanes) {
+      await page
+        .getByRole("button", { name: "Вся схема", exact: true })
+        .click();
       const segment = lane.points
         .slice(1)
         .map((p, i) => ({
@@ -97,10 +128,26 @@ const { chromium, webkit } = require("playwright");
       if (await candidates.isVisible()) {
         const option = options.find((o) => expected(lane).includes(o.id));
         await candidates
-          .getByRole("button", { name: option.name, exact: true })
+          .getByRole("button", {
+            name: option.routes.map((n) => "№ " + n).join(", "),
+            exact: true,
+          })
           .click();
       }
       assert.deepEqual(await selected(), expected(lane), `Click ${lane.id}`);
+      const ids = new Set(expected(lane));
+      assert.deepEqual(
+        await page.locator("[data-selected-symbol]")
+          .evaluateAll((es) => es.map((e) => e.dataset.selectedSymbol).sort()),
+        network.stationSymbols.filter((g) => g.lanes.some((id) => ids.has(id)))
+          .map((g) => g.id).sort(),
+        `Station symbols after map click ${lane.id}`,
+      );
+      assert.equal(
+        await dropdown.inputValue(),
+        lane.routes[0],
+        `Shared map/dropdown selection ${lane.id}`,
+      );
     }
     // High-zoom screenshots at every repaired crossing and terminal loop.
     for (const [name, id, x, y, scale] of [
@@ -111,21 +158,32 @@ const { chromium, webkit } = require("playwright");
       ["36-novogireevo", "red-1", 992, 563, 8],
       ["t2-novogireevo", "red-2", 992, 563, 8],
       ["50-terminal", "teal-2", 450, 589, 14],
+      ["50-miit", "teal-3", 450, 514, 14],
+      ["1-chertanovskaya", "brown-1", 559, 1137, 14],
+      ["t2-chertanovskaya", "red-2", 550, 1119, 14],
+      ["7-sokolniki", "orange-4", 690, 499, 14],
+      ["5-belorussky", "purple-7", 373, 576, 14],
+      ["13-three-stations", "yellow-1", 617, 599, 14],
+      ["47-kolomenskaya", "cyan-4", 658, 998, 14],
+      ["4-rokossovskogo", "blue-3", 851, 386, 12],
+      ["7-rokossovskogo", "orange-4", 851, 386, 12],
+      ["10-shchukinskaya", "lilac-2", 333, 456, 12],
+      ["12-dubrovka", "gray-0", 770, 839, 12],
+      ["28-sokol", "gray-1", 407, 455, 12],
+      ["t1-metrogorodok", "green2-0", 902, 315, 12],
+      ["16-danilovskaya", "teal-1", 550, 953, 14],
     ]) {
       await page
-        .getByRole("button", { name: "Вся схема", exact: true })
+        .getByRole("button", { name: "Закрыть увеличенную схему", exact: true })
         .click();
-      await page
-        .getByRole("button", { name: "Линии схемы", exact: true })
-        .click();
-      const representative = options.find((o) =>
-        expected(network.lanes.find((l) => l.id === id)).includes(o.id),
+      await dropdown.selectOption(
+        network.lanes.find((l) => l.id === id).routes[0],
       );
       await page
-        .getByLabel("Выбрать линию", { exact: true })
-        .selectOption(representative.id);
+        .getByRole("button", { name: "Увеличить область схемы", exact: true })
+        .click();
       await page
-        .getByRole("button", { name: "Линии схемы", exact: true })
+        .getByRole("button", { name: "Вся схема", exact: true })
         .click();
       const bounds = await page.locator(".tram-map__viewport svg").evaluate(
         (svg, p) => {
@@ -164,11 +222,33 @@ const { chromium, webkit } = require("playwright");
       await page.mouse.down();
       await page.mouse.move(bounds.cx, bounds.cy, { steps: 10 });
       await page.mouse.up();
-      await page.screenshot({ path: `${out}/${engine.name()}-${name}.png` });
+      const shot = await page.screenshot({ path: `${out}/${engine.name()}-${name}.png` });
+      if (name.endsWith("-rokossovskogo")) {
+        // Sample the actual rendered screen: DOM presence alone would miss a
+        // faded/broken external SVG use. Both plates stay bright for either route.
+        const pixels = await page.evaluate(async (png) => {
+          const image = new Image();
+          image.src = "data:image/png;base64," + png;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(image, 0, 0);
+          const matrix = document.querySelector(".tram-map__viewport svg").getScreenCTM();
+          return [[828, 390.5], [841, 390.5]].map(([x, y]) => {
+            const p = new DOMPoint(x, y).matrixTransform(matrix);
+            return Array.from(ctx.getImageData(Math.round(p.x), Math.round(p.y), 1, 1).data);
+          });
+        }, shot.toString("base64"));
+        for (const [i, expected] of [[0, 131, 200, 255], [246, 134, 31, 255]].entries())
+          assert.ok(expected.every((channel, j) => Math.abs(channel - pixels[i][j]) <= 4),
+            `${name}: station plate ${i === 0 ? 4 : 7} is faded: ${pixels[i]}`);
+      }
     }
     assert.deepEqual(errors, []);
     console.log(
-      `PASS ${engine.name()}: 35 route choices, all 45 lane clicks, entire matching route selected, 7 crossing/loop screenshots.`,
+      `PASS ${engine.name()}: 35 route choices, all 45 lane clicks, matching station symbols, 21 crossing/loop/transfer/terminal screenshots.`,
     );
   } finally {
     await browser.close();

@@ -33,3 +33,5 @@ jobs:
           path: |
             artifacts/verification/ui-synthetic/
             artifacts/verification/map-continuity/
+            artifacts/verification/route-focus/
+            artifacts/verification/map-polish/
