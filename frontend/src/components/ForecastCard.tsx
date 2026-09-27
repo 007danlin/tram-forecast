@@ -54,11 +54,11 @@ export function ForecastCard({onOpenScenario, onOpenForecast, compact}: {onOpenS
     </div>
     {weekly && <WeeklyComparisonCard {...weekly} />}
     <div className="forecast-card__timeline"><TimelinePanel /></div>
-    <DispatchAction />
     <div className="forecast-card__actions">
       <Button variant="ghost" onClick={onOpenScenario} aria-haspopup="dialog" disabled={!f.caps?.scenario_supported || !f.route || f.routeUnavailable}>Поправки{f.scenarioActive ? ' •' : ''}</Button>
       <Button variant="primary" disabled={!f.current || f.busy || !!f.error || f.exporting} onClick={() => void f.download()} aria-label="Скачать CSV">{f.exporting ? 'Скачиваем…' : 'CSV ↓'}</Button>
     </div>
+    <DispatchAction />
     {f.error && <Button onClick={f.retry} disabled={f.busy || f.exporting} aria-label={f.errorStatus === 410 ? 'Обновить доступные данные' : 'Повторить запрос'}>Повторить запрос</Button>}
     <p className="forecast-card__note">Прогноз по историческим данным</p>
   </section>;

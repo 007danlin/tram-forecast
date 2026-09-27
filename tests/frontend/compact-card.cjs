@@ -15,10 +15,17 @@ const {visible, setTheme, mobilePane, closeDialog} = require('./ui.cjs');
     const errors = [], queries = [];
     page.on('pageerror', e => errors.push(e.message));
     page.on('request', r => {if(r.url().endsWith('/query')) queries.push(r);});
-    const response = page.waitForResponse(r => r.url().endsWith('/handoff/query') && r.ok());
+    const response = page.waitForResponse(r => {
+      if (!r.url().endsWith('/handoff/query') || !r.ok()) return false;
+      const filters = r.request().postDataJSON();
+      return filters.resolution === 'hour' && Date.parse(filters.end) - Date.parse(filters.start) === 86400000;
+    });
     await page.goto(base);
     const data = await (await response).json();
     await page.getByTestId('total').waitFor();
+    // The comparison arrives later and must be included in the card's height.
+    await page.locator('.weekly-comparison').waitFor();
+    await page.evaluate(() => document.fonts.ready);
     const peak = data.rows.reduce((best,p,i) => p.value !== null && (best < 0 || p.value > data.rows[best].value) ? i : best, -1);
     const range = visible(page.getByLabel('Точка временного ряда'));
     const waitMapSize = () => page.waitForFunction(() => {
@@ -44,11 +51,17 @@ const {visible, setTheme, mobilePane, closeDialog} = require('./ui.cjs');
     assert.equal(queries.length, before, 'Opening qualitative assumptions must preserve the numerical result');
     for (const theme of ['dark','light']) {
       await setTheme(page, theme);
-      for (const [width,height] of [[1440,900],[1366,768],[1280,720],[1024,650]]) {
+      for (const [width,height] of [[1440,900],[1366,768],[1280,720],[1024,650],[1024,600],[1024,500]]) {
         await page.setViewportSize({width,height});
+        await page.locator('.workspace-card').evaluate(el => {el.scrollTop = 0;});
         const layout = await page.evaluate(() => ({page:document.documentElement.scrollHeight,height:innerHeight,width:document.documentElement.scrollWidth,viewport:innerWidth,card:document.querySelector('.workspace-card').scrollHeight,visible:document.querySelector('.workspace-card').clientHeight}));
         assert.ok(layout.page <= layout.height && layout.width <= layout.viewport, 'Desktop must fit the window');
-        assert.ok(layout.card <= layout.visible + 1, 'Normal forecast and CSV fit the card');
+        if (height >= 700) assert.ok(layout.card <= layout.visible + 1, 'Normal forecast fits the card');
+        const actionsVisible = await page.locator('.forecast-card__actions button').evaluateAll(buttons => buttons.every(button => {
+          const rect = button.getBoundingClientRect(), card = button.closest('.workspace-card').getBoundingClientRect();
+          return rect.top >= card.top && rect.bottom <= card.bottom && button.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        }));
+        assert.ok(actionsVisible, 'Adjustments and CSV are fully visible without scrolling the card');
         await page.getByRole('button',{name:'Аналитика',exact:true}).click();
         assert.ok(await page.locator('.analytics-chart').isVisible());
         assert.ok(await page.locator('.analytics-table').isVisible());
@@ -69,7 +82,7 @@ const {visible, setTheme, mobilePane, closeDialog} = require('./ui.cjs');
         assert.equal(await page.getByRole('button',{name:'Маршруты',exact:true}).count(),0);
         assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight));
         await page.getByRole('button',{name:'Карта',exact:true}).click();
-        await page.screenshot({path:`${output}/${theme}-${width}.png`});
+        await page.screenshot({path:`${output}/${theme}-${width}-${height}.png`});
       }
       for (const width of [390,360,320]) {
         await page.setViewportSize({width,height:844});

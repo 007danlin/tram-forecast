@@ -25,7 +25,7 @@ from backend.handoff.store import COLUMNS, SCHEMA, digest, load_snapshot
 from backend.main import app, lifespan
 
 
-def make_archive(root, *, missing=False, defect=None):
+def make_archive(root, *, missing=False, defect=None, point_only=False):
     metadata = {
         "schema_version": SCHEMA,
         "unit": "successful_boardings",
@@ -36,6 +36,13 @@ def make_archive(root, *, missing=False, defect=None):
         "limitations": ["Synthetic fixture"],
         "interval": {"method": "synthetic interval"},
     }
+    if point_only:
+        metadata["forecast_kind"] = "point-only-v1"
+        metadata["interval"] = {"method": "not_estimated"}
+    if defect == "point_interval":
+        metadata["interval"]["method"] = "synthetic interval"
+    if defect == "point_kind":
+        metadata["forecast_kind"] = "unknown"
     if defect == "version":
         metadata["schema_version"] = "unsupported"
     if defect == "interval_null":
@@ -89,6 +96,10 @@ def make_archive(root, *, missing=False, defect=None):
                 0.0,
                 "ok" if route == 1 else "cold_start_zero_baseline",
             ]
+            if point_only:
+                row[4:8] = ["", "", "", ""]
+            if defect == "point_diagnostic":
+                row[5] = "0"
             if route == 1 and hour == 0:
                 if defect == "nan":
                     row[3] = "nan"
@@ -124,6 +135,39 @@ def day_query(**changes):
 
 
 class HandoffTests(unittest.TestCase):
+    def test_point_only_import_keeps_values_and_missing_diagnostics(self):
+        from backend.handoff.scenarios import ScenarioQuery, calculate_scenario
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            install(make_archive(root, point_only=True), root / "release")
+            snapshot = load_snapshot(root / "release")
+            for resolution in ("hour", "day"):
+                result = calculate(snapshot, day_query(resolution=resolution), "point")
+                self.assertAlmostEqual(result.total, 33.6)
+                self.assertEqual(result.interval_method, "not_estimated")
+                for row in result.rows:
+                    self.assertIsNone(row.reference_value)
+                    self.assertIsNone(row.lower_90)
+                    self.assertIsNone(row.upper_90)
+                    self.assertIsNone(row.priority_score)
+            baseline = calculate(snapshot, day_query(route_ids=["5"]), "baseline")
+            self.assertEqual(baseline.total, 0)
+            self.assertTrue(all(r.method == "baseline" for r in baseline.rows))
+            scenario = calculate_scenario(snapshot, ScenarioQuery.model_validate({
+                **day_query().model_dump(), "coefficients": {"weather": 1.1, "event": 1.0},
+            }), "scenario")
+            self.assertAlmostEqual(scenario.total, 36.96)
+            self.assertTrue(all(r.reference_value is None for r in scenario.rows))
+
+    def test_point_only_rejects_fabricated_diagnostics_and_unknown_modes(self):
+        for defect in ("point_interval", "point_kind", "point_diagnostic", "nan", "negative"):
+            with self.subTest(defect=defect), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                with self.assertRaises(ValueError):
+                    install(make_archive(root, point_only=True, defect=defect), root / "release")
+                self.assertFalse((root / "release").exists())
+
     def test_failed_startup_does_not_expose_a_previous_snapshot(self):
         async def verify():
             app.state.handoff_snapshot = object()
@@ -231,6 +275,26 @@ class HandoffTests(unittest.TestCase):
 
 
 class HandoffHttpTests(unittest.TestCase):
+    def test_point_only_http_and_csv_keep_unestimated_fields_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            install(make_archive(root, point_only=True), root / "release")
+            with patch.object(app.state, "handoff_snapshot", load_snapshot(root / "release")):
+                status, _, raw = self.call("/api/v2/handoff/query", day_query().model_dump(mode="json"))
+                self.assertEqual(status, 200)
+                result = json.loads(raw)
+                self.assertEqual(result["interval_method"], "not_estimated")
+                status, _, raw = self.call("/api/v2/handoff/export", {
+                    **result["filters"], "expected_result_id": result["result_id"],
+                })
+                self.assertEqual(status, 200)
+                exported = list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
+                self.assertEqual(len(exported), 24)
+                for row in exported:
+                    self.assertEqual(float(row["value"]), 1.4)
+                    for key in ("reference_value", "lower_90", "upper_90", "priority_score"):
+                        self.assertEqual(row[key], "")
+
     def test_live_responses_match_documented_models(self):
         from backend.handoff.api import (
             HandoffReady,

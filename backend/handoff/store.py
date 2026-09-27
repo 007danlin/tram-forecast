@@ -47,10 +47,10 @@ def release_id(hashes: dict) -> str:
 @dataclass(frozen=True)
 class Cell:
     prediction: float
-    reference: float
-    lower: float
-    upper: float
-    priority_score: float
+    reference: float | None
+    lower: float | None
+    upper: float | None
+    priority_score: float | None
     status: str
 
 
@@ -125,6 +125,18 @@ def load_snapshot(root: Path) -> Snapshot:
         raise ValueError("Invalid route catalogue")
     routes = tuple(str(r) for r in sorted(route_numbers))
     cold_routes = tuple(str(r) for r in cold)
+    interval = metadata.get("interval")
+    if not isinstance(interval, dict):
+        raise ValueError("Invalid interval metadata")
+    interval_method = interval.get("method")
+    if not isinstance(interval_method, str) or not interval_method.strip():
+        raise ValueError("Interval method must be a non-empty string")
+    forecast_kind = metadata.get("forecast_kind", "with-diagnostics-v1")
+    if forecast_kind not in ("with-diagnostics-v1", "point-only-v1"):
+        raise ValueError("Unsupported forecast kind")
+    point_only = forecast_kind == "point-only-v1"
+    if point_only and interval_method != "not_estimated":
+        raise ValueError("Point-only forecasts must declare unestimated intervals")
     reader = csv.DictReader(
         io.StringIO(blobs["forecast.csv"].decode("utf-8-sig")), delimiter=";"
     )
@@ -144,12 +156,21 @@ def load_snapshot(root: Path) -> Snapshot:
         key = (route, start)
         if key in cells:
             raise ValueError("Duplicate forecast cell")
-        values = [float(row[k]) for k in COLUMNS[3:8]]
+        if point_only:
+            if any(row[k] != "" for k in COLUMNS[4:8]):
+                raise ValueError("Point-only forecasts cannot claim diagnostic values")
+            values = [float(row["prediction"])]
+        else:
+            values = [float(row[k]) for k in COLUMNS[3:8]]
         if any(not math.isfinite(v) or v < 0 for v in values):
             raise ValueError("Non-finite or negative forecast value")
-        prediction, reference, lower, upper, priority = values
-        if not lower <= prediction <= upper:
-            raise ValueError("Invalid interval bounds")
+        if point_only:
+            prediction = values[0]
+            reference = lower = upper = priority = None
+        else:
+            prediction, reference, lower, upper, priority = values
+            if not lower <= prediction <= upper:
+                raise ValueError("Invalid interval bounds")
         expected_status = "cold_start_zero_baseline" if route in cold_routes else "ok"
         if row["status"] != expected_status or (
             route in cold_routes and prediction != 0
@@ -164,12 +185,6 @@ def load_snapshot(root: Path) -> Snapshot:
     limitations = tuple(metadata["limitations"])
     if not all(isinstance(v, str) for v in limitations):
         raise ValueError("Invalid limitations")
-    interval = metadata.get("interval")
-    if not isinstance(interval, dict):
-        raise ValueError("Invalid interval metadata")
-    interval_method = interval.get("method")
-    if not isinstance(interval_method, str) or not interval_method.strip():
-        raise ValueError("Interval method must be a non-empty string")
     return Snapshot(
         run_id=receipt["forecast_run_id"],
         model_version=hashes["model.joblib"],

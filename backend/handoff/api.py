@@ -240,7 +240,7 @@ def calculate(snapshot: Snapshot, query: Query, request_id: str) -> Result:
                     end=stop,
                     value=math.fsum(c.prediction for c in cells) if cells else None,
                     reference_value=math.fsum(c.reference for c in cells)
-                    if cells
+                    if cells and all(c.reference is not None for c in cells)
                     else None,
                     lower_90=single.lower if single else None,
                     upper_90=single.upper if single else None,

@@ -24,9 +24,19 @@
 .forecast-card__note { margin:0; font-size:11px; color:var(--text-secondary); }
 .chart-placeholder { display:grid; align-content:space-around; height:140px; }
 .chart-placeholder span { height:1px; background:var(--border-subtle); }
-@media (min-width:1000px) and (max-height:799px) { .forecast-card { padding:16px; gap:10px; } .forecast-card__interval { margin-bottom:8px; } .forecast-card__visual .forecast-chart { height:130px; } .forecast-card__note { display:none; } }
-@media (min-width:1000px) and (max-height:740px) {
-  .forecast-card { gap:8px; }
+@media (min-width:1000px) {
+  /* Keep the primary actions reachable even when details or notices overflow. */
+  .forecast-card__actions { position:sticky; bottom:0; z-index:2; flex-shrink:0; padding:8px 0; margin:-8px 0; background:var(--panel-bg); box-shadow:0 16px 0 var(--panel-bg); }
+}
+@media (min-width:1000px) and (max-height:950px) {
+  .forecast-card { padding:16px; gap:8px; }
+  .forecast-card__interval { margin-bottom:8px; }
+  .forecast-card__visual .forecast-chart { height:150px; }
+  .forecast-card__note { display:none; }
+  .forecast-card .weekly-comparison { padding:6px 0; gap:12px; }
+  .forecast-card > .dispatch-action { padding:4px 0 0; }
+}
+@media (min-width:1000px) and (max-height:800px) {
   .forecast-card h1 { display:inline; font-size:16px; }
   .forecast-card__interval { display:inline; margin:0 0 0 8px; font-size:12px; }
   .forecast-card__value { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; margin-top:8px; }

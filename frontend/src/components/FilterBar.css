@@ -11,6 +11,7 @@
 .filter-bar__horizon button[aria-pressed="true"] { background:var(--brand-primary); color:var(--on-brand); }
 .filter-bar__mark { flex:1; min-width:60px; display:flex; justify-content:center; align-items:center; }
 .filter-bar__mark-icon { height:75px; width:auto; display:block; }
+@media (min-width:1000px) and (max-height:800px) { .filter-bar__mark-icon { height:56px; } }
 .filter-actions { display:flex; gap:4px; margin-left:auto; }
 .filter-status:not(.sr-only) { position:absolute; left:20px; top:100%; z-index:2; background:var(--panel-bg); border-radius:4px; padding:2px 8px; font-size:11px; }
 @media (max-width:999px) { .filter-bar { flex-wrap:wrap; } .route-field { width:160px; } .date-field { width:176px; } .filter-bar__horizon button { min-width:70px; padding:10px; } .filter-bar__mark { display:none; } }
