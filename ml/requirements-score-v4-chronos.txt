@@ -1,0 +1,3 @@
+# Isolated zero-shot score-v4 environment; Python 3.12, CPU only.
+chronos-forecasting==2.3.2
+pandas==2.3.3

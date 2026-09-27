@@ -1,0 +1,19 @@
+{
+  "schema": "score-v4-reserve",
+  "reason": "Standalone component diagnostics: calendar +day-type score 0.83033960 vs incumbent calendar 0.82613000; interaction +day-type 0.83338719 vs incumbent 0.83430062.",
+  "registered_before_reserve_evaluation": true,
+  "R1": {
+    "hypothesis": "Retain only the improved calendar component from B2-cal; keep incumbent interaction component and exact original weights/scale.",
+    "formula": "0.96 * (0.425 * B2cal_calendar + 0.575 * incumbent_interaction)",
+    "new_fit": false
+  },
+  "R2": {
+    "hypothesis": "Restrict R1 to official public/transferred holidays because B2-cal gain was concentrated on those dates; preserve B2 on every other day.",
+    "formula": "R1 if official_day_type == holiday else exact B2",
+    "new_fit": false,
+    "working_saturday_policy": "keep exact B2",
+    "route50_weekend_policy": "no route-specific change"
+  },
+  "selection": "same S1-S4 guardrails; no additional blends/weights; D and stress remain unavailable until a finalist is frozen",
+  "remaining_configurations_after_run": 0
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "score-v4-study",
+  "seed": 20250925,
+  "threads": 4,
+  "new_configuration_limit": 12,
+  "internal_oof": {
+    "origin_step_days": 5,
+    "minimum_history_days": 60,
+    "minimum_target_days": 14,
+    "horizon_days": 61
+  },
+  "folds": [
+    {"id": "S1", "train_start": "2025-01-01", "train_end": "2025-04-30", "start": "2025-05-01", "end": "2025-06-30"},
+    {"id": "S2", "train_start": "2025-01-01", "train_end": "2025-05-31", "start": "2025-06-01", "end": "2025-07-31"},
+    {"id": "S3", "train_start": "2025-01-01", "train_end": "2025-06-30", "start": "2025-07-01", "end": "2025-08-30"},
+    {"id": "S4", "train_start": "2025-01-01", "train_end": "2025-07-31", "start": "2025-08-01", "end": "2025-09-30"}
+  ],
+  "stress_folds": [
+    {"id": "X1", "train_start": "2025-01-01", "train_end": "2025-05-02", "start": "2025-05-03", "end": "2025-07-02"},
+    {"id": "X2", "train_start": "2025-01-01", "train_end": "2025-06-03", "start": "2025-06-04", "end": "2025-08-03"},
+    {"id": "X3", "train_start": "2025-01-01", "train_end": "2025-07-04", "start": "2025-07-05", "end": "2025-09-03"}
+  ],
+  "diagnostic": {"id": "D", "train_start": "2025-01-01", "train_end": "2025-08-31", "start": "2025-09-01", "end": "2025-10-31"},
+  "thresholds": {
+    "min_gain": 0.002,
+    "min_improved_folds": 3,
+    "min_fold_delta": -0.003,
+    "min_horizon_delta": -0.003,
+    "max_route_mae_increase": 0.05,
+    "diagnostic_min_delta": -0.003,
+    "stress_min_delta": -0.003
+  },
+  "a1": {
+    "bounds": [[0.75, 1.25], [0.85, 1.15]],
+    "shrinkage": [5000.0, 20000.0],
+    "tuning_fraction": 0.25,
+    "state_down": 0.9,
+    "state_up": 1.1
+  },
+  "a2": {
+    "loss": "MAE",
+    "depth": 5,
+    "learning_rate": 0.03,
+    "l2_leaf_reg": 30.0,
+    "max_iterations": 500,
+    "early_stopping_rounds": 60,
+    "tuning_fraction": 0.25
+  },
+  "ets": {"library": "statsforecast", "season_length": 7, "model": "ZZZ", "damped": true},
+  "chronos": {
+    "checkpoint": "amazon/chronos-2",
+    "prediction_length": 61,
+    "point": "predictions (documented median-compatible point output)",
+    "smoke_series": 9,
+    "smoke_timeout_minutes": 45
+  },
+  "blend_weights": [0.10, 0.25, 0.50],
+  "rounding": "floor(max(prediction, 0) + 0.5) exactly once",
+  "route_5_policy": "excluded from training; zero fallback; full 14640-row sample retained",
+  "selection_warning": "S1-S4 and stress folds overlap; D is reused diagnostic, not a blind holdout"
+}
