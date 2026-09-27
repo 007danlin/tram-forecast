@@ -9,9 +9,11 @@
 .filter-bar__horizon { display:flex; flex-wrap:wrap; gap:4px; }
 .filter-bar__horizon button { min-width:82px; border-color:transparent; background:transparent; }
 .filter-bar__horizon button[aria-pressed="true"] { background:var(--brand-primary); color:var(--on-brand); }
+.filter-bar__mark { flex:1; min-width:60px; display:flex; justify-content:center; align-items:center; }
+.filter-bar__mark-icon { height:85px; width:auto; display:block; }
 .filter-actions { display:flex; gap:4px; margin-left:auto; }
 .filter-status:not(.sr-only) { position:absolute; left:20px; top:100%; z-index:2; background:var(--panel-bg); border-radius:4px; padding:2px 8px; font-size:11px; }
-@media (max-width:999px) { .filter-bar { flex-wrap:wrap; } .route-field { width:160px; } .date-field { width:176px; } .filter-bar__horizon button { min-width:70px; padding:10px; } }
+@media (max-width:999px) { .filter-bar { flex-wrap:wrap; } .route-field { width:160px; } .date-field { width:176px; } .filter-bar__horizon button { min-width:70px; padding:10px; } .filter-bar__mark { display:none; } }
 @media (max-width:699px) {
   .filter-bar { display:grid; grid-template-columns:minmax(68px,.8fr) minmax(140px,1.5fr) 44px; gap:4px 6px; padding:4px 16px 0; }
   .filter-field { width:auto; }
