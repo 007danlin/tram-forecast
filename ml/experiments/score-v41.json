@@ -1,0 +1,50 @@
+{
+  "schema": "score-v4.1-exploratory-v1",
+  "registered_at_utc": "2026-09-27T06:14:00Z",
+  "registered_before_scoring": true,
+  "reason_for_separate_series": "All 12 score-v4 configurations were consumed; stage 2 permits at most two additional v4.1 configurations.",
+  "hypothesis": {
+    "measured_limitation": "On S1-S4, corrected A2 reduced within-day opposing errors from B2 1875986 to 1813844 (-62142), but increased rounded daily SAE from 5037955 to 5229181 (+191226). This is a diagnostic decomposition, not a causal claim or an attainable-gain estimate.",
+    "evidence": [
+      "artifacts/score-v4-review-20260927/independent-audit.json",
+      "artifacts/score-v4-20260926-r01/protocol-repair/experiments/A2/oof.csv",
+      "artifacts/score-v3-20260926-r02/experiments/B2/oof.csv"
+    ],
+    "exact_change": "For every fold/route/date, preserve the exact B2 float daily sum and replace only its 24-hour allocation with the normalized nonnegative corrected-A2 forecast shape. P2 is the single preregistered 50% shrinkage toward that projected shape. No intermediate rounding.",
+    "novelty": "A1/A2 changed both level and shape. C2/N2 predicted another daily level and used B2 as the hourly shape, which is the inverse construction. v2/v3 used historical shapes, and G1 changed only route-50 weekends. None projected A2 shape onto the B2 daily total.",
+    "past_data": "Only the already frozen, past-only corrected A2 and exact B2 OOF predictions at each S origin. The transform does not read actual boardings. A2's internal calibrator training targets were restricted to dates available at its validation origin.",
+    "estimated_time": "Under 5 minutes for S1-S4 because no model is refit; up to 25 minutes only if a frozen finalist requires diagnostic D/stress and final export.",
+    "admission_and_stop": "Unchanged v4 guardrails. Stop after P1/P2 if neither passes. If both pass, freeze the higher S score; exact tie favors P2. Open D/stress only for the frozen finalist and do not tune after viewing them."
+  },
+  "configurations": {
+    "P1": {
+      "formula": "B2_day_float_sum * max(A2_hour,0) / sum_hour(max(A2_hour,0))",
+      "zero_shape_fallback": "exact B2 hours",
+      "new_fit": false
+    },
+    "P2": {
+      "formula": "0.5 * exact_B2_hour + 0.5 * P1_hour",
+      "zero_shape_fallback": "exact B2 hours",
+      "new_fit": false
+    }
+  },
+  "group_key": ["fold", "route", "date"],
+  "scope": "same S1-S4, 52704 modelled-route hourly rows",
+  "selection": "highest S score among candidates passing every unchanged guardrail; exact tie favors P2; otherwise retain exact B2",
+  "thresholds": {
+    "min_gain": 0.002,
+    "min_improved_folds": 3,
+    "min_fold_delta": -0.003,
+    "min_horizon_delta": -0.003,
+    "max_route_mae_increase": 0.05,
+    "diagnostic_min_delta": -0.003,
+    "stress_min_delta": -0.003
+  },
+  "budget": {
+    "v4_used": 12,
+    "v41_max": 2,
+    "v41_registered": 2,
+    "remaining_after_run": 0
+  },
+  "deadline_utc": "2026-09-27T09:03:50Z"
+}

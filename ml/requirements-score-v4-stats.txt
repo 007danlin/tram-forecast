@@ -1,0 +1,3 @@
+# Isolated statistical score-v4 environment; Python 3.12.
+statsforecast==2.1.1
+pandas==2.3.3
