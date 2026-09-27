@@ -381,7 +381,7 @@ def main():
             }
             (output/'local-acceptance.json').write_text(json.dumps(acceptance, ensure_ascii=False, indent=2)+'\n')
     (output/'release-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+'\n')
-    guide = (Path(__file__).resolve().parents[1]/'docs/submission-final/README.md').read_text()
+    guide = (Path(__file__).resolve().parents[1]/'docs/submission-final/b2-bundle-guide.md').read_text()
     (output/'README.md').write_text(bundle_readme(guide))
     shutil.copyfile(output/'sources/verification.json', output/'source-packager-verification.json')
     print(seal_bundle(output))
