@@ -4,30 +4,74 @@ import { dateLabel, intervalLabel } from '../display';
 import { Button } from './ui';
 import './DispatchTools.css';
 
-const yearCopy: Record<string, {title: string; assumption: string}> = {
-  recent_level: {title: 'Без изменений', assumption: 'Спрос остаётся на недавнем уровне.'},
-  lower_service: {title: 'Меньше рейсов', assumption: 'Сокращение выпуска может снизить число посадок.'},
-  higher_demand: {title: 'Выше спрос', assumption: 'Посадок может стать больше. Масштаб роста не определён.'},
+const yearCopy: Record<string, {title: string; action: string; review: string}> = {
+  recent_level: {title: 'Без изменений', action: 'Ежемесячно сверять почасовые посадки с расписанием и фактическими рейсами.', review: 'Пересмотреть при изменении расписания или устойчивом расхождении факта с прежним профилем.'},
+  lower_service: {title: 'Меньше рейсов', action: 'После подтверждения сокращения проверить затронутые часы и соседние маршруты.', review: 'Пересмотреть после изменения выпуска или появления факта за затронутый период.'},
+  higher_demand: {title: 'Выше спрос', action: 'Для подтверждённого события проверить выпуск и интервалы; сопоставить посадки до и после.', review: 'Пересмотреть при отмене события либо неподтверждённом росте по новым наблюдениям.'},
 };
 export function YearView() {
   const f = useForecastData(), meta = f.caps?.year;
   const start = f.day ? `${f.day.slice(0, 7)}-01` : '';
-  const next = start ? `${Number(start.slice(0,4)) + 1}${start.slice(4)}T00:00:00+03:00` : '';
-  const end = next ? new Date(Date.parse(next) - 1).toISOString().slice(0,10) : '';
+  const monthAt = (offset: number) => new Date(Date.UTC(Number(start.slice(0,4)), Number(start.slice(5,7)) - 1 + offset, 1)).toISOString().slice(0,10);
+  const end = start ? new Date(Date.parse(monthAt(12)) - 86400000).toISOString().slice(0,10) : '';
+  const route = f.caps?.routes.find(r => r.route_id === f.route);
+  const supported = route?.method === 'model';
+  const basePeak = supported && f.current?.total_scope === 'complete'
+    ? f.current.rows.reduce<(typeof f.rows)[number] | null>((best, row) => row.value !== null && (!best || row.value > best.value!) ? row : best, null) : null;
+  const quarters = [
+    ['Зафиксировать основу', 'Получить почасовой факт, действующее расписание и выполненные рейсы. Сопоставлять одинаковые типы дней.'],
+    ['Проверить изменения', 'Ежемесячно сравнивать новые наблюдения с основой. При смене расписания отделить периоды до и после.'],
+    ['Обновить оценку', 'Проверить накопленный факт и полноту выгрузки. Новую модель принимать только после временной проверки качества.'],
+    ['Пересмотреть год', 'Проверить, накоплен ли полный сезонный цикл. Если данных по-прежнему мало, сохранить качественные сценарии.'],
+  ];
   return <section className="dispatch-panel year-view" aria-label="Качественный год">
-    <p className="year-view__lead">Численного прогноза пока нет</p>
+    <p className="year-view__lead">{route || f.routeUnavailable ? `Маршрут № ${f.route}` : 'Выберите отдельный маршрут'}</p>
+    <p>Численного прогноза пока нет</p>
     <p data-testid="year-period">{dateLabel(start, true)} — {dateLabel(end, true)} · МСК</p>
     {f.routeUnavailable && <p role="status">Маршрут только на схеме. Прогноза нет.</p>}
-    {f.caps?.routes.find(r => r.route_id === f.route)?.method === 'baseline' && <p role="status">Нет истории обучения: модель возвращает 0. Движение по маршруту возможно.</p>}
-    {meta?.qualitative_available ? <>
-      <p className="year-view__notice">Для численного прогноза недостаточно истории: доступно {meta.history_months} месяцев, по {dateLabel(meta.history_end, true)}.</p>
-      <div className="year-view__scenarios">{meta.scenarios.map(s => <article key={s.name}><h2>{yearCopy[s.name]?.title ?? s.title}</h2><p>{yearCopy[s.name]?.assumption ?? s.assumption}</p>
-        <details><summary>Что проверить</summary><p>{s.assumption}</p><p>{s.change}</p><p>{s.needed}</p></details>
+    {route?.method === 'baseline' && <p role="status">Нет истории обучения: модель возвращает 0. Движение по маршруту возможно. Для годового плана нужны фактические посадки этого маршрута.</p>}
+    {supported && meta?.qualitative_available ? <>
+      <div className="year-view__basis" data-testid="year-basis">
+        <h2>Основа и границы</h2>
+        <p>В паспорте модели: {meta.history_months} месяцев истории, по {dateLabel(meta.history_end, true)}. Проверенный исторический профиль отдельно для этого маршрута в сервис не передан.</p>
+        {basePeak ? <p>В выбранном базовом прогнозе первый максимум — {intervalLabel(basePeak.start, basePeak.end, f.current?.filters.resolution === 'day')}, {format(basePeak.value)} посадок. Это ориентир для ближайшей проверки, а не сезонный профиль на год.</p>
+          : <p>Полного базового прогноза за выбранный период нет. Интервалы для проверки пока не определены.</p>}
+        {f.scenarioActive && <p>Текущие ручные поправки сохранены. На будущие месяцы они не переносятся.</p>}
+        <p>Годовые допущения ниже условны. Даты и часы будущих изменений нужно подтвердить отдельно.</p>
+      </div>
+      <div className="year-view__scenarios">{meta.scenarios.map(s => <article key={s.name}><h2>{yearCopy[s.name]?.title ?? s.title}</h2><p>{s.assumption}</p>
+        <p>{s.change}</p><details><summary>Действие и пересмотр</summary><p>{yearCopy[s.name]?.action}</p><p>{s.needed}</p><p>{yearCopy[s.name]?.review}</p></details>
       </article>)}</div>
-      <details className="year-view__source"><summary>О данных</summary><p>Годовая сезонность не проверена. Сумма за год и интервал неопределённости не рассчитаны.</p><p>Версия: {meta.version}. Источник: {meta.source}.</p></details>
-    </> : <p>Годовые сценарии недоступны.</p>}
+      {start && <section className="year-view__plan" aria-label="План на 12 месяцев"><h2>План проверки · № {f.route}</h2>{quarters.map(([title, action], i) => <article key={title}>
+        <h3>{dateLabel(monthAt(i * 3), true)} — {dateLabel(new Date(Date.parse(monthAt(i * 3 + 3)) - 86400000).toISOString().slice(0,10), true)}</h3>
+        <p><strong>{title}.</strong> {action}</p>
+      </article>)}</section>}
+      <details className="year-view__source"><summary>О данных</summary><p>Годовая сезонность не проверена. Сумма за год и интервал неопределённости не рассчитаны.</p><p>Версия: {meta.version}. Источник допущений: {meta.source}. {f.current && <>Источник ближайшего прогноза: {f.current.model_version}; run {f.current.forecast_run_id}.</>}</p></details>
+    </> : supported ? <p>Годовые сценарии недоступны: метаданные не переданы.</p> : <p>Персональный годовой сценарий недоступен без истории выбранного маршрута.</p>}
     <p className="panel-note">CSV за год недоступен: значения не рассчитаны.</p>
   </section>;
+}
+
+export function DispatchAction() {
+  const f = useForecastData(), point = f.points[f.selected];
+  if (!f.current || !point || f.overview || point.method === 'baseline') return null;
+  const daily = f.current.filters.resolution === 'day';
+  const complete = f.current.total_scope === 'complete' && point.status === 'ok';
+  return <details className="dispatch-action" data-testid="dispatch-action">
+    <summary>Проверить выпуск</summary>
+    <p>№ {f.route} · {intervalLabel(point.start, point.end, daily)} · МСК</p>
+    <p>{f.scenarioActive ? 'С ручными поправками' : 'Базовый прогноз'} · посадки за {daily ? 'день' : 'час'}.</p>
+    {!complete && <p role="status">Данные неполные: сравнение не подтверждает спрос за весь период. Сначала проверьте полноту выгрузки.</p>}
+    <dl>{[f.selected - 1, f.selected, f.selected + 1].filter(i => i >= 0 && i < f.points.length).map(i => {
+      const row = f.points[i];
+      const difference = complete && row.status === 'ok' && row.value !== null && point.value !== null ? point.value - row.value : null;
+      return <div key={row.start}><dt>{intervalLabel(row.start, row.end, daily)}</dt><dd><span data-dispatch-value={row.value ?? ''}>{format(row.value)}</span>
+        {f.scenarioActive && <span> · без поправок {format(row.base_value ?? null)}</span>}
+        {i !== f.selected && difference !== null && <span> · выбранный {difference >= 0 ? '+' : '−'}{format(Math.abs(difference))}</span>}</dd></div>;
+    })}</dl>
+    <p>{complete ? 'Сверьте выпуск и интервалы в выбранное время с расписанием и отчётом о выполненных рейсах.' : 'После проверки данных сверьте расписание и выполненные рейсы.'} Для решения о числе вагонов нужны вместимость и высадки.</p>
+    <p>Сохраните выбранный период кнопкой CSV. {f.scenarioActive ? 'Экспорт содержит базу, поправки и результат сценария.' : 'Экспорт содержит тот же базовый прогноз.'}</p>
+  </details>;
 }
 
 export function RouteOverview({onOpenScenario, onSelectRoute}: {onOpenScenario: () => void; onSelectRoute: (route: string) => void}) {

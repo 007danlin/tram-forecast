@@ -5,17 +5,78 @@ import hashlib
 import io
 import json
 from pathlib import Path, PurePosixPath
+import posixpath
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import zipfile
+from urllib.parse import urlsplit, urlunsplit
 from backend.handoff.install import install
 from backend.handoff.store import load_snapshot
 
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def bundle_readme(source):
+    """Keep local Markdown links valid after copying the guide to the bundle root."""
+    def rebase(match):
+        target = match.group(1)
+        parts = urlsplit(target)
+        if parts.scheme or parts.netloc or not parts.path or parts.path.startswith('/'):
+            return match.group(0)
+        path = posixpath.normpath('tram-forecast/docs/submission-final/' + parts.path)
+        return '](' + urlunsplit(parts._replace(path=path)) + ')'
+    return re.sub(r'\]\(([^)]+)\)', rebase, source)
+
+
+def additional_evidence(directory, output):
+    """Copy an explicitly supplied, fully checksum-covered evidence directory."""
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError('Additional evidence must be a regular directory')
+    root = directory.resolve()
+    files = {}
+    for line in (root / 'SHA256SUMS').read_text().splitlines():
+        digest, name = line.split('  ', 1)
+        rel = PurePosixPath(name)
+        path = root / rel
+        if (rel.is_absolute() or '..' in rel.parts or '\\' in name or name in files
+                or name == 'SHA256SUMS' or any(p.is_symlink() for p in [path, *path.parents] if p != root.parent)
+                or not path.resolve().is_relative_to(root) or not path.is_file() or sha(path) != digest):
+            raise ValueError(f'Invalid additional evidence: {name}')
+        files[name] = path
+    actual = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() and p != root / 'SHA256SUMS'}
+    if not files or set(files) != actual:
+        raise ValueError('Additional evidence must be nonempty and fully covered by SHA256SUMS')
+    target_root = output / 'evidence/final-closure'
+    if target_root.exists():
+        raise ValueError('Additional evidence destination already exists')
+    for name, path in files.items():
+        target = target_root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
+    return {name: sha(path) for name, path in files.items()}
+
+
+def runtime_hashes(archive):
+    """Bind acceptance to every shipped non-document source, including assets."""
+    with zipfile.ZipFile(archive) as source:
+        return {n: hashlib.sha256(source.read(n)).hexdigest() for n in sorted(source.namelist())
+                if not n.endswith(('/', '.md', '/MANIFEST.sha256'))
+                and n != 'tram-forecast/docs/submission-final/source-allowlist.json'}
+
+
+def accept_runtime(proof, archive, run_id):
+    required = {'backend', 'integration', 'frontend_build', 'browser_chromium',
+                'browser_webkit', 'clean_launch', 'api_csv', 'restart'}
+    if (proof.get('status') != 'passed' or proof.get('run_id') != run_id
+            or proof.get('runtime_sha256') != runtime_hashes(archive)
+            or not required.issubset(proof.get('checks', {}))
+            or any(proof['checks'][name] != 'passed' for name in required)):
+        raise ValueError('Current runtime verification does not cover this source/run and required checks')
 
 
 def supporting_files(directory, handoff, ds_csv, model_sha):
@@ -124,6 +185,8 @@ def main():
     p.add_argument('--defer-team-acceptance', action='store_true',
                    help='Record explicitly user-deferred rehearsals/personal acceptance without claiming completion')
     p.add_argument('--verification-log', type=Path, help='Include a saved local packaging test log as evidence')
+    p.add_argument('--additional-evidence', type=Path, help='Explicit local evidence directory with complete SHA256SUMS')
+    p.add_argument('--runtime-verification', type=Path, help='Current tested runtime hashes/run/checks; preserved with original acceptance')
     p.add_argument('--point-reconstruction', type=Path,
                    help='Optional separately verified B2 point reconstruction ZIP, never a demo replacement')
     args = p.parse_args()
@@ -289,8 +352,37 @@ def main():
         shutil.copyfile(args.verification_log, target)
         manifest['packaging_test_log'] = {'file': 'evidence/current-packaging-tests.log',
                                           'sha256': sha(target)}
+    if args.additional_evidence:
+        manifest['additional_evidence'] = additional_evidence(args.additional_evidence, output)
+    if args.runtime_verification:
+        proof = json.loads(args.runtime_verification.read_text())
+        accept_runtime(proof, output / 'sources.zip', demo['run_id'])
+        if not args.additional_evidence or not proof.get('evidence_sha256'):
+            raise ValueError('Runtime verification requires checksum-covered supporting evidence')
+        for name, digest in proof['evidence_sha256'].items():
+            if manifest['additional_evidence'].get(name) != digest:
+                raise ValueError(f'Runtime verification evidence missing or changed: {name}')
+        shutil.copyfile(args.runtime_verification, output / 'current-runtime-verification.json')
+        manifest['prior_status'] = manifest['status']
+        manifest['status'] = 'local_ready_external_actions_not_authorized'
+        manifest['current_runtime_verification'] = {'file': 'current-runtime-verification.json',
+            'sha256': sha(output / 'current-runtime-verification.json')}
+        if supporting is not None:
+            shutil.copyfile(files['local-acceptance.json'], output / 'prior-local-acceptance.json')
+            acceptance = {
+                'status': manifest['status'], 'prior_status': acceptance['status'],
+                'run': demo['run_id'], 'source_fingerprint': source['source_fingerprint'],
+                'current_runtime_verification': manifest['current_runtime_verification'],
+                'prior_acceptance': {'file': 'prior-local-acceptance.json',
+                    'sha256': sha(output / 'prior-local-acceptance.json'),
+                    'scope': 'Historical checks, counts, load and recordings belong to the previous source snapshot.'},
+                'deferred_by_user': acceptance['deferred_by_user'],
+                'not_completed': acceptance['not_completed'],
+            }
+            (output/'local-acceptance.json').write_text(json.dumps(acceptance, ensure_ascii=False, indent=2)+'\n')
     (output/'release-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+'\n')
-    shutil.copyfile(Path(__file__).resolve().parents[1]/'docs/submission-final/README.md', output/'README.md')
+    guide = (Path(__file__).resolve().parents[1]/'docs/submission-final/README.md').read_text()
+    (output/'README.md').write_text(bundle_readme(guide))
     shutil.copyfile(output/'sources/verification.json', output/'source-packager-verification.json')
     print(seal_bundle(output))
 

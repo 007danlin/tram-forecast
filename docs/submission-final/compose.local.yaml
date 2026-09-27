@@ -2,10 +2,10 @@
 services:
   backend:
     ports: !override
-      - "127.0.0.1:18106:8000"
+      - "127.0.0.1:${TRAMFLOW_QA_BACKEND_PORT:-18106}:8000"
     cpus: "2.0"
     mem_limit: 4g
     memswap_limit: 4g
   frontend:
     ports: !override
-      - "127.0.0.1:15186:5173"
+      - "127.0.0.1:${TRAMFLOW_QA_FRONTEND_PORT:-15186}:5173"

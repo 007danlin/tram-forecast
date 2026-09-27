@@ -4,6 +4,7 @@ import { intervalLabel } from '../display';
 import { ForecastLineChart, ForecastTable } from './ForecastData';
 import { ForecastMetrics, ForecastNotices } from './ForecastSummary';
 import { TimelinePanel } from './TimelinePanel';
+import { DispatchAction } from './DispatchTools';
 import { Button } from './ui';
 import './ForecastCard.css';
 
@@ -49,6 +50,7 @@ export function ForecastCard({onOpenScenario, onOpenForecast, compact}: {onOpenS
         : <div className="chart-placeholder" aria-hidden="true"><span/><span/><span/></div>}
     </div>
     <div className="forecast-card__timeline"><TimelinePanel /></div>
+    <DispatchAction />
     <div className="forecast-card__actions">
       <Button variant="ghost" onClick={onOpenScenario} aria-haspopup="dialog" disabled={!f.caps?.scenario_supported || !f.route || f.routeUnavailable}>Поправки{f.scenarioActive ? ' •' : ''}</Button>
       <Button variant="primary" disabled={!f.current || f.busy || !!f.error || f.exporting} onClick={() => void f.download()} aria-label="Скачать CSV">{f.exporting ? 'Скачиваем…' : 'CSV ↓'}</Button>

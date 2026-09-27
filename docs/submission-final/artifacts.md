@@ -1,5 +1,7 @@
 # Реестр A1–A6 и двух сдач
 
+Текущее локальное состояние 27.09.2026: [итоговая приёмка](final-closure-status.md). Датированные проверки ниже относятся к своим версиям.
+
 Локальная версия: `release-manifest.json` в комплекте, конкретные SHA — в нём и
 `SHA256SUMS`. Публичные ссылки этим заданием не создавались. Статус доступа
 «локально» не означает доступ жюри. Форма не помечается отправленной.
@@ -7,11 +9,11 @@
 | Поле | Готовый локальный материал | Версия и владелец | Доступ / оставшийся критерий |
 |---|---|---|---|
 | A1: модель, train/inference, README | `demo-handoff.zip`, `g0-b2.zip`, `sources.zip`, `g0-reproduction.json` | Исходный calendar_interaction_ensemble B2; Георгий / Даниэль | Два clean inference без fit, точные float/DS и интервалы приняты. Исходный training commit/full lock неизвестны; связь champion.csv с 0,84260 подтверждена Даниэлем и снимком успешной строки |
-| A2: источники | ml/external-sources.json, ml/reports/model-card.md, weather-groups-2026-09-25.md, score-v3-2026-09-26.md, evidence/calendar | F01 calendar included; F02 weather rejected; Георгий / Игорь | Календарь 2025 независимо сверен; snapshot/receipt сохранены. Другие категории не заявляются использованными. Авторизованное размещение и доступ жюри впереди |
-| A3: Docker/API/запуск | sources.zip, demo-handoff.zip, этот README, backend/handoff/README.md, contract.md | Рабочий снимок / manifest; Даниэль / Толя | Локальный чистый запуск; предназначенная жюри ссылка ещё не опубликована |
-| A4: архитектура и применимость | docs/architecture.md, contract.md, паспорт модели | Batch → validated CSV → API → UI; Даниэль / Толя | Локальные исходники; требуется доступ жюри |
-| A5: производительность и дополнения | docs/verification-load.md, verification.md, tests/load, D1/D2/D3 | С отдельными окружениями/замерами; Даниэль / Игорь | Сценарии локально; старый load не относится к ним или к VPS. Raw-логи в локальном evidence |
-| A6: ограничения и развитие | limitations.md, INTEGRATION.md, DataDetails UI | Реализованное отделено от планов; Даниэль | Локально; доступ по финальной ссылке не проверен |
+| A2: источники | ml/external-sources.json, паспорт, ml-closure-evidence.md, evidence/calendar и evidence/final-closure/calendar-ablation | F01 calendar included, mixed effect; F02 weather rejected; Георгий / Игорь / Даниэль | Календарь 2025 сверен, новая пара B2: S +0,03202, reused D −0,01954. Другие категории не заявляются использованными. Размещение и доступ жюри впереди |
+| A3: Docker/API/запуск | sources.zip, demo-handoff.zip, README комплекта, backend/handoff/README.md, contract.md | Рабочий снимок / manifest; Даниэль / Толя | Чистый Docker-запуск и перезапуск проверены; существующий публичный B2 отвечает. Новый UI доступен локально |
+| A4: архитектура и применимость | docs/architecture.md, contract.md, dispatcher-case.md, паспорт модели | Batch → validated CSV → API → UI; Даниэль / Толя | Локальные исходники; требуется доступ жюри |
+| A5: производительность и дополнения | docs/verification-load.md, Docker inference, raw evidence, новые browser/API/CSV, три кейса Игоря | С отдельными окружениями/замерами; Даниэль / Игорь | Старый base load 200 RPS × 5 мин; сценарный с двумя коэффициентами — 200 RPS × 60 с. Это не новый load четырёхфакторного UI или VPS. Raw и новые функциональные проверки включены |
+| A6: ограничения и развитие | limitations.md, INTEGRATION.md, stop-data-request.md, DataDetails UI | Реализованное отделено от планов; Даниэль | Локально; нет >0,88, подтверждённого event-stop join и исторического профиля маршрута в сервисе; доступ жюри не проверен |
 
 [Готовые тексты A1–A6 для формы](submission-fields.md) собраны отдельно.
 Репетиции и личная командная приёмка отложены по указанию Даниэля;

@@ -1,6 +1,9 @@
 # Локальный комплект сдачи TramFlow
 
-26.09.2026. Проверенный локальный комплект с подтверждением DS-результата.
+Текущее локальное состояние 27.09.2026: [итоговая приёмка](final-closure-status.md). Датированные проверки ниже относятся к своим версиям.
+
+27.09.2026. Новый проверенный локальный комплект с подтверждением DS-результата
+от 26.09. Точный путь: `artifacts/final-closure-20260927-r01/final-delivery.zip`.
 Сохранение формы решения пока не подтверждено.
 
 Уточнение 27.09: [новая переписка о проверке ML и сдаче](organizer-clarifications-2026-09-27.md).
@@ -10,7 +13,8 @@
 из исходных весов без fit/сети/готовых ответов, точные float/DS. HTTP продолжает
 выдавать подготовленный handoff; протокол потоковой проверки не выдумывается.
 
-Статусы приёмки — `tram-forecast/docs/submission-final/verification.md` после распаковки.
+Текущие статусы — `tram-forecast/docs/submission-final/final-closure-status.md`
+после распаковки; `verification.md` сохраняет прежние протоколы.
 Реестр формы — `tram-forecast/docs/submission-final/artifacts.md`, сценарий защиты —
 `tram-forecast/docs/submission-final/pitch.md`. Готовые тексты полей A1–A6 —
 `tram-forecast/docs/submission-final/submission-fields.md`.
@@ -19,7 +23,7 @@
 `demo-handoff.zip` (принятый B2 и float-прогноз), `g0-b2.zip` (исходный G0,
 исходники ML, evaluation/OOF, metadata/schema/provenance), `ds-candidate.csv`,
 `ds-preflight.json`, `g0-reproduction.json`, `release-manifest.json`, `SHA256SUMS`
-и каталог evidence. Имя `demo-handoff.zip` обозначает роль файла в локальном
+и каталог evidence. В новой версии добавлены `evidence/final-closure/`: приёмка UI, календарная абляция, проверка входов остановок, независимая приёмка v4, Docker raw evidence и отдельные принятые кейсы Игоря. Все эти производные остаются вне Git и web-root. Имя `demo-handoff.zip` обозначает роль файла в локальном
 запуске; фактическая модель теперь `calendar_interaction_ensemble`.
 Исходные raw train/test и секреты не включены; G0 содержит агрегированные OOF.
 
@@ -62,7 +66,7 @@ Host-venv и ML-библиотеки на хосте не нужны; Python 3.1
 Нужны Docker Engine с Compose ≥2.24.4, `unzip`, `shasum` и доступ к registry/npm/PyPI
 при первой сборке. Предварительно созданные `.venv`, developer Downloads, образы
 проекта и локальный датасет для UI не нужны. Выполнять из каталога комплекта;
-порты 15186 и 18106 должны быть свободны. `runtime/release` должен отсутствовать.
+порты 15186 и 18106 должны быть свободны (либо задайте `TRAMFLOW_QA_FRONTEND_PORT` и `TRAMFLOW_QA_BACKEND_PORT`, затем используйте их в URL проверок). `runtime/release` должен отсутствовать.
 
 ```sh
 shasum -a 256 -c SHA256SUMS
@@ -90,7 +94,7 @@ docker compose -p tramflow-final-qa -f compose.yaml -f compose.handoff.yaml \
 Выбранное значение, график/таблица и ползунок используют один интервал. «Сценарий»:
 погода 1,10, событие 1,20; проверить базу/сценарий/разницу и скачать отдельный CSV.
 Сброс возвращает базу. Месяц → «Год» (качественные сценарии) сохраняет маршрут и показывает
-три допущения без чисел. № 5 — baseline; № 2 — только схема, CSV отключён.
+три условных сценария и план на четыре квартала. В основе показан выбранный базовый прогноз; отдельный проверенный исторический профиль маршрута не передан. В карточке откройте «Проверить выпуск» для соседних значений и следующего действия. № 5 — baseline; № 2 — только схема, CSV отключён.
 Обзор выгружает все маршруты, карточка — только выбранный. Все единицы — успешные
 посадки, не заполненность; схема 2026 не является stop mapping для истории 2025.
 
@@ -176,3 +180,39 @@ shasum -a 256 ../reproduced-submission.csv ../reproduced-forecast.csv
 блокеры запуска/формата/доступа. План обновления/отката — `deploy-plan.md` рядом
 с verification.md. Commit, push, деплой, размещение ссылок и две отправки требуют
 отдельной команды Даниэля.
+
+## Новый комплект закрытия 27.09
+
+Точный локальный путь и фактические проверки — в [итоговой приёмке](final-closure-status.md).
+Новые исходники включаются только через проверенный `source-allowlist.json`.
+Упаковщик дополнительно принимает `--additional-evidence /absolute/evidence`:
+каталог должен быть целиком покрыт собственным SHA256SUMS, без symlinks,
+дубликатов и выходов за каталог. Он копируется в `evidence/final-closure`.
+`--runtime-verification /absolute/current-runtime-verification.json` связывает
+run, все недокументальные исходники и обязательные проверки с SHA сырых логов;
+несовпадение останавливает приёмку. Прежние проверки остаются датированной историей.
+Этот файл создаётся после чистого запуска, а не вместо него. Повторная сборка
+всегда использует новый выходной каталог; старые принятые ZIP не перезаписываются.
+
+Команда этого этапа из исходного checkout (новый output при повторении):
+
+```sh
+.venv/bin/python -m scripts.build_final_bundle \
+  --output-dir artifacts/final-closure-20260927-r01/final-delivery \
+  --handoff artifacts/submission-final/tramflow-local-ready-20260926/demo-handoff.zip \
+  --ds-csv artifacts/submission-final/tramflow-local-ready-20260926/ds-candidate.csv \
+  --include-list docs/submission-final/source-allowlist.json \
+  --release-name calendar-interaction-ensemble-b2 \
+  --g0-verification artifacts/submission-final/tramflow-local-ready-20260926/g0-reproduction.json \
+  --supporting-bundle artifacts/submission-final/tramflow-local-ready-20260926 \
+  --defer-team-acceptance \
+  --additional-evidence artifacts/final-closure-20260927-r01/evidence \
+  --runtime-verification artifacts/final-closure-20260927-r01/current-runtime-verification.json
+```
+
+Дополнения не разрешают публикацию данных. Вся поставка содержит модель,
+агрегированные OOF и исторические кейсы: передавать её только по разрешённому
+каналу жюри. Публичный сайт и GitHub не являются хранилищем этого архива.
+Четыре коэффициента и UI используют прежние API. Прежний 60-секундный сценарный
+load измерял два явно заданных коэффициента; он не называется свежим load
+четырёхфакторной версии. DF-03/04 не меняют HTTP-расчёт или состав ответа.

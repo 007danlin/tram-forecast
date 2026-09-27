@@ -17,6 +17,16 @@
 .year-view__scenarios p { font-size:13px; color:var(--text-secondary); margin:6px 0; }
 .year-view__scenarios summary, .year-view__source summary { min-height:32px; padding:4px 0; font-size:12px; }
 .year-view__source p { font-size:12px; color:var(--text-secondary); }
+.year-view__source { overflow-wrap:anywhere; }
+.year-view__basis, .year-view__plan { margin:20px 0; padding:16px; border:1px solid var(--border-subtle); border-radius:8px; }
+.year-view__basis h2, .year-view__plan h2 { margin:0 0 8px; font-size:16px; }
+.year-view__basis p, .year-view__plan p { font-size:13px; color:var(--text-secondary); line-height:1.6; }
+.year-view__plan h3 { font-size:12px; font-weight:600; margin:16px 0 4px; }
+.dispatch-action { border-top:1px solid var(--border-subtle); padding:8px 0; font-size:12px; line-height:1.6; }
+.dispatch-action summary { cursor:pointer; min-height:32px; padding:4px 0; color:var(--text-primary); }
+.dispatch-action p, .dispatch-action dt { color:var(--text-secondary); }
+.dispatch-action dd { margin:0 0 8px; }
+@media (max-width:699px) { .forecast-card--compact .dispatch-action { display:none; } }
 @media (max-width:699px) { .dispatch-panel { padding:20px; } .year-view { padding:0; } .route-overview { height:auto; } .route-overview .forecast-table-wrap { max-height:400px; flex:auto; } .route-overview > label { flex-wrap:wrap; gap:4px; font-size:12px; } }
 
 .overview-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; }

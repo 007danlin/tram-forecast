@@ -1,15 +1,18 @@
 {
-  "registry_version": "2026-09-26-local-b2-accepted",
+  "registry_version": "2026-09-27-final-closure",
   "champion_passport": {
     "model": "calendar_interaction_ensemble",
     "model_sha256": "39edd75e265102f5973d14acd94bd4ae75a0473f12b7d07e47e2dc8b32eb9942",
-    "report": "ml/reports/champion-b2-g2-2026-09-26.md",
-    "included_categories": ["calendar"],
-    "exact_b2_calendar_off_ablation": "not_run; F01 delta below is historical, not a B2 ablation",
-    "calendar_access": "government.ru timeout; cbr.ru official 2025 list obtained and matched; receipts/snapshot in local G0/G2 bundle",
-    "other_source_T01": "v3 negative: 0.80200576 to 0.79754509 versus same regime-direct baseline; not in B2"
+    "report": "docs/submission-final/b2-acceptance.md",
+    "included_categories": [
+      "calendar"
+    ],
+    "exact_b2_calendar_off_ablation": "completed controlled refits: S +0.0320239008, reused D -0.0195401914; mixed effect; not original training provenance",
+    "calendar_access": "Official CBR 2025 section independently retrieved and matched on 2026-09-26; HTML SHA 3068b6cc4a737dd0f611c8dd1f934fd31110f513bd528b77754a01b31b1a296c; original retrieval at training unknown",
+    "other_source_T01": "v3 negative: 0.80200576 to 0.79754509 versus same regime-direct baseline; not in B2",
+    "ablation_report": "docs/submission-final/ml-closure-evidence.md"
   },
-  "checked_at": "2026-09-26",
+  "checked_at": "2026-09-27",
   "scope": "Internal ML registry; it does not change the HTTP API contract.",
   "status_definitions": {
     "candidate": "Relevant entry point known; required 2025 archive not yet obtained and validated.",
@@ -61,7 +64,41 @@
         "raw_wape_score_delta": 0.0380472082145768
       },
       "decision": "included_in_selected_model",
-      "blocker": null
+      "blocker": null,
+      "controlled_b2_ablation": {
+        "report": "docs/submission-final/ml-closure-evidence.md",
+        "S": {
+          "on": {
+            "rows": 52704,
+            "sae": 6913941,
+            "sum_y": 44560499,
+            "score": 0.8448414816898706
+          },
+          "off": {
+            "rows": 52704,
+            "sae": 8340942,
+            "sum_y": 44560499,
+            "score": 0.8128175808803219
+          },
+          "delta_on_minus_off": 0.032023900809548755
+        },
+        "reused_D": {
+          "on": {
+            "rows": 13176,
+            "sae": 2180896,
+            "sum_y": 12754481,
+            "score": 0.8290094281374523
+          },
+          "off": {
+            "rows": 13176,
+            "sae": 1931671,
+            "sum_y": 12754481,
+            "score": 0.8485496195415556
+          },
+          "delta_on_minus_off": -0.019540191404103346
+        },
+        "decision": "keep accepted B2; no robust gain claim"
+      }
     },
     {
       "factor_id": "F02",
@@ -483,16 +520,6 @@
       "blocker": "No verified primary 2025 archive with effective intervals and local geography selected."
     }
   ],
-  "champion_passport": {
-    "model": "calendar_interaction_ensemble",
-    "model_sha256": "39edd75e265102f5973d14acd94bd4ae75a0473f12b7d07e47e2dc8b32eb9942",
-    "report": "docs/submission-final/b2-acceptance.md",
-    "included_categories": [
-      "calendar"
-    ],
-    "exact_b2_calendar_off_ablation": "not_run; F01 delta is historical",
-    "calendar_access": "Official CBR 2025 section independently retrieved and matched on 2026-09-26; HTML SHA 3068b6cc4a737dd0f611c8dd1f934fd31110f513bd528b77754a01b31b1a296c; original retrieval at training unknown"
-  },
   "operational_monitoring": {
     "implementation": "backend/monitoring",
     "checked_at": "2026-09-26",
@@ -539,5 +566,25 @@
       "tomtom": "candidate remains blocked: key and Moscow segment coverage not validated"
     },
     "details": "backend/monitoring/README.md"
+  },
+  "category_review": {
+    "calendar": {
+      "status": "included_with_effect_evidence",
+      "effect_consistency": "mixed; S positive, reused D negative",
+      "accepted_forecast_dependency": true
+    },
+    "weather": {
+      "status": "tested_rejected",
+      "accepted_forecast_dependency": false
+    },
+    "traffic": {
+      "status": "missing_data",
+      "accepted_forecast_dependency": false
+    },
+    "other": {
+      "status": "tested_rejected",
+      "detail": "T01 rejected; other event/POI histories missing",
+      "accepted_forecast_dependency": false
+    }
   }
 }
