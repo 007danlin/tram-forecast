@@ -1,0 +1,12 @@
+.weekly-comparison { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px 0; border-top:1px solid var(--border-subtle); color:var(--text-secondary); }
+.weekly-comparison__title { margin:0; font-size:12px; }
+.weekly-comparison__value { margin:2px 0 0; font-size:23px; line-height:1.3; font-weight:650; letter-spacing:-.6px; font-variant-numeric:tabular-nums; color:var(--text-primary); }
+.weekly-comparison__arrow { margin-right:4px; font-size:15px; vertical-align:2%; }
+.weekly-comparison__caption { margin:2px 0 0; font-size:12px; }
+.weekly-comparison__spark { width:72px; height:26px; flex-shrink:0; color:var(--text-secondary); }
+.weekly-comparison[data-tone="above"] .weekly-comparison__value,
+.weekly-comparison[data-tone="above"] .weekly-comparison__arrow { color:var(--danger-text); }
+.weekly-comparison[data-tone="above"] .weekly-comparison__spark { color:var(--danger-text); }
+.weekly-comparison[data-tone="below"] .weekly-comparison__value,
+.weekly-comparison[data-tone="below"] .weekly-comparison__arrow { color:var(--success-text); }
+.weekly-comparison[data-tone="below"] .weekly-comparison__spark { color:var(--success-text); }

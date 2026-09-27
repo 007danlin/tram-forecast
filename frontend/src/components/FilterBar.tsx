@@ -4,6 +4,7 @@ import { groupRouteLanes } from "../map/routeSelection";
 import { useForecastData } from "../useForecast";
 import { Button } from "./ui";
 import { OVERVIEW } from "../handoff";
+import tramMark from "../assets/tram-mark.png";
 import "./FilterBar.css";
 export function FilterBar({ network, onOpenScenario, onOpenYear }: { network: Network | null; onOpenScenario: () => void; onOpenYear: () => void }) {
   const forecast = useForecastData();
@@ -102,6 +103,9 @@ export function FilterBar({ network, onOpenScenario, onOpenYear }: { network: Ne
             </Button>
           ))}
         </div>
+      </div>
+      <div className="filter-bar__mark">
+        <img className="filter-bar__mark-icon" src={tramMark} alt="" aria-hidden="true" />
       </div>
       <div className="filter-actions">
         <Button variant="ghost" onClick={onOpenYear} disabled={!forecast.caps?.year?.qualitative_available} aria-haspopup="dialog">На год</Button>

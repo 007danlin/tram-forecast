@@ -75,5 +75,5 @@
   .forecast-card--compact .forecast-metrics__short-label { display:inline; }
   .forecast-card--compact .forecast-card__quick-actions { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .forecast-card--compact .forecast-card__swipe-hint { display:block; margin:0; color:var(--text-secondary); font-size:11px; }
-  .forecast-card--compact .forecast-card__visual, .forecast-card--compact .forecast-card__timeline, .forecast-card--compact .forecast-card__actions { display:none; }
+  .forecast-card--compact .forecast-card__visual, .forecast-card--compact .weekly-comparison, .forecast-card--compact .forecast-card__timeline, .forecast-card--compact .forecast-card__actions { display:none; }
 }
