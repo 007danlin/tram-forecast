@@ -7,10 +7,10 @@
 .app-shell__nav button { border-radius:8px; background:transparent; border-color:transparent; padding:10px 20px; }
 .app-shell__nav button[aria-current="page"] { background:var(--control-bg); }
 .theme-toggle { display:flex; align-items:center; gap:8px; margin-left:12px; }
-.app-shell__body { padding:16px 16px 0; flex:1; min-height:0; }
+.app-shell__body { padding:10px 16px 16px; flex:1; min-height:0; }
 .mobile-navigation, .mobile-data, .nav-toggle, .nav-year { display:none; }
 .app-shell__badge--error { color:var(--danger-text); }
-@media (min-width:1000px) and (min-height:650px) {
+@media (min-width:1000px) {
   .app-shell { height:100dvh; min-height:0; }
   .app-shell__body { overflow:hidden; }
 }

@@ -1,4 +1,4 @@
-.filter-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:12px 16px; min-height:72px; position:relative; }
+.filter-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 16px; min-height:72px; position:relative; }
 .filter-field { display:block; min-width:0; }
 .filter-field input, .filter-field select { width:100%; height:44px; min-height:44px; line-height:22px; border:1px solid transparent; border-radius:8px; padding:10px 12px; background:var(--control-bg); color:var(--text-primary); font:inherit; }
 .route-field { width:176px; position:relative; }
@@ -10,7 +10,7 @@
 .filter-bar__horizon button { min-width:82px; border-color:transparent; background:transparent; }
 .filter-bar__horizon button[aria-pressed="true"] { background:var(--brand-primary); color:var(--on-brand); }
 .filter-bar__mark { flex:1; min-width:60px; display:flex; justify-content:center; align-items:center; }
-.filter-bar__mark-icon { height:85px; width:auto; display:block; }
+.filter-bar__mark-icon { height:75px; width:auto; display:block; }
 .filter-actions { display:flex; gap:4px; margin-left:auto; }
 .filter-status:not(.sr-only) { position:absolute; left:20px; top:100%; z-index:2; background:var(--panel-bg); border-radius:4px; padding:2px 8px; font-size:11px; }
 @media (max-width:999px) { .filter-bar { flex-wrap:wrap; } .route-field { width:160px; } .date-field { width:176px; } .filter-bar__horizon button { min-width:70px; padding:10px; } .filter-bar__mark { display:none; } }
