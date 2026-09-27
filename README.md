@@ -115,7 +115,7 @@ model/sample, `docker build`, оба `docker run` и отдельное срав
 ML исполняется внутри Python 3.12.14 с точными pins и закреплённой базой.
 
 ```sh
-docker build --platform linux/arm64 -f ml/inference/Dockerfile -t tramflow-inference:b2 .
+docker build -f ml/inference/Dockerfile -t tramflow-inference:b2 .
 python3 -m scripts.verify_container_inference --help
 ```
 
@@ -124,7 +124,9 @@ python3 -m scripts.verify_container_inference --help
 Профиль 2 CPU / 4 GiB / swap 0: полный forecast `docker start --attach`
 3,05–3,15 с, расчёт с загрузкой модели 1,37–1,40 с; измеренный пик RSS
 для четырёх полных вызовов ≤184,39 MiB. Это локальные наблюдения ARM64,
-не p95/RPS и не замер VPS. [Протокол](docs/submission-final/docker-inference-verification.md).
+не p95/RPS. На VPS Linux AMD64 отдельно прошли все 15 сценариев и точное
+сравнение B2: полный forecast 10,75–11,26 с, пик RSS ≤186,80 MiB.
+[Условия и оба протокола](docs/submission-final/docker-inference-verification.md).
 Обычный Compose по-прежнему выдаёт готовый handoff; inference запускается явно,
 после расчёта новый float проходит существующие упаковщик и импортёр.
 Соответствие неизвестному потоковому протоколу жюри этим не устанавливается.

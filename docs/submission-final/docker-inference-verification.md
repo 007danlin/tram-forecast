@@ -10,6 +10,10 @@
 Проверка: `python3 -m scripts.verify_container_inference prepare|run|compare`;
 на хосте нужны только стандартная библиотека Python 3.11+ и Docker CLI.
 
+После отдельного разрешения выполнены публикация в Git и такая же приёмка
+на Linux AMD64 VPS: [серверные результаты и команды](#публикация-и-проверка-на-vps--27092026).
+Локальный протокол ниже сохранён как отдельный этап.
+
 ## Модель, входы и изоляция
 
 Исходник — G0 из локальной приёмки B2 26 сентября, каталог
@@ -157,12 +161,86 @@ MANIFEST.sha256 и сверка runtime-файлов связывают этот
 и чистый повтор используют отдельный пустой output для каждого расчёта;
 первый проход не используется как доказательство этой изоляции.
 
+## Публикация и проверка на VPS — 27.09.2026
+
+Реализация `63df056` объединена с обновлённым `main` в `a75fa75` и отправлена
+в `main` / `server-deployment`. Новые G0/G2 материалы и исправление browser
+contract сохранены. Для этого commit успешны CI
+([main](https://github.com/MISISion-Possible/tram-forecast/actions/runs/36306953789),
+[server-deployment](https://github.com/MISISion-Possible/tram-forecast/actions/runs/36306953648))
+и Handoff browser contract
+([main](https://github.com/MISISion-Possible/tram-forecast/actions/runs/36306953631),
+[server-deployment](https://github.com/MISISion-Possible/tram-forecast/actions/runs/36306953698)).
+Локальные 38 tooling-тестов и проверка комплектности прошли после объединения.
+
+Серверный `/opt/tramflow` перешёл с `98cd152` штатным fast-forward;
+резервная ссылка `refs/tramflow-backups/before-sync-20260927T084124Z-939610`.
+Образ собран из commit `a75fa75` с `--no-cache --platform linux/amd64`,
+тег `tramflow-inference:b2-20260927`, ID
+`sha256:542334d87b51e306fde5f4074f752ad4364627a21f55a57aaaa625cf80d9e43e`.
+База и 15 pins те же, `pip check` passed. VPS: x86_64, AMD EPYC 7763,
+4 видимых CPU, 8 219 213 824 bytes RAM, kernel 6.8.0-139-generic,
+Docker 29.8.1; host Python 3.12.3 исполняет только stdlib-проверку.
+Контейнерный Python 3.12.14, лимиты 2 CPU / 4 GiB / swap 0, пять thread
+settings = 2, network none, узкие read-only model/sample и отдельные outputs.
+
+Все **15** сценариев `run` и независимый `compare` прошли без допуска.
+Оба float и DS дали исходные SHA из таблицы выше, 14 640 строк, 0 численных
+различий и точное округление; № 5 — 1 464 нуля. Проверены три отдельных дня,
+подмена prediction sample, повреждённые/отсутствующие входы и защита outputs.
+Fit attempts и OOM = 0. Отдельные прямые forecast/submission через обычный
+entrypoint без wrapper также дали точные SHA и preflight passed.
+
+| Вызов | docker start --attach, с | CLI, с | predict_artifact, с | Пик RSS, KiB |
+|---|---:|---:|---:|---:|
+| forecast 1 | 11,255 | 10,393 | 5,315 | 191 276 |
+| submission 1 | 11,910 | 11,063 | 5,482 | 191 140 |
+| forecast 2 | 10,753 | 9,885 | 5,093 | 191 288 |
+| submission 2 | 12,011 | 10,981 | 5,464 | 191 152 |
+
+Максимум RSS **186,80 MiB**; cgroup memory.peak отдельно
+140 132 352–140 591 104 bytes. Это четыре наблюдения VPS с измерительным
+wrapper, не p95/RPS и не нагрузочный тест HTTP.
+
+Входы переданы с отдельного явного разрешения в закрытый каталог
+`/srv/tramflow-data/inference/b2-20260927-r01/`; SHA всех семи файлов проверены
+до вычислений. Там сохранены `prepared/`, `acceptance/`, `comparison/`,
+`direct/`, build/run/compare logs и `service-verification.json`.
+Локальная копия доказательств — `artifacts/inference-docker/b2-vps-20260927-r01/`.
+Этот серверный этап не переписывает ранее собранный локальный ZIP r02.
+
+Повторить расчёт на VPS (новое имя output обязательно):
+
+```sh
+cd /opt/tramflow
+export B2_INPUTS=/srv/tramflow-data/inference/b2-20260927-r01/prepared
+export B2_REPEAT=/srv/tramflow-data/inference/b2-repeat-$(date -u +%Y%m%dT%H%M%SZ)
+umask 077
+mkdir "$B2_REPEAT"
+python3 -m scripts.verify_container_inference run \
+  --image tramflow-inference:b2-20260927 \
+  --model-dir "$B2_INPUTS/model" --template "$B2_INPUTS/input/test_submission.csv" \
+  --output-dir "$B2_REPEAT/acceptance"
+python3 -m scripts.verify_container_inference compare \
+  --run-dir "$B2_REPEAT/acceptance" \
+  --reference-forecast "$B2_INPUTS/references/forecast.csv" \
+  --reference-submission "$B2_INPUTS/references/submission.csv" \
+  --output-dir "$B2_REPEAT/comparison"
+```
+
+Действующий сервис сохранён: ID, image, StartedAt и RestartCount backend
+до/после совпали; SHA всех файлов `/srv/tramflow` равны. Публичный HTTPS ready
+возвращает прежний B2/run, штатный handoff-check прошёл. Веб-контейнер не
+перезапускался, release не заменялся. После проверки остался только прежний
+backend; вычислительные контейнеры завершены и удалены, образ и входы сохранены.
+
 ## Ограничения
 
 Модель, HTTP-контракты, CSV-формат, интерфейс, веса и округление не менялись.
 Контейнерный batch не исполняется на каждом HTTP-запросе. Сеть при сборке допустима;
 выполнение готового образа автономно. Параметризованные даты не являются тестом
 неописанного потокового протокола организаторов, NDTP или онлайн-обучения.
-Другие архитектуры CPU, первоначальное обучение, качество на новых данных,
-публичный VPS, рост score и полное прохождение проверки жюри не подтверждаются.
-Commit, push, деплой, публикация и конкурсная отправка не выполнялись.
+Проверены Linux ARM64 и Linux AMD64 на указанном VPS. Другие архитектуры,
+первоначальное обучение, качество на новых данных, рост score и полное
+прохождение проверки жюри не подтверждаются. Commit/push и серверная установка
+отдельного inference выполнены на следующем этапе выше; конкурсной отправки не было.
