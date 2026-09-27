@@ -800,7 +800,15 @@
         "package_mode": "new v12 evidence archive plus unchanged v11 dependency archive; unpack separately; --parent-root explicit"
       },
       "information_mode": "competition_retro",
-      "fit_target_cutoff": "2025-10-31"
+      "fit_target_cutoff": "2025-10-31",
+      "package": {
+        "path": "artifacts/score-v12-residual-20260927-r01/score-v12-residual-20260927.zip",
+        "sha256": "d8e82108ceb91321ea93f4ba7a49c7755f5521c6194ce4fd29d308c0f536df5f"
+      },
+      "release_manifest": {
+        "path": "artifacts/score-v12-residual-20260927-r01/manifest.json",
+        "sha256": "2e1737a993e3858a8eb744e6b2711334dd23cea24c51ba991e282ea86464a3f9"
+      }
     }
   },
   "local_comparison_policy": {
@@ -1239,7 +1247,9 @@
       "artifacts/score-v12-residual-20260927-r01/final/R03/forecast-float.csv": "973ce2f3a1c9d90da6a4548b7a493fac2beee95e598ea7506cbef24ace24b95d",
       "artifacts/score-v12-residual-20260927-r01/final/R03/changes-route-month.csv": "06e1e6a8687c22b2b599bf8ddb3ca4541844daa967c6fc65fd8d4161ae086acd",
       "artifacts/score-v12-residual-20260927-r01/final/R03/training-audit.csv.gz": "145c7def045bb3411472579621450a5e0dc5dffdc591125a524afa8aef1016ae",
-      "artifacts/score-v12-residual-20260927-r01/final/R03/changes-route-restoration_guard.csv": "3298369a356d4b1d2234e57e07265ed3f3bc4228beff295ffd8e344e13abba4e"
+      "artifacts/score-v12-residual-20260927-r01/final/R03/changes-route-restoration_guard.csv": "3298369a356d4b1d2234e57e07265ed3f3bc4228beff295ffd8e344e13abba4e",
+      "artifacts/score-v12-residual-20260927-r01/score-v12-residual-20260927.zip": "d8e82108ceb91321ea93f4ba7a49c7755f5521c6194ce4fd29d308c0f536df5f",
+      "artifacts/score-v12-residual-20260927-r01/manifest.json": "2e1737a993e3858a8eb744e6b2711334dd23cea24c51ba991e282ea86464a3f9"
     }
   },
   "deployment_status": "No runtime or deployment change in this registration; platform leadership alone is not a server rollout.",
@@ -1393,7 +1403,12 @@
     "final_fits": 1,
     "CSV_issued": "V12-R03",
     "leader": "V12-R03 0.89061",
-    "reserve": "V11-C01 0.89003"
+    "reserve": "V11-C01 0.89003",
+    "package_complete_utc": "2026-09-27T18:39:45.980390+00:00",
+    "total_cycle_minutes": 20.733006916666668,
+    "clean_unpacked_OOF_replays": 36,
+    "clean_unpacked_full_final_R03_exact": true,
+    "package_files": 425
   },
   "manual_experiment_exports": [
     {

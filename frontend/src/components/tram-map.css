@@ -36,6 +36,9 @@
 .map-layer--reference[data-focused="true"] {
   opacity: 0.4;
 }
+.map-layer--hit path:hover {
+  cursor: default;
+}
 .tram-map__controls {
   position: absolute;
   right: 12px;

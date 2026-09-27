@@ -15,7 +15,13 @@ const near = (a,b) => assert.ok(Math.abs(a-b)<1e-7+Math.abs(b)*1e-12, `${a} != $
     const errors=[],queries=[];
     page.on('pageerror',e=>errors.push(e.message));
     page.on('request',r=>{if(r.url().endsWith('/query'))queries.push(r.postDataJSON());});
-    const response = page.waitForResponse(r=>r.url().endsWith('/handoff/query')&&r.ok());
+    // The weekly comparison loads separate 30-day chunks in the background.
+    // Compare the displayed day with its own response, whichever request wins.
+    const response = page.waitForResponse(r=>{
+      if(!r.url().endsWith('/handoff/query')||!r.ok()) return false;
+      const filters=r.request().postDataJSON();
+      return filters.resolution==='hour' && Date.parse(filters.end)-Date.parse(filters.start)===86400000;
+    });
     await page.goto(baseURL);
     const base=await(await response).json();
     await page.getByTestId('total').waitFor();

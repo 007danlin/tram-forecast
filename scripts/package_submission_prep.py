@@ -28,6 +28,7 @@ ROOT_FILES = (
     "frontend/public/theme-init.js",
     "frontend/public/theme-base.css",
     "frontend/public/map-local/network.json", "frontend/public/tram-icon.png", "data/README.md",
+    "frontend/src/assets/tram-mark.png",
     "ml/reports/experiment-log.csv",
 )
 SOURCE_DIRS = (
@@ -35,7 +36,7 @@ SOURCE_DIRS = (
     "docs", "deploy", ".github",
 )
 EXTENSIONS = {".py", ".js", ".cjs", ".mjs", ".tsx", ".ts", ".css", ".md", ".json", ".yml", ".yaml", ".sh"}
-SPECIAL_NAMES = {"requirements.txt", "requirements-score.txt", "requirements-inference.txt", "requirements.in", "Dockerfile", "frontend.Dockerfile",
+SPECIAL_NAMES = {"requirements.txt", "requirements-score.txt", "requirements-inference.txt", "requirements-score-v4-chronos.txt", "requirements-score-v4-stats.txt", "requirements.in", "Dockerfile", "frontend.Dockerfile",
                  "Caddyfile.http", "Caddyfile.https", "Caddyfile.protected"}
 
 

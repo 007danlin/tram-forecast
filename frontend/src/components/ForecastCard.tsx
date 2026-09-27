@@ -5,6 +5,8 @@ import { ForecastLineChart, ForecastTable } from './ForecastData';
 import { ForecastMetrics, ForecastNotices } from './ForecastSummary';
 import { TimelinePanel } from './TimelinePanel';
 import { DispatchAction } from './DispatchTools';
+import { WeeklyComparisonCard } from './WeeklyComparison';
+import { useWeeklyComparison } from '../useWeeklyComparison';
 import { Button } from './ui';
 import './ForecastCard.css';
 
@@ -13,6 +15,7 @@ export function ForecastCard({onOpenScenario, onOpenForecast, compact}: {onOpenS
   const touchStart = useRef<{x:number; y:number; time:number} | null>(null);
   const [chartMode, setChartMode] = useState<'chart' | 'table'>('chart');
   const point = f.points[f.selected], daily = f.current?.filters.resolution === 'day';
+  const weekly = useWeeklyComparison(f.route, f.caps, !daily ? (point ?? null) : null);
   const onSelect = (i: number) => {f.setPlaying(false); f.setSelected(i);};
   const openForecast = () => {setChartMode('chart'); onOpenForecast();};
   return <section className={`forecast-card${compact ? ' forecast-card--compact' : ''}`} aria-label="Карточка прогноза"
@@ -49,6 +52,7 @@ export function ForecastCard({onOpenScenario, onOpenForecast, compact}: {onOpenS
         : <ForecastTable points={f.points} unit="успешные посадки" selectedIndex={f.selected} onSelectIndex={onSelect} />
         : <div className="chart-placeholder" aria-hidden="true"><span/><span/><span/></div>}
     </div>
+    {weekly && <WeeklyComparisonCard {...weekly} />}
     <div className="forecast-card__timeline"><TimelinePanel /></div>
     <DispatchAction />
     <div className="forecast-card__actions">
