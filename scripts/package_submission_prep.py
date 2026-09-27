@@ -134,7 +134,8 @@ def main():
         ["git", "-C", str(ROOT), "ls-files", "-z", "--others", "--exclude-standard"]).split(b"\0") if name}
     missing_code = sorted(name for name in untracked - included
         if any(name.startswith(d + "/") for d in SOURCE_DIRS)
-        and Path(name).suffix in {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".css"})
+        and (Path(name).suffix in {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".css"}
+             or Path(name).name in SPECIAL_NAMES))
     if missing_code:
         parser.error("Untracked code would be omitted; review and use --include-list: " + ", ".join(missing_code))
     required = {*ROOT_FILES, "frontend/Dockerfile"}

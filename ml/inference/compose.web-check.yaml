@@ -1,0 +1,15 @@
+# Explicit local acceptance overlay; never used by ordinary compose up.
+services:
+  backend:
+    environment:
+      TRAMFLOW_MONITOR_ENABLED: "0"
+    ports: !override
+      - "127.0.0.1:18107:8000"
+    cpus: "2.0"
+    mem_limit: 4g
+    memswap_limit: 4g
+  frontend:
+    environment:
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: frontend
+    ports: !override
+      - "127.0.0.1:15187:5173"

@@ -35,6 +35,17 @@ Metadata/preflight фиксируют `full_sample_route_5_zero_fallback_approve
 устойчивость по folds. Решение — `no_improvement`, действующий B2 сохранён;
 новый artifact/submission не создан.
 
+## Inference B2 без host-venv
+
+[Отдельный Docker CLI](inference/README.md) использует Python 3.12.14 и
+неизменённые `requirements-inference.txt`. В образе только исходники/зависимости,
+модель и sample передаются read-only, запуск без сети. Два независимых полных
+расчёта сохранили SHA B2, точные float/DS, интервалы и статусы; отдельные сутки
+совпали со срезами. Эталоны читает только последующий процесс сравнения.
+[Контейнерная приёмка и замеры](../docs/submission-final/docker-inference-verification.md).
+Обучение/параметры/CLI-границы дат не менялись; это отдельная подготовка handoff,
+не исполнение модели на HTTP-запросе и не подтверждение потокового протокола.
+
 ## Установка
 
 Из корня репозитория:

@@ -85,6 +85,9 @@ class PackageTests(unittest.TestCase):
                 names = {n.removeprefix("tram-forecast/") for n in z.namelist()}
                 self.assertTrue(set(REQUIRED).issubset(names), sorted(set(REQUIRED) - names))
                 for name in ("compose.yaml", "compose.handoff.yaml", "compose.load.yaml", "compose.monitoring.yaml",
+                             "ml/inference/Dockerfile", "ml/inference/measure.py", "ml/inference/README.md",
+                             "ml/requirements-inference.txt", "scripts/verify_container_inference.py",
+                             "docs/submission-final/docker-inference-verification.md",
                              "backend/handoff/install.py", "backend/requirements.txt",
                              "frontend/public/map-local/network.json", "frontend/public/tram-icon.png", "frontend/public/favicon.svg", "tests/load/handoff.js",
                              "frontend/public/map-local/schematic.svg", "frontend/public/map-local/schematic.meta.json",
@@ -101,15 +104,17 @@ class PackageTests(unittest.TestCase):
             root = Path(tmp).resolve() / "repo"
             (root / "frontend").mkdir(parents=True)
             (root / "scripts").mkdir()
+            (root / "ml/inference").mkdir(parents=True)
             (root / "frontend/Dockerfile").write_text("FROM scratch")
             (root / "scripts/new.py").write_text("# reviewed new source\n")
+            (root / "ml/inference/Dockerfile").write_text("FROM scratch\n")
             include = Path(tmp) / "include.json"
             include.write_text(json.dumps(["scripts/new.py"]))
             def git_output(command, **kwargs):
                 if "rev-parse" in command:
                     return "a" * 40
                 if "--others" in command:
-                    return b"scripts/new.py\0"
+                    return b"scripts/new.py\0ml/inference/Dockerfile\0"
                 if "ls-files" in command:
                     return b"frontend/Dockerfile\0"
                 return b""
@@ -118,10 +123,16 @@ class PackageTests(unittest.TestCase):
                 with patch("sys.argv", ["pack", "--output-dir", str(Path(tmp)/"missing")]), \
                         redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     packager.main()
+                # Reviewing the .py alone must not silently omit the new Dockerfile.
+                with patch("sys.argv", ["pack", "--output-dir", str(Path(tmp)/"missing-dockerfile"), "--include-list", str(include)]), \
+                        redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    packager.main()
+                include.write_text(json.dumps(["scripts/new.py", "ml/inference/Dockerfile"]))
                 with patch("sys.argv", ["pack", "--output-dir", str(Path(tmp)/"ok"), "--include-list", str(include)]):
                     packager.main()
                 with ZipFile(Path(tmp)/"ok/web-handoff-preparation.zip") as z:
                     self.assertEqual(z.read("tram-forecast/scripts/new.py"), b"# reviewed new source\n")
+                    self.assertEqual(z.read("tram-forecast/ml/inference/Dockerfile"), b"FROM scratch\n")
                 for unsafe in ["../private.py", "/tmp/private.py", "scripts/.env", "artifacts/private.json", "scripts/model.joblib"]:
                     include.write_text(json.dumps([unsafe]))
                     with patch("sys.argv", ["pack", "--output-dir", str(Path(tmp)/"bad"), "--include-list", str(include)]), \
